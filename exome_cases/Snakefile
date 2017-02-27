@@ -1,0 +1,39 @@
+configfile: "config.json"
+
+SAMPLES = config['samples']
+
+rule all:
+	input:
+		expand("annotated_vcfs/{sample}_annotated.vcf.gz", sample=SAMPLES),
+		expand("annotated_vcfs/{sample}_annotated.vcf.gz.tbi", sample=SAMPLES)
+
+rule sort:
+	input:
+		"vcfs/{sample}.vcf.gz"
+	output:
+		temp("vcfs/{sample}.sorted.vcf.gz")
+	shell:
+		"zcat '{input}' | sort -k 1,1 -k 2,2n | bgzip -c > '{output}'"
+
+rule annotate:
+	input:
+		vcf="vcfs/{sample}.sorted.vcf.gz",
+		db="../jannovar/data/hg19_refseq.ser",
+		exac="../data/ExAC.r0.3.sites.vep.vcf.gz",
+		uk="../data/UK10K_COHORT.20160215.sites.vcf.gz",
+		caddsnv="../data/whole_genome_SNVs.tsv.gz",
+		caddindel="../data/InDels.tsv.gz",
+		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
+	output:
+		"annotated_vcfs/{sample}_annotated.vcf.gz"
+	shell:
+		"java -jar ../jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}'"
+
+rule index:
+	input:
+		"annotated_vcfs/{sample}_annotated.vcf.gz"
+	output:
+		"annotated_vcfs/{sample}_annotated.vcf.gz.tbi"
+	shell:
+		"module load htslib/1.3.1 && "
+		"tabix '{input}'"

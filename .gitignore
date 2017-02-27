@@ -1,0 +1,6 @@
+*.json
+*.vcf
+*.vcf.gz
+*.vcf.gz.tbi
+.snakemake
+*.done
