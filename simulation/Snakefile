@@ -10,19 +10,21 @@ SINGLE_SAMPLES = config['SINGLE_SAMPLES']
 VCF_SAMPLES = config['VCF_SAMPLES']
 SAMPLES = allSamples(SINGLE_SAMPLES, VCF_SAMPLES)
 
+BACKGROUNDS=['1KG']
+
 
 rule all:
 	input:
 		"mutations/JsonsVCF_annotated.vcf.gz",
 		"mutations/JsonsVCF_annotated.vcf.gz.tbi",
-		expand("vcf_simulation/{sample}.done", sample=SAMPLES),
-		expand("json_simulation/CV/{sample}.json", sample=SAMPLES),
-		expand("vcf_annotation/{sample}.vcf.gz", sample=VCF_SAMPLES),
-		expand("vcf_annotation/{sample}.vcf.gz.tbi", sample=VCF_SAMPLES),
-		expand("vcf_annotation/{sample}.annotation.vcf.gz", sample=VCF_SAMPLES),
-		expand("vcf_annotation/{sample}.annotation.vcf.gz.tbi", sample=VCF_SAMPLES),
-		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES),
-		expand("json_simulation/real/train/{sample}.json", sample=SINGLE_SAMPLES)
+		expand("vcf_simulation/{background}/{sample}.done", sample=SAMPLES, background=BACKGROUNDS),
+		expand("json_simulation/{background}/CV/{sample}.json", sample=SAMPLES, background=BACKGROUNDS),
+		expand("vcf_annotation/{sample}.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("vcf_annotation/{sample}.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("vcf_annotation/{sample}.annotation.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("vcf_annotation/{sample}.annotation.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("json_simulation/real/{background}/train/{sample}.json", sample=SINGLE_SAMPLES, background=BACKGROUNDS)
 
 
 
@@ -63,29 +65,29 @@ rule spikein:
 		index="mutations/JsonsVCF_annotated.vcf.gz.tbi",
 		vcf="mutations/JsonsVCF_annotated.vcf.gz",
 		omim="OMIM/genemap2.txt",
-		back="background/{back}/{back}.refSeq105.AF.vcf.gz"
+		back="background/results/{background}/{background}.refSeq105.AF.vcf.gz"
 	output:
-		touch("vcf_simulation/{sample}.done")
+		touch("vcf_simulation/{background}/{sample}.done")
 	run:
 		if not containsVcf(wildcards):
-			shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT.jar spikein -o {input.omim} -out vcf_simulation/ -v {input.back} -m {input.vcf} --sample {wildcards.sample}")
+			shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out vcf_simulation/{wildcards.background}/ -v {input.back} -m {input.vcf} --sample {wildcards.sample}")
 
 
 def vcf_file(wc):
 	import glob
-	return glob.glob("vcf_simulation/"+wc.sample+"_*.vcf.gz")
+	return glob.glob("vcf_simulation/"+wc.background+"/"+wc.sample+"_*.vcf.gz")
 
 
 rule json:
 	input:
-		simulation="vcf_simulation/{sample}.done",
+		simulation="vcf_simulation/{background}/{sample}.done",
 		vcf=vcf_file,
 		omim="OMIM/genemap2.txt",
 		json="../json_cases/{sample}.json"
 	output:
-		"json_simulation/{back}/CV/{sample}.json"
+		"json_simulation/{background}/CV/{sample}.json"
 	shell:
-		"java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT.jar extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
+		"java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
 
 
 ################### REAL VCFS################################
@@ -114,6 +116,7 @@ rule bgZipRealVCF:
 rule annotateRealVCF:
 	input:
 		vcf="vcf_annotation/{sample}.vcf.gz",
+		index="vcf_annotation/{sample}.vcf.gz.tbi",
 		db="../jannovar/data/hg19_refseq.ser",
 		exac="../data/ExAC.r0.3.sites.vep.vcf.gz",
 		uk="../data/UK10K_COHORT.20160215.sites.vcf.gz",
@@ -145,23 +148,22 @@ rule indexRealVCF:
 
 rule jsonRealTestData:
 	input:
-		simulation="vcf_simulation/{sample}.done",
-		vcf=vcf_file,
+		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
 		omim="OMIM/genemap2.txt",
 		json="../json_cases/{sample}.json"
 	output:
 		"json_simulation/real/test/{sample}.json"
 	shell:
 		"""
-		java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT.jar extendjson \
+		java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar extendjson \
 		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
 		"""
 
 rule jsonRealTrainData:
 	input:
-		"json_simulation/CV/{sample}.json"
+		"json_simulation/{background}/CV/{sample}.json"
 	output:
-		"json_simulation/real/train/{sample}.json"
+		"json_simulation/real/{background}/train/{sample}.json"
 	shell:
 		"""
 		ln {input} {output}
