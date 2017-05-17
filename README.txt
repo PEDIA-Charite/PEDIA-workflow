@@ -43,3 +43,11 @@ This folder contains the project data of the PEDIA study
 		just for testing
 	** vcf_simulation
 		Simulation of VCFs using one sample of the mVCF and spike it in one sample of the 1KG.
+		*** IranianTrios: 100 Irian trios, the three sample columns are always index, mother, father. 
+		    The index has an ID, but the parents are always unaffected. 
+		    The ID in approximately half of the patients is due to AR mutations.
+		    The other half is probably due to de novo mutations.
+   		    This means that there will be in average more pathogenic alleles in this cohort than in the 1KGP data.
+		    
+ 
+
