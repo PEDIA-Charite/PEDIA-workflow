@@ -4,3 +4,7 @@
 *.vcf.gz.tbi
 .snakemake
 *.done
+
+simulation/background/data/refseq/
+
+3_simulation/background/data/refseq/

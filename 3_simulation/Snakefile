@@ -1,0 +1,197 @@
+configfile: "../config.yml"
+
+def allSamples(a,b):
+	samples = []
+	samples.extend(a)
+	samples.extend(b)
+	return samples
+
+SINGLE_SAMPLES = config['SINGLE_SAMPLES']
+VCF_SAMPLES = config['VCF_SAMPLES']
+SAMPLES = allSamples(SINGLE_SAMPLES, VCF_SAMPLES)
+
+BACKGROUNDS=["1KG","ExAC","IRAN"]
+
+
+
+rule all:
+	input:
+		"mutations/JsonsVCF_annotated.vcf.gz",
+		"mutations/JsonsVCF_annotated.vcf.gz.tbi",
+		expand("vcf_simulation/{background}/{sample}.done", sample=SAMPLES, background=BACKGROUNDS),
+		expand("json_simulation/{background}/CV/{sample}.json", sample=SAMPLES, background=BACKGROUNDS),
+		expand("vcf_annotation/{sample}.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("vcf_annotation/{sample}.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("vcf_annotation/{sample}.annotation.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("vcf_annotation/{sample}.annotation.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("json_simulation/real/train/{background}/{sample}.json", sample=SINGLE_SAMPLES, background=BACKGROUNDS)
+
+
+
+
+
+rule annotate:
+	input:
+		vcf="../mVCF/JsonsVCF.vcf.gz",
+		db="jannovar/data/hg19_refseq.ser",
+		exac="../data/ExAC.r0.3.sites.vep.vcf.gz",
+		uk="../data/UK10K_COHORT.20160215.sites.vcf.gz",
+		kg="../../data/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
+		caddsnv="../data/whole_genome_SNVs.tsv.gz",
+		caddindel="../data/InDels.tsv.gz",
+		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
+	output:
+		"mutations/JsonsVCF_annotated.vcf.gz"
+	shell:
+		"""
+		java -jar jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db}
+		--exac-vcf {input.exac} --uk10k-vcf {input.uk} --1kg-vcf {input.kg}
+		--tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_
+		--ref-fasta {input.ref}
+		-o '{output}' -i '{input.vcf}'
+		"""
+
+
+rule index:
+	input:
+		"mutations/JsonsVCF_annotated.vcf.gz"
+	output:
+		"mutations/JsonsVCF_annotated.vcf.gz.tbi"
+	shell:
+		"module load htslib/1.3.1 && "
+		"tabix '{input}'"
+
+
+
+rule ExAC_genotypes:
+	input:
+		"background/results/ExAC/ExAC.refSeq105.AF.vcf.gz"
+	output:
+		"background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz"
+	shell:
+		"""
+		java -jar simdrom/simdrom-cli-0.0.3-SNAPSHOT.jar -b {input} -bAChom Hom_NFE -bAChet Het_NFE -bAChemi Hemi_NFE -bAN AN_NFE -n NFE.{wildcards.sample} --output {output}
+		"""
+
+def containsVcf(wc):
+	import glob
+	return glob.glob("vcf_simulation/"+wc.background+"/"+wc.sample+"_*.vcf.gz")
+
+
+rule spikein:
+	input:
+		index="mutations/JsonsVCF_annotated.vcf.gz.tbi",
+		vcf="mutations/JsonsVCF_annotated.vcf.gz",
+		omim="OMIM/genemap2.txt",
+		back_1kg="background/results/1KG/1KG.refSeq105.AF.vcf.gz",
+		back_exac="background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz",
+		back_iran="background/results/IRAN/IRAN.refSeq105.AF.vcf.gz"
+	output:
+		touch("vcf_simulation/{background}/{sample}.done")
+	run:
+		if not containsVcf(wildcards):
+			if wildcards.background == "1KG":
+				shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out vcf_simulation/{wildcards.background}/ -v {input.back_1kg} -m {input.vcf} --sample {wildcards.sample}")
+			elif wildcards.background == "ExAC":
+				shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out vcf_simulation/{wildcards.background}/ -v {input.back_exac} -m {input.vcf} --sample {wildcards.sample}")
+			elif wildcards.background == "IRAN":
+				shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out vcf_simulation/{wildcards.background}/ -v {input.back_iran} -m {input.vcf} --sample {wildcards.sample}")
+
+def vcf_file(wc):
+	import glob
+	return glob.glob("vcf_simulation/"+wc.background+"/"+wc.sample+"_*.vcf.gz")
+
+
+rule json:
+	input:
+		simulation="vcf_simulation/{background}/{sample}.done",
+		vcf=vcf_file,
+		omim="OMIM/genemap2.txt",
+		json="../json_cases/{sample}.json"
+	output:
+		"json_simulation/{background}/CV/{sample}.json"
+	shell:
+		"java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
+
+
+################### REAL VCFS################################
+
+def getRealVCF(wc):
+	configfile: "../json_cases/%s.json" % wc.sample
+	filename = config['vcf']['original_filename'].replace(" ", "_").replace("(","").replace(")","",1).replace(")","_").replace(",","").replace("..",".")
+	return ("../vcf_cases/%s" % filename)
+
+rule bgZipRealVCF:
+	input:
+		vcf=getRealVCF,
+		json="../json_cases/{sample}.json"
+	output:
+		vcf="vcf_annotation/{sample}.vcf.gz",
+		index="vcf_annotation/{sample}.vcf.gz.tbi"
+	shell:
+		"""
+		module load vcflib/v1.0.0-rc1;
+		module load htslib/1.3.1;
+		cat {input.vcf} | vcfstreamsort |  bgzip -c  > {output.vcf};
+		tabix {output.vcf}
+		"""
+
+
+rule annotateRealVCF:
+	input:
+		vcf="vcf_annotation/{sample}.vcf.gz",
+		index="vcf_annotation/{sample}.vcf.gz.tbi",
+		db="jannovar/data/hg19_refseq.ser",
+		exac="../data/ExAC.r0.3.sites.vep.vcf.gz",
+		uk="../data/UK10K_COHORT.20160215.sites.vcf.gz",
+		kg="../../data/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
+		caddsnv="../data/whole_genome_SNVs.tsv.gz",
+		caddindel="../data/InDels.tsv.gz",
+		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
+	output:
+		"vcf_annotation/{sample}.annotation.vcf.gz"
+	shell:
+		"""
+		java -jar jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db}
+		--exac-vcf {input.exac} --uk10k-vcf {input.uk} --1kg-vcf {input.kg}
+		--tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_
+		--ref-fasta {input.ref}
+		-o '{output}' -i '{input.vcf}'
+		"""
+
+
+rule indexRealVCF:
+	input:
+		"vcf_annotation/{sample}.annotation.vcf.gz"
+	output:
+		"vcf_annotation/{sample}.annotation.vcf.gz.tbi"
+	shell:
+		"""
+		module load htslib/1.3.1;
+		tabix '{input}'
+		"""
+
+
+rule jsonRealTestData:
+	input:
+		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
+		omim="OMIM/genemap2.txt",
+		json="../json_cases/{sample}.json"
+	output:
+		"json_simulation/real/test/{sample}.json"
+	shell:
+		"""
+		java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar extendjson \
+		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
+		"""
+
+rule jsonRealTrainData:
+	input:
+		"json_simulation/{background}/CV/{sample}.json"
+	output:
+		"json_simulation/real/train/{background}/{sample}.json"
+	shell:
+		"""
+		ln {input} {output}
+		"""

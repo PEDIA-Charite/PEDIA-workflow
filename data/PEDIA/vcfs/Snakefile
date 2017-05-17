@@ -1,0 +1,51 @@
+configfile: "config.json"
+
+SAMPLES = config['samples']
+
+rule all:
+	input:
+		expand("sorted/{sample}.vcf.gz", sample=SAMPLES),
+		expand("sorted/{sample}.vcf.gz.tbi", sample=SAMPLES),
+		expand("annotated_vcfs/{sample}_annotated.vcf.gz", sample=SAMPLES),
+		expand("annotated_vcfs/{sample}_annotated.vcf.gz.tbi", sample=SAMPLES)
+
+rule sort:
+	input:
+		"original/{sample}.vcf"
+	output:
+		"sorted/{sample}.vcf.gz"
+	shell:
+		"""
+		(cat '{input}' | egrep "^#"; cat '{input}' | egrep -v "^#" | sort -k1,1 -k2,2n) | bgzip -c > '{output}'
+		"""
+
+rule index_sorted:
+	input:
+		"sorted/{sample}.vcf.gz"
+	output:
+		"sorted/{sample}.vcf.gz.tbi"
+	shell:
+		"tabix '{input}'"
+
+rule annotate:
+	input:
+		vcf="sorted/{sample}.vcf.gz",
+		db="../../jannovar/data/hg19_refseq.ser",
+		exac="../../populationDBs/ExAC.r0.3.sites.vep.vcf.gz",
+		uk="../../populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
+		caddsnv="../../pathogenicityScores/whole_genome_SNVs.tsv.gz",
+		caddindel="../../pathogenicityScores/InDels.tsv.gz",
+		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
+	output:
+		"annotated_vcfs/{sample}_annotated.vcf.gz"
+	shell:
+		"java -jar ../../jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}'"
+
+rule index_annotated:
+	input:
+		"annotated_vcfs/{sample}_annotated.vcf.gz"
+	output:
+		"annotated_vcfs/{sample}_annotated.vcf.gz.tbi"
+	shell:
+		"module load htslib/1.3.1 && "
+		"tabix '{input}'"
