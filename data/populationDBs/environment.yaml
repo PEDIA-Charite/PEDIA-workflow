@@ -1,0 +1,10 @@
+name: download_populationDBs
+channels:
+ - conda-forge
+ - defaults
+ - r
+ - bioconda
+dependencies:
+ - python=3.5
+ - snakemake=3.9.1
+ - wget=2.2

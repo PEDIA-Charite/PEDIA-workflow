@@ -1,0 +1,29 @@
+# download the data!
+
+
+rule all:
+	input:
+		"InDels.tsv.gz",
+		"InDels.tsv.gz.tbi",
+		"whole_genome_SNVs.tsv.gz",
+		"whole_genome_SNVs.tsv.gz.tbi"
+
+rule download_CADD_indels:
+	output:
+		file="InDels.tsv.gz",
+		index="InDels.tsv.gz.tbi"
+	shell:
+		"""
+		wget http://krishna.gs.washington.edu/download/CADD/v1.3/{output.file};
+		wget http://krishna.gs.washington.edu/download/CADD/v1.3/{output.index};
+		"""
+
+rule download_CADD_SNVs:
+	output:
+		file="whole_genome_SNVs.tsv.gz",
+		index="whole_genome_SNVs.tsv.gz.tbi"
+	shell:
+		"""
+		wget http://krishna.gs.washington.edu/download/CADD/v1.3/{output.file};
+		wget http://krishna.gs.washington.edu/download/CADD/v1.3/{output.index};
+		"""

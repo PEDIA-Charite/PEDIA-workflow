@@ -8,3 +8,11 @@
 simulation/background/data/refseq/
 
 3_simulation/background/data/refseq/
+
+data/pathogenicityScores/whole_genome_SNVs\.tsv\.gz\.tbi
+
+data/pathogenicityScores/whole_genome_SNVs\.tsv\.gz
+
+data/pathogenicityScores/InDels\.tsv\.gz
+
+data/pathogenicityScores/InDels\.tsv\.gz\.tbi
