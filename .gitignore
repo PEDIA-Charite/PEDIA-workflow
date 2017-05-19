@@ -16,3 +16,5 @@ data/pathogenicityScores/whole_genome_SNVs\.tsv\.gz
 data/pathogenicityScores/InDels\.tsv\.gz
 
 data/pathogenicityScores/InDels\.tsv\.gz\.tbi
+
+data/jannovar/data/hg19/

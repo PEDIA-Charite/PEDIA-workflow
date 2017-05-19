@@ -7,19 +7,22 @@ import glob
 import csv
 import numpy as np
 
+
+# Options
+
 argv = sys.argv[1:]
-	
+
 inputfile = ''
 outputfile = ''
 try:
-	opts, args = getopt.getopt(argv,"hi:o:",["ifile=","ofile="])
+	opts, args = getopt.getopt(argv,"hi:o:",["help","ifile=","ofile="])
 except getopt.GetoptError:
 	print('jsonToTable.py -i <input-folder> -o <output-file.tsv>')
 	sys.exit(2)
 for opt, arg in opts:
-	if opt == '-h':
+	if opt in ("-h", "--help"):
 		print('jsonToTable.py -i <input-folder> -o <output-file.tsv>')
-		sys.exit()
+		sys.exit(1)
 	elif opt in ("-i", "--ifolder"):
 		inputfile = arg
 	elif opt in ("-o", "--ofile"):
@@ -27,7 +30,13 @@ for opt, arg in opts:
 print('Input folder is ',inputfile)
 print('Output file is ',outputfile)
 
-table = []
+
+# Load data and use max for duplicates
+## key is sampleid_entrezid
+def getKey(case,gene_id):
+	return str(case) + "_" + str(gene_id)
+
+hashedData = {}
 
 for filename in glob.glob(inputfile+'/*.json'):
 	r = open(filename,'r',encoding='ISO-8859-1')
@@ -39,8 +48,26 @@ for filename in glob.glob(inputfile+'/*.json'):
 			label = 1
 		else:
 			label = 0
-		table.append({"case": case, "gene_id": entry['gene_id'], "feature_score": entry.get("feature_score", np.nan), "cadd_phred_score": entry.get("cadd_phred_score", np.nan), "combined_score":  entry.get("combined_score", np.nan), "cadd_raw_score":  entry.get("cadd_raw_score", np.nan), "gestalt_score":  entry.get("gestalt_score", np.nan), "boqa_score":  entry.get("boqa_score", np.nan), "pheno_score": entry.get("pheno_score", np.nan), "label": label})
-			
+		geneID = entry['gene_id']
+		featureScore = entry.get("feature_score", np.nan)
+		caddPhredScore = entry.get("cadd_phred_score", np.nan)
+		combinedScore = entry.get("combined_score", np.nan)
+		caddRawSscore = entry.get("cadd_raw_score", np.nan)
+		gestaltScore = entry.get("gestalt_score", np.nan)
+		boqaScore = entry.get("boqa_score", np.nan)
+		phenoScore = entry.get("pheno_score", np.nan)
+
+
+		if getKey(case,geneID) in hashedData:
+			value = hashedData[getKey(case,geneID)]
+			featureScore = max(featureScore,value["feature_score"])
+			caddPhredScore = max(featureScore,value["cadd_phred_score"])
+			combinedScore = max(featureScore,value["combined_score"])
+			caddRawSscore = max(featureScore,value["cadd_raw_score"])
+			gestaltScore = max(featureScore,value["boqa_score"])
+			phenoScore = max(featureScore,value["pheno_score"])
+
+		hashedData[getKey(case,geneID)] = {"case": case, "gene_id": geneID, "feature_score": featureScore, "cadd_phred_score": caddPhredScore, "combined_score":  combinedScore, "cadd_raw_score":  caddRawSscore, "gestalt_score":  gestaltScore, "boqa_score":  boqaScore, "pheno_score": phenoScore, "label": label}
 
 
 
@@ -48,5 +75,5 @@ with open(outputfile, 'w') as csvfile:
 	fieldnames = ["case", "gene_id", "feature_score", "cadd_phred_score", "combined_score", "cadd_raw_score", "gestalt_score", "boqa_score", "pheno_score", "label"]
 	writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 	writer.writeheader()
-	for row in table:
-		writer.writerow(row)
+	for key, value in hashedData.items():
+		writer.writerow(value)
