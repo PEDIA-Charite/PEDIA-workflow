@@ -1,0 +1,52 @@
+debug="Results"
+jsonsoriginal="json/original"
+results="json/currated"
+
+rule all:
+    input:
+        "pyhgvs/hgvs/pyhgvs/data/genes.refGene",
+        "variants.vcf",
+        "config.yml",
+        debug+"/result_2017-05-22.json",
+        touch(jsonsoriginal+"/download.done"),
+        touch(results+"/currated.done")
+
+
+rule pyhgvs:
+    input:
+    output:
+        "pyhgvs/hgvs/pyhgvs/data/genes.refGene"
+    shell:
+        """
+        mkdir -p pyhgvs;
+        cd pyhgvs;
+        git clone https://github.com/counsyl/hgvs.git;
+        cd hgvs;
+        python setup.py install;
+        """
+
+
+
+rule runQuality:
+    input:
+        script="scripts/JsonsQC.py",
+        log="QC_progress.xls",
+        login="scripts/protected/gene-talk_server.json",
+        #genome="../data/referencegenome/GRCh37.p13.genome.fa",
+        genome="/home/mschubach/data/GRCh37.p13.genome.fa",
+        genefile="pyhgvs/hgvs/pyhgvs/data/genes.refGene",
+        errordict="hgvs_errordict.json",
+    output:
+        vcf="variants.vcf",
+        config="config.yml",
+        result=debug+"/result_2017-05-22.json",
+        download=touch(jsonsoriginal+"/download.done"),
+        currated=touch(results+"/currated.done")
+    params:
+        debug=debug,
+        jsonsoriginal=jsonsoriginal,
+        results=results
+    shell:
+        """
+        python {input.script} --jsonsoriginal {params.jsonsoriginal} --log {input.log} --login {input.login} --genomefile {input.genome} --debugfolder {params.debug} --genefile {input.genefile} --jsoncurrated {params.results} --errordict {input.errordict} --vcf {output.vcf} --config {output.config}
+        """
