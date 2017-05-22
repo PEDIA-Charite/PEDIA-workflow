@@ -1,0 +1,31 @@
+configfile: "config.yml"
+
+
+def allSamples(a,b):
+	samples = []
+	samples.extend(a)
+	samples.extend(b)
+	return samples
+
+
+SINGLE_SAMPLES = config['SINGLE_SAMPLES']
+VCF_SAMPLES = config['VCF_SAMPLES']
+SAMPLES = allSamples(SINGLE_SAMPLES, VCF_SAMPLES)
+
+
+rule all:
+    input:
+        expand("out/{sample}.json",sample=SAMPLES)
+
+rule phenomize:
+    input:
+        json="../1_qualityCheck/json/currated/{sample}.json",
+        mim="data/mim2gene.txt",
+        morbmap="data/morbidmap.txt",
+        server="scripts/protected/phenomizer_server.json"
+    output:
+        "out/{sample}.json"
+    shell:
+        """
+        python scripts/phenomize_jsons.py --mimfile {input.mim} --morbidmap {input.morbmap} --phenomizerconfig {input.server} --inputfile {input.json} --outputfile {output}
+        """
