@@ -1,4 +1,11 @@
 
+
+subworkflow downloadReference:
+    workdir: "../data/referenceGenome"
+    snakefile: "../data/referenceGenome/Snakefile"
+
+
+
 configfile: "scripts/protected/gene-talk_server.json"
 
 import datetime as dt
@@ -95,8 +102,8 @@ rule runQuality:
         script="scripts/JsonsQC.py",
         jsons=expand("json/original/{sample}.json", sample=SAMPLES),
         log="QC_progress.xls",
-        #genome="../data/referencegenome/GRCh37.p13.genome.fa",
-        genome="/home/mschubach/data/GRCh37.p13.genome.fa",
+        genome=downloadReference("data/hg19.fa"),
+        genomeidx=downloadReference("data/hg19.fa.fai"),
         genefile="pyhgvs/hgvs/pyhgvs/data/genes.refGene",
         errordict="hgvs_errordict.json",
     output:

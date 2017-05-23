@@ -24,3 +24,5 @@ data/jannovar/data/hg19/
 1_qualityCheck/pyhgvs/
 
 1_qualityCheck/json/backup/
+
+data/referenceGenome/data/

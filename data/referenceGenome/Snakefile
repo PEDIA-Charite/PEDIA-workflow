@@ -1,0 +1,50 @@
+
+
+CHROMS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19, 20, 21, 22,'X','Y', 'M']
+NOT_USED=['11_gl000202_random', '17_ctg5_hap1', '17_gl000203_random', '17_gl000204_random', '17_gl000205_random', '17_gl000206_random', '18_gl000207_random', '19_gl000208_random', '19_gl000209_random', '1_gl000191_random', '1_gl000192_random', '21_gl000210_random', '4_ctg9_hap1', '4_gl000193_random', '4_gl000194_random', '6_apd_hap1', '6_cox_hap2', '6_dbb_hap3', '6_mann_hap4', '6_mcf_hap5', '6_qbl_hap6', '6_ssto_hap7', '7_gl000195_random', '8_gl000196_random', '8_gl000197_random', '9_gl000198_random', '9_gl000199_random', '9_gl000200_random', '9_gl000201_random', 'Un_gl000211', 'Un_gl000212', 'Un_gl000213', 'Un_gl000214', 'Un_gl000215', 'Un_gl000216', 'Un_gl000217', 'Un_gl000218', 'Un_gl000219', 'Un_gl000220', 'Un_gl000221', 'Un_gl000222', 'Un_gl000223', 'Un_gl000224', 'Un_gl000225', 'Un_gl000226', 'Un_gl000227', 'Un_gl000228', 'Un_gl000229', 'Un_gl000230', 'Un_gl000231', 'Un_gl000232', 'Un_gl000233', 'Un_gl000234', 'Un_gl000235', 'Un_gl000236', 'Un_gl000237', 'Un_gl000238', 'Un_gl000239', 'Un_gl000240', 'Un_gl000241', 'Un_gl000242', 'Un_gl000243', 'Un_gl000244', 'Un_gl000245', 'Un_gl000246', 'Un_gl000247', 'Un_gl000248', 'Un_gl000249']
+
+rule all:
+    input:
+        "data/hg19.fa",
+        "data/hg19.fa.fai"
+
+
+rule downloadHG19:
+    input:
+    output:
+        temp("data/hg19.tar.gz")
+    shell:
+        """
+        wget -O {output} http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/chromFa.tar.gz
+        """
+
+rule extract:
+    input:
+        "data/hg19.tar.gz"
+    output:
+        temp(expand("chr{chrom}.fa",chrom=CHROMS)),
+        temp(expand("chr{chrom}.fa",chrom=NOT_USED)),
+    shell:
+        """
+        tar -xzf {input}
+        """
+rule concat:
+    input:
+        expand("chr{chrom}.fa",chrom=CHROMS)
+    output:
+        "data/hg19.fa"
+    shell:
+        """
+        cat {input} > {output}
+        """
+
+
+rule index:
+    input:
+        "data/hg19.fa"
+    output:
+        "data/hg19.fa.fai"
+    shell:
+        """
+        samtools faidx {input}
+        """
