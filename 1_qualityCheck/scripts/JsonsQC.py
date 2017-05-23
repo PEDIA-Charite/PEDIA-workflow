@@ -6,9 +6,8 @@ Created on Fri Jan 20 12:00:22 2017
 """
 import datetime as dt # Abspeicherung des Files nach Datum ( um Historie verfolgen zu können, eventuell noch Änderung)
 
-import ftplib as ftp # Dateien vom Server holen / import JSONs from server
 import json # JSON öffnen, bearbeiten und speichern 7 open, change and save JSONs
-import os, shutil # Directory-Informationen bekommen / get information of directory
+import os, shutil, re # Directory-Informationen bekommen / get information of directory
 
 # HGVS-Code überprüfen und übersetzen in Position / proofread HGVS-code and translate to position
 import pyhgvs
@@ -43,7 +42,6 @@ argv = sys.argv[1:]
 
 jsonsoriginal = ''
 logfile = ''
-loginfile = ''
 genomefile = ''
 debugfolder = ''
 jsoncurratedfolder = ''#
@@ -51,10 +49,10 @@ errordict= ''
 mVCF= ''
 configfile= ''
 try:
-	opts, args = getopt.getopt(argv,"h::",["help","jsonsoriginal=","log=","login=","genomefile=","debugfolder=","genefile=","jsoncurrated=","errordict=","config=", "vcf="])
+	opts, args = getopt.getopt(argv,"h::",["help","jsonsoriginal=","log=","genomefile=","debugfolder=","genefile=","jsoncurrated=","errordict=","config=", "vcf="])
 except getopt.GetoptError as e:
     print(e)
-    print('jsonToTable.py --jsonsoriginal --log --login ')
+    print('JsonQC.py --jsonsoriginal --log ')
     sys.exit(2)
 
 for opt, arg in opts:
@@ -65,8 +63,6 @@ for opt, arg in opts:
         jsonsoriginal = arg
     elif opt in ("--log"):
         logfile = arg
-    elif opt in ("--login"):
-        loginfile = arg
     elif opt in ("--genomefile"):
     	genomefile = arg
     elif opt in ("--debugfolder"):
@@ -85,8 +81,6 @@ for opt, arg in opts:
 print 'Downloadfolder jsons:',jsonsoriginal
 print 'Gene file:',genefile
 print 'Genome file:',genomefile
-print 'Logfile:',logfile
-print 'Login file:',loginfile
 print 'Debug folder:',debugfolder
 print 'JSON currated folder:',jsoncurratedfolder
 print 'Errordict:',errordict
@@ -165,15 +159,6 @@ def checkjsons(step,folder):
                 submitter=d['submitter']['name']
                 mail=d['submitter']['email']
                 vcf=d['vcf']
-                '''
-                # hoechster Gestaltscore im JSON / get highest gestalt score
-                gscore_list=[]
-                for gene in d['geneList']:
-                    print gene
-                    gscore=gene['gestalt_score']
-                    gscore_list.append(float(gscore))
-                max_gscore=max(gscore_list)
-                '''
                 # Grundaufbau des Dictionaries mit Zaehlung der Cases und der VCFs / define dictionary
                 if submitterteam not in overview.keys():
                     overview[submitterteam]={}
@@ -192,14 +177,24 @@ def checkjsons(step,folder):
                 if vcf!='noVCF':
                     overview[submitterteam]['VCFs']=overview[submitterteam]['VCFs']+1
                     withvcf.append(file)
-
+                # hoechster Gestaltscore im JSON / get highest gestalt score
+                gscore_list=[]
+                if isinstance(d['geneList'],list):
+                    for gene in d['geneList']:
+                        gscore=gene['gestalt_score']
+                        gscore_list.append(float(gscore))
+                if len(gscore_list) != 0:
+                    max_gscore=max(gscore_list)
+                else:
+                    max_gscore = 0
+                    append_incorrect(file, submitterteam, submitter, 'No gene list!')
                  # Aufzaehlung der JSONs mit jeweiligen Maengeln / list of incorrect JSONs with annotated error
                  ## keine eingetragenen Features / no annotated features
                 if len(d['features'])==0:
                     append_incorrect(file, submitterteam, submitter, 'keine Features')
                  ## kein Bild hochgeladen / no image uploaded
-    #                if max_gscore==0:
-    #                    append_incorrect(file, submitterteam, submitter, 'kein Bild')
+                if max_gscore==0:
+                    append_incorrect(file, submitterteam, submitter, 'kein Bild')
                  ## keine molekulare Diagnose / no molecular diagnosis
                 if d['ranks']=='Non selected':
                     append_incorrect(file, submitterteam, submitter, 'keine Diagnose angegeben')
@@ -247,8 +242,6 @@ def checkjsons(step,folder):
     return overview
 
 ## Dateien aus lokalem Directory löschen / remove data from local directory
-import os, re
-import shutil
 def purge(dir, pattern):
     for f in os.listdir(dir):
         if re.search(pattern, f):
@@ -259,29 +252,6 @@ def copy(dir, pattern, outdir):
             if not (os.path.exists(os.path.join(outdir,f ))):
                 print "COPY " + f
                 shutil.copy(os.path.join(dir, f), os.path.join(outdir,f ))
-
-wantto=raw_input('Reload server data? (y OR n) ')
-if wantto=='y':
-    purge(jsonsoriginal,'^.*.json')
-
-    ## Dateien vom Server runterladen / get data from server
-    config = json.loads(open(loginfile).read())
-
-    json_server=ftp.FTP(config['url'])
-    json_server.login(config['login'],config['password'])
-
-    directory='/'
-    json_server.cwd(directory)
-    ftp_filelist=json_server.nlst(directory)
-
-    for filename in ftp_filelist:
-        if filename[-5:]=='.json':
-            file=open(jsonsoriginal+'/'+filename, 'wb')
-            print 'Downloading ', filename, ' ...'
-            json_server.retrbinary('RETR '+filename, file.write)
-            file.close()
-
-    json_server.quit()
 
 ## Quality Check der JSONs
 wantto=raw_input('Copy missing original to json corrected folder? y or n ')
@@ -485,7 +455,7 @@ if wantto!='n':
 # korrigierte JSONs in MultiVCF / dump corrected JSONs to multi-VCF
 wantto=raw_input('Dump to multiVCF? (y OR n) ')
 
-if wantto!='n':
+if wantto =='y':
 
     # Liste mit korrekten JSONs
     with open(debugfolder+'/result_'+date+'.json') as json_data:

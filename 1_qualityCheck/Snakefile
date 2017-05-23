@@ -1,3 +1,33 @@
+
+configfile: "scripts/protected/gene-talk_server.json"
+
+import datetime as dt
+now=dt.datetime.now()
+date=now.strftime('%Y-%m-%d')
+time=now.strftime('%H:%M:%S')
+
+SAMPLES = set()
+
+#### get sample names from server
+import ftplib as ftp # Dateien vom Server holen / import JSONs from server
+import os
+json_server=ftp.FTP(config['url'])
+json_server.login(config['login'],config['password'])
+
+directory='/'
+json_server.cwd(directory)
+ftp_filelist=json_server.nlst(directory)
+
+directory='/'
+json_server.cwd(directory)
+ftp_filelist=json_server.nlst(directory)
+
+# iterate over remote files
+for filename in ftp_filelist:
+    if filename[-5:]=='.json':
+        SAMPLES.add(os.path.splitext(filename)[0])
+
+
 debug="Results"
 jsonsoriginal="json/original"
 results="json/currated"
@@ -5,13 +35,18 @@ results="json/currated"
 rule all:
     input:
         "pyhgvs/hgvs/pyhgvs/data/genes.refGene",
+        expand("json/original/{sample}.json", sample=SAMPLES),
         "variants.vcf",
         "config.yml",
-        debug+"/result_2017-05-22.json",
+        debug+"/result_"+date+".json",
+        debug+"/resultpersubmitter"+date+".json",
         touch(jsonsoriginal+"/download.done"),
-        touch(results+"/currated.done")
+        touch(results+"/currated.done"),
+        expand("json/currated/{sample}.json", sample=SAMPLES)
 
 
+# download and install pyhgvs. Really old library to manage hgvs but right now there is no good alternative
+# Maybe "hgvs" But it seems to be difficult to run behind a proxy.
 rule pyhgvs:
     input:
     output:
@@ -25,13 +60,29 @@ rule pyhgvs:
         python setup.py install;
         """
 
+# backup
 
 
+# Download jsons
+rule dowloadJSONs:
+    input:
+        script="scripts/JsonsDownload.py",
+        login="scripts/protected/gene-talk_server.json",
+    output:
+        "json/original/{sample}.json"
+    params:
+        sample="{sample}"
+    shell:
+        """
+        python {input.script} --sample {params.sample} --login {input.login} --output {output}
+        """
+
+# Run the quality check.
 rule runQuality:
     input:
         script="scripts/JsonsQC.py",
+        jsons=expand("json/original/{sample}.json", sample=SAMPLES),
         log="QC_progress.xls",
-        login="scripts/protected/gene-talk_server.json",
         #genome="../data/referencegenome/GRCh37.p13.genome.fa",
         genome="/home/mschubach/data/GRCh37.p13.genome.fa",
         genefile="pyhgvs/hgvs/pyhgvs/data/genes.refGene",
@@ -39,14 +90,16 @@ rule runQuality:
     output:
         vcf="variants.vcf",
         config="config.yml",
-        result=debug+"/result_2017-05-22.json",
+        result=debug+"/result_"+date+".json",
+        submitter=debug+"/resultpersubmitter"+date+".json",
         download=touch(jsonsoriginal+"/download.done"),
-        currated=touch(results+"/currated.done")
+        currated=touch(results+"/currated.done"),
+        jsons=expand("json/currated/{sample}.json", sample=SAMPLES)
     params:
         debug=debug,
         jsonsoriginal=jsonsoriginal,
         results=results
     shell:
         """
-        python {input.script} --jsonsoriginal {params.jsonsoriginal} --log {input.log} --login {input.login} --genomefile {input.genome} --debugfolder {params.debug} --genefile {input.genefile} --jsoncurrated {params.results} --errordict {input.errordict} --vcf {output.vcf} --config {output.config}
+        python {input.script} --jsonsoriginal {params.jsonsoriginal} --log {input.log} --genomefile {input.genome} --debugfolder {params.debug} --genefile {input.genefile} --jsoncurrated {params.results} --errordict {input.errordict} --vcf {output.vcf} --config {output.config}
         """
