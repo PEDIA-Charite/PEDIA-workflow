@@ -38,8 +38,6 @@ rule all:
         expand("json/original/{sample}.json", sample=SAMPLES),
         "variants.vcf",
         "config.yml",
-        debug+"/result_"+date+".json",
-        debug+"/resultpersubmitter"+date+".json",
         touch(jsonsoriginal+"/download.done"),
         touch(results+"/currated.done"),
         expand("json/currated/{sample}.json", sample=SAMPLES)
@@ -61,6 +59,7 @@ rule pyhgvs:
         """
 
 # backup
+#rule backupOriginal:
 
 
 # Download jsons
@@ -90,8 +89,6 @@ rule runQuality:
     output:
         vcf="variants.vcf",
         config="config.yml",
-        result=debug+"/result_"+date+".json",
-        submitter=debug+"/resultpersubmitter"+date+".json",
         download=touch(jsonsoriginal+"/download.done"),
         currated=touch(results+"/currated.done"),
         jsons=expand("json/currated/{sample}.json", sample=SAMPLES)
