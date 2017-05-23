@@ -5,6 +5,7 @@
 	* pathogenicityScores includes the CADD file
 	* populationDBs has ExAC and other population databases needed
 	* PEDIA: patient specific data. Like json from f2g, etc.
+	* Reference Genome needed for simulation and quality check.
 
  
 

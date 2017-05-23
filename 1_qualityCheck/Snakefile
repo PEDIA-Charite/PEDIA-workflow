@@ -32,6 +32,21 @@ debug="Results"
 jsonsoriginal="json/original"
 results="json/currated"
 
+onstart:
+    print("Start running backup")
+    shell(
+    """
+    mkdir -p json/backup;
+    touch {jsonsoriginal}/empty.json;
+    tar -cvzf json/backup/original{date}{time}.tar.gz {jsonsoriginal}/*.json;
+    rm {jsonsoriginal}/empty.json;
+    touch {results}/empty.json;
+    tar -cvzf json/backup/currated{date}{time}.tar.gz {results}/*.json;
+    rm {results}/empty.json;
+    """
+    )
+    print("Backup ready")
+
 rule all:
     input:
         "pyhgvs/hgvs/pyhgvs/data/genes.refGene",
@@ -58,8 +73,6 @@ rule pyhgvs:
         python setup.py install;
         """
 
-# backup
-#rule backupOriginal:
 
 
 # Download jsons
