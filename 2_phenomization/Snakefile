@@ -1,4 +1,4 @@
-configfile: "config.yml"
+configfile: "../1_qualityCheck/config.yml"
 
 
 def allSamples(a,b):
@@ -15,7 +15,7 @@ SAMPLES = allSamples(SINGLE_SAMPLES, VCF_SAMPLES)
 
 rule all:
     input:
-        expand("out/{sample}.json",sample=SAMPLES)
+        expand("out/{sample}.json", sample=SAMPLES)
 
 rule phenomize:
     input:
