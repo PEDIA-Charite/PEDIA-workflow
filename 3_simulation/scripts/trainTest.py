@@ -25,7 +25,7 @@ except getopt.GetoptError:
 	sys.exit(2)
 for opt, arg in opts:
 	if opt == '-h':
-		print('jsonToTable.py --train <train-csv-file> --test <test-csv-file>')
+		print('jsonToTable.py --train <train-csv-file> --test <test-csv-file> --prediction <p file>')
 		sys.exit()
 	elif opt in ("--train"):
 		trainfile = arg
@@ -34,7 +34,7 @@ for opt, arg in opts:
 	elif opt in ("--prediction"):
 		probabilityfile = arg
 	else:
-		print('jsonToTable.py --train <train-csv-file> --test <test-csv-file>')
+		print('jsonToTable.py --train <train-csv-file> --test <test-csv-file> --prediction <p file>')
 		sys.exit(2)
 print('Train is ',trainfile)
 print('Test is ',testfile)
@@ -71,7 +71,7 @@ X_train = X_train.astype(float)
 X_test = X_test.astype(float)
 
 #classifier = svm.SVC(kernel='poly', probability=True, class_weight='balanced')
-classifier = ensemble.RandomForestClassifier(class_weight='balanced')
+classifier = ensemble.RandomForestClassifier(n_estimators = 100,max_features=3,n_jobs=2)
 
 '''
 imp = Imputer(missing_values='NaN', strategy='mean', axis=0)

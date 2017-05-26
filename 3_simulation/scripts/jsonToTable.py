@@ -39,16 +39,28 @@ def getKey(case,gene_id):
 hashedData = {}
 
 for filename in glob.glob(inputfile+'/*.json'):
+	found = False
+	geneIDs = []
 	r = open(filename,'r',encoding='ISO-8859-1')
 	data = json.loads(r.read())
 	case = data['case_id']
 	gene = data["genomicData"][0]["Test Information"]["Gene Name"]
+	if gene == 'MLL2':
+		gene = 'KMT2D'
+	elif gene == 'MLL':
+		gene = 'KMT2A'
+	elif gene == 'B3GALTL':
+		gene = 'B3GLCT'
+	elif gene == 'CASKIN1':
+		gene = 'KIAA1306'
 	for entry in data['geneList']:
 		if entry["gene_symbol"] == gene:
 			label = 1
+			found = True
 		else:
 			label = 0
 		geneID = entry['gene_id']
+		geneIDs.append(geneID)
 		featureScore = entry.get("feature_score", np.nan)
 		caddPhredScore = entry.get("cadd_phred_score", np.nan)
 		combinedScore = entry.get("combined_score", np.nan)
@@ -69,7 +81,11 @@ for filename in glob.glob(inputfile+'/*.json'):
 
 		hashedData[getKey(case,geneID)] = {"case": case, "gene_id": geneID, "feature_score": featureScore, "cadd_phred_score": caddPhredScore, "combined_score":  combinedScore, "cadd_raw_score":  caddRawSscore, "gestalt_score":  gestaltScore, "boqa_score":  boqaScore, "pheno_score": phenoScore, "label": label}
 
-
+	if not found:
+		print("problem with",case,gene)
+		for geneID in geneIDs:
+			if getKey(case,geneID) in hashedData:
+				del hashedData[getKey(case,geneID)]
 
 with open(outputfile, 'w') as csvfile:
 	fieldnames = ["case", "gene_id", "feature_score", "cadd_phred_score", "combined_score", "cadd_raw_score", "gestalt_score", "boqa_score", "pheno_score", "label"]

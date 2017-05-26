@@ -18,7 +18,7 @@ argv = sys.argv[1:]
 inputfile = ''
 probabilityfile= ''
 try:
-	opts, args = getopt.getopt(argv,"hi:p:",["ifile=","pfile="])
+	opts, args = getopt.getopt(argv,"hi:p",["ifile=","pfile="])
 except getopt.GetoptError:
 	print('jsonToTable.py -i <input-csv-file> -p <output probability file>')
 	sys.exit(2)
@@ -69,7 +69,7 @@ for i, case in enumerate(groups):
 	else:
 		groups[i] = "nan"
 #classifier = svm.SVC(kernel='poly', probability=True, class_weight='balanced')
-classifier = ensemble.RandomForestClassifier(class_weight='balanced')
+classifier = ensemble.RandomForestClassifier(n_estimators = 100,max_features=3,n_jobs=2)
 
 logo = LeaveOneGroupOut()
 
@@ -89,12 +89,12 @@ for train, test in logo.split(data, y, groups=groups):
 
 	X_train = X_train.astype(float)
 	X_test = X_test.astype(float)
-'''
+	'''
 	#### impute median
 	imp = Imputer(missing_values='NaN', strategy='median', axis=0)
 	imp.fit(X_train)
 	X_train_transformed = imp.transform(X_train)
-'''
+	'''
 	X_train_transformed = X_train
 	####
 	#### normalize

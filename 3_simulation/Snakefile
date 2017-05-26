@@ -11,6 +11,7 @@ VCF_SAMPLES = config['VCF_SAMPLES']
 SAMPLES = allSamples(SINGLE_SAMPLES, VCF_SAMPLES)
 
 BACKGROUNDS=["1KG","ExAC","IRAN"]
+PLOTS=['ROC','percentile','PRC','balanced-accuracy','recall','precision','f-score']
 
 
 
@@ -20,12 +21,19 @@ rule all:
 		"mutations/JsonsVCF_annotated.vcf.gz.tbi",
 		expand("vcf_simulation/{background}/{sample}.done", sample=SAMPLES, background=BACKGROUNDS),
 		expand("json_simulation/{background}/CV/{sample}.json", sample=SAMPLES, background=BACKGROUNDS),
-		expand("vcf_annotation/{sample}.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
-		expand("vcf_annotation/{sample}.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
-		expand("vcf_annotation/{sample}.annotation.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
-		expand("vcf_annotation/{sample}.annotation.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
+#		expand("vcf_annotation/{sample}.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
+#		expand("vcf_annotation/{sample}.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
+#		expand("vcf_annotation/{sample}.annotation.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
+#		expand("vcf_annotation/{sample}.annotation.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
 		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
-		expand("json_simulation/real/train/{background}/{sample}.json", sample=SINGLE_SAMPLES, background=BACKGROUNDS)
+		expand("json_simulation/real/train/{background}/{sample}.json", sample=SINGLE_SAMPLES, background=BACKGROUNDS),
+		expand("performanceEvaluation/data/CV/{background}.csv", background=BACKGROUNDS),
+		expand("performanceEvaluation/data/Real/train_{background}.csv", background=BACKGROUNDS),
+		"performanceEvaluation/data/Real/test_real.csv",
+		expand("performanceEvaluation/results/CV.{background}.tsv.gz", background=BACKGROUNDS),
+		expand("performanceEvaluation/results/real.{background}.tsv.gz", background=BACKGROUNDS),
+		expand("performanceEvaluation/results/{type}.{background}.arff.gz",background=BACKGROUNDS,type=["CV","real"]),
+		expand("performanceEvaluation/plots/{type}/{plot}.ExAC.1KG.IRN.pdf",type=["CV","real"],plot=PLOTS)
 
 
 
@@ -108,7 +116,7 @@ rule json:
 		simulation="vcf_simulation/{background}/{sample}.done",
 		vcf=vcf_file,
 		omim="OMIM/genemap2.txt",
-		json="../json_cases/{sample}.json"
+		json="../data/PEDIA/jsons/phenomized/{sample}.json"
 	output:
 		"json_simulation/{background}/CV/{sample}.json"
 	shell:
@@ -116,16 +124,16 @@ rule json:
 
 
 ################### REAL VCFS################################
-
+'''
 def getRealVCF(wc):
-	configfile: "../json_cases/%s.json" % wc.sample
+	configfile: "../data/PEDIA/jsons/phenomized/%s.json" % wc.sample
 	filename = config['vcf']['original_filename'].replace(" ", "_").replace("(","").replace(")","",1).replace(")","_").replace(",","").replace("..",".")
 	return ("../vcf_cases/%s" % filename)
 
 rule bgZipRealVCF:
 	input:
 		vcf=getRealVCF,
-		json="../json_cases/{sample}.json"
+		json="../data/PEDIA/jsons/phenomized/{sample}.json"
 	output:
 		vcf="vcf_annotation/{sample}.vcf.gz",
 		index="vcf_annotation/{sample}.vcf.gz.tbi"
@@ -171,13 +179,13 @@ rule indexRealVCF:
 		module load htslib/1.3.1;
 		tabix '{input}'
 		"""
-
+'''
 
 rule jsonRealTestData:
 	input:
 		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
 		omim="OMIM/genemap2.txt",
-		json="../json_cases/{sample}.json"
+		json="../data/PEDIA/jsons/phenomized/{sample}.json"
 	output:
 		"json_simulation/real/test/{sample}.json"
 	shell:
@@ -194,4 +202,100 @@ rule jsonRealTrainData:
 	shell:
 		"""
 		ln {input} {output}
+		"""
+
+## performance evaluation
+
+rule createCsvTrain:
+	input:
+		expand("json_simulation/{b}/CV/{sample}.json", sample=SAMPLES, b= lambda wildcards: [wildcards.background]),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/CV/{background}.csv"
+	params:
+		folder="json_simulation/{background}/CV"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
+rule createCsvRealTest:
+	input:
+		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/test_real.csv"
+	params:
+		folder="json_simulation/real/test"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+rule createCsvRealTrain:
+	input:
+		expand("json_simulation/real/train/{b}/{sample}.json", sample=SINGLE_SAMPLES, b= lambda wildcards: [wildcards.background]),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/train_{background}.csv"
+	params:
+		folder="json_simulation/real/train/{background}"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
+rule trainCV:
+	input:
+		table="performanceEvaluation/data/CV/{background}.csv",
+		script="scripts/CV.py"
+	output:
+		"performanceEvaluation/results/CV.{background}.tsv.gz"
+	shell:
+		"""
+		python {input.script} -i {input.table} --pfile {output}
+		"""
+
+rule trainSimTestReal:
+	input:
+		train="performanceEvaluation/data/Real/train_{background}.csv",
+		test="performanceEvaluation/data/Real/test_real.csv",
+		script="scripts/trainTest.py"
+	output:
+		"performanceEvaluation/results/real.{background}.tsv.gz"
+	shell:
+		"""
+		python {input.script} --train {input.train} --test {input.test} --prediction {output}
+		"""
+rule createArffFromPredictions:
+	input:
+		"performanceEvaluation/results/{type}.{background}.tsv.gz"
+	output:
+		"performanceEvaluation/results/{type}.{background}.arff.gz"
+	shell:
+		"""
+		java -jar performanceEvaluation/remm-cli-0.0.4-SNAPSHOT-jar-with-dependencies.jar evaluate-score --class-column 1 --class-index 1 --prediction-column 2 --score {input}  --score-type PREDICTION --evaluate-output {output}
+	"""
+
+rule plottingData:
+	input:
+		exac_pred="performanceEvaluation/results/{type}.ExAC.tsv.gz",
+		exac_arff="performanceEvaluation/results/{type}.ExAC.arff.gz",
+		iran_pred="performanceEvaluation/results/{type}.IRAN.tsv.gz",
+		iran_arff="performanceEvaluation/results/{type}.IRAN.arff.gz",
+		kg_pred="performanceEvaluation/results/{type}.1KG.tsv.gz",
+		kg_arff="performanceEvaluation/results/{type}.1KG.arff.gz",
+	params:
+		data="performanceEvaluation/plots/{type}",
+		exac="ExAC",
+		iran="IRN",
+		kg="1KG"
+	output:
+		expand("performanceEvaluation/plots/{{type}}/{plot}.ExAC.1KG.IRN.pdf",plot=PLOTS)
+	shell:
+		"""
+		Rscript scripts/create_roc_PRC_plots.R \
+		{input.exac_pred} {input.exac_arff} '{params.exac}' \
+		{input.kg_pred} {input.kg_arff} '{params.kg}' \
+		{input.iran_pred} {input.iran_arff} '{params.iran}' \
+		{params.data}
 		"""
