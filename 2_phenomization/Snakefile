@@ -22,7 +22,7 @@ rule phenomize:
         json="../1_qualityCheck/json/currated/{sample}.json",
         mim="data/mim2gene.txt",
         morbmap="data/morbidmap.txt",
-        server="scripts/protected/phenomizer_server.json"
+        server="scripts/protected/phenomizer_server.json",
     output:
         "out/{sample}.json"
     shell:
