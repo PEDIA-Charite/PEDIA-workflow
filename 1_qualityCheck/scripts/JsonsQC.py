@@ -250,14 +250,24 @@ def copy(dir, pattern, outdir):
     for f in os.listdir(dir):
         if re.search(pattern, f):
             if not (os.path.exists(os.path.join(outdir,f ))):
-                print "COPY " + f
-                shutil.copy(os.path.join(dir, f), os.path.join(outdir,f ))
+				print "COPY " + f
+				with open(os.path.join(dir, f),'r') as json_data:
+					data = json.load(json_data)
+				for entry in data["geneList"]:
+					if "gene_id" in entry:
+						entry["gene_id"] = int(entry["gene_id"])
+					if "gene_omim_id" in entry:
+						entry["gene_omim_id"] = int(entry["gene_omim_id"])
+				#write data in pouput
+				with open(os.path.join(outdir,f ), 'w') as f:
+					json.dump(data, f)
 
 ## Quality Check der JSONs
-wantto=raw_input('Copy missing original to json corrected folder? y or n ')
+wantto=raw_input('Copy missing original to json corrected folder? Change gene_omim_id and gene_id to "int"! y or n ')
 
 if wantto=='y':
     copy(jsonsoriginal,'^.*.json',jsoncurratedfolder)
+
 ## Bereits bekannte Fehler aus dem Fehlerwörterbuch anwenden / change HGVS which are already in errordict
 
 wantto='y'#raw_input('Make a result file? (y OR n) ')
