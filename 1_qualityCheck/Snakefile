@@ -60,7 +60,7 @@ rule all:
         expand("json/original/{sample}.json", sample=SAMPLES),
         "variants.vcf",
         "config.yml",
-        touch(jsonsoriginal+"/download.done"),
+        "pyhgvs/pygr.done",
         touch(results+"/currated.done"),
         expand("json/currated/{sample}.json", sample=SAMPLES)
 
@@ -69,18 +69,33 @@ rule all:
 # Maybe "hgvs" But it seems to be difficult to run behind a proxy.
 rule pyhgvs:
     input:
+    conda:
+        "envs/python2.7.yml"
     output:
         "pyhgvs/hgvs/pyhgvs/data/genes.refGene"
     shell:
         """
         mkdir -p pyhgvs;
         cd pyhgvs;
+        rm -rf hgvs;
         git clone https://github.com/counsyl/hgvs.git;
         cd hgvs;
         python setup.py install;
         """
 
-
+rule pygr:
+    input:
+        "pyhgvs/hgvs/pyhgvs/data/genes.refGene"
+    conda:
+        "envs/python2.7.yml"
+    output:
+        touch("pyhgvs/pygr.done")
+    shell:
+        """
+        pip install pygr;
+        pip install xlrd;
+        pip install xlwt;
+        """
 
 # Download jsons
 rule dowloadJSONs:
@@ -91,6 +106,8 @@ rule dowloadJSONs:
         "json/original/{sample}.json"
     params:
         sample="{sample}"
+    conda:
+        "envs/python2.7.yml"
     shell:
         """
         python {input.script} --sample {params.sample} --login {input.login} --output {output}
@@ -104,18 +121,20 @@ rule runQuality:
         log="QC_progress.xls",
         genome=downloadReference("data/hg19.fa"),
         genomeidx=downloadReference("data/hg19.fa.fai"),
+        libraries="pyhgvs/pygr.done",
         genefile="pyhgvs/hgvs/pyhgvs/data/genes.refGene",
         errordict="hgvs_errordict.json",
     output:
         vcf="variants.vcf",
         config="config.yml",
-        download=touch(jsonsoriginal+"/download.done"),
         currated=touch(results+"/currated.done"),
         jsons=expand("json/currated/{sample}.json", sample=SAMPLES)
     params:
         debug=debug,
         jsonsoriginal=jsonsoriginal,
         results=results
+    conda:
+        "envs/python2.7.yml"
     shell:
         """
         python {input.script} --jsonsoriginal {params.jsonsoriginal} --log {input.log} --genomefile {input.genome} --debugfolder {params.debug} --genefile {input.genefile} --jsoncurrated {params.results} --errordict {input.errordict} --vcf {output.vcf} --config {output.config}

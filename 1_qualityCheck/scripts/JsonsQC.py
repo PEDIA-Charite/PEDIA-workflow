@@ -109,26 +109,28 @@ time=now.strftime('%H:%M:%S')
 def checkjsons(step,folder):
     # HGVS-Code überprüfen / check HGVS-code
     def check_hgvs(hgvs, submitterteam, submitter, file):
-        try:
-            chrom, offset, ref, alt = pyhgvs.parse_hgvs_name(str(hgvs), genome, get_transcript=get_transcript)
-        except ValueError, e: #'falsche' HGVS-Codes überspringen und anzeigen
-            if file not in overview[submitterteam]['incorrect JSONs'].keys():
-                overview[submitterteam]['incorrect JSONs'][file]={}
-            if 'falscher HGVS-Code' not in overview[submitterteam]['incorrect JSONs'][file]:
-                overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code']={}
-                overview[submitterteam]['incorrect JSONs'][file]['submitter']=submitter
-                overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code'][hgvs]=str(e)
-            else:
-                overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code'][hgvs]=str(e)
-        except NotImplementedError, e:
-            if file not in overview[submitterteam]['incorrect JSONs'].keys():
-                overview[submitterteam]['incorrect JSONs'][file]={}
-            if 'falscher HGVS-Code' not in overview[submitterteam]['incorrect JSONs'][file]:
-                overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code']={}
-                overview[submitterteam]['incorrect JSONs'][file]['submitter']=submitter
-                overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code'][hgvs]=str(e)
-            else:
-                overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code'][hgvs]=str(e)
+		try:
+			chrom, offset, ref, alt = pyhgvs.parse_hgvs_name(str(hgvs), genome, get_transcript=get_transcript)
+		except ValueError, e: #'falsche' HGVS-Codes überspringen und anzeigen
+			print e,hgvs
+			if file not in overview[submitterteam]['incorrect JSONs'].keys():
+				overview[submitterteam]['incorrect JSONs'][file]={}
+			if 'falscher HGVS-Code' not in overview[submitterteam]['incorrect JSONs'][file]:
+				overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code']={}
+				overview[submitterteam]['incorrect JSONs'][file]['submitter']=submitter
+				overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code'][hgvs]=str(e)
+			else:
+			    overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code'][hgvs]=str(e)
+		except NotImplementedError, e:
+			print e,hgvs
+			if file not in overview[submitterteam]['incorrect JSONs'].keys():
+			    overview[submitterteam]['incorrect JSONs'][file]={}
+			if 'falscher HGVS-Code' not in overview[submitterteam]['incorrect JSONs'][file]:
+			    overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code']={}
+			    overview[submitterteam]['incorrect JSONs'][file]['submitter']=submitter
+			    overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code'][hgvs]=str(e)
+			else:
+			    overview[submitterteam]['incorrect JSONs'][file]['falscher HGVS-Code'][hgvs]=str(e)
 
 
      # JSON-File zu inkorrekten Files hinzufügen / appen JSON to list of incorrect files
