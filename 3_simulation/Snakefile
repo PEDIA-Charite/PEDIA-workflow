@@ -145,7 +145,7 @@ rule copyReal:
 	shell:
 		"""
 		cp {input.vcf} {output.vcf};
-		cp {input.vcf}.gz {output.index}
+		cp {input.vcf} {output.index}
 		"""
 '''
 rule bgZipRealVCF:
@@ -209,7 +209,7 @@ rule jsonRealTestData:
 		"json_simulation/real/test/{sample}.json"
 	shell:
 		"""
-		java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar extendjson \
+		java -jar -Xmx50g simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar extendjson \
 		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
 		"""
 

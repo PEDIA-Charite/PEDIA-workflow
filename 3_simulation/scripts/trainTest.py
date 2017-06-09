@@ -11,7 +11,7 @@ from itertools import cycle
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 import gzip
 
-np.random.seed(42)
+np.random.seed(21561234)
 
 argv = sys.argv[1:]
 
@@ -41,26 +41,38 @@ print('Test is ',testfile)
 print('Probability file is', probabilityfile)
 
 
-def loadData(file):
+def loadData(file, remove=set()):
 
-	random_state = np.random.RandomState(0)
+	gene_ids = set()
 
 	X = []
 	y = []
 
-	with open(trainfile) as csvfile:
+	with open(file) as csvfile:
 		reader = csv.DictReader(csvfile)
+		i = 0
 		for row in reader:
+			label = int(row["label"])
+			if (label == 1):
+				gene_id = int(row['gene_id'])
+				gene_ids.add(gene_id)
+				if gene_id in remove:
+					continue
+				else:
+					i = i+1
 			X.append([row["feature_score"], row["cadd_phred_score"], row["combined_score"], row["cadd_raw_score"], row["gestalt_score"], row["boqa_score"], row["pheno_score"]])
-			y.append(int(row["label"]))
+			y.append(label)
+
+		print(i)
 
 	y = np.array(y)
 	X = np.array(X)
 
-	return X,y
+	return X,y,gene_ids
 
-X_train, y_train = loadData(trainfile)
-X_test, y_test = loadData(testfile)
+X_test, y_test, remove = loadData(testfile)
+X_train, y_train, gene_ids = loadData(trainfile, remove)
+
 
 for i in range(X_train.shape[1]):
 	m = min(X_train[:,i])
