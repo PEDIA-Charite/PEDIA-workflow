@@ -5,4 +5,5 @@ channels:
  - r
  - bioconda
 dependencies:
+ - python=3.6
  - snakemake

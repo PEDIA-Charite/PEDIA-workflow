@@ -40,7 +40,7 @@ cd 1_qualityCheck
 Now we will generate a shell environment with all necessary programs for the quality check. The software needed for the quality check is in the `environment.yml` file. Conda can read it:
 
 ```
-conda env create -f environment.yaml
+conda env create -f environment.yml
 ```
 
 Now we created an enviroment called `pedia_quality`. We can activate it and we should have snakemake installed.
