@@ -271,9 +271,11 @@ rule trainCV:
 		script="scripts/CV.py"
 	output:
 		"performanceEvaluation/results/CV.{background}.tsv.gz"
+	params:
+		repetitons="30"
 	shell:
 		"""
-		python {input.script} -i {input.table} --pfile {output}
+		python {input.script} -i {input.table} --pfile {output} -r {params.repetitons}
 		"""
 
 rule trainSimTestReal:
@@ -283,9 +285,11 @@ rule trainSimTestReal:
 		script="scripts/trainTest.py"
 	output:
 		"performanceEvaluation/results/real.{background}.tsv.gz"
+	params:
+		repetitons="30"
 	shell:
 		"""
-		python {input.script} --train {input.train} --test {input.test} --prediction {output}
+		python {input.script} --train {input.train} --test {input.test} --prediction {output} --repetitions {params.repetitons}
 		"""
 rule createArffFromPredictions:
 	input:

@@ -6,35 +6,41 @@ from sklearn import preprocessing
 from sklearn.model_selection import LeaveOneGroupOut
 from sklearn import svm, datasets, ensemble
 from scipy import interp
+from sklearn.utils import shuffle
 import matplotlib.pyplot as plt
 from itertools import cycle
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 import gzip
+import random
 
-np.random.seed(42)
+random.seed(42)
 
 argv = sys.argv[1:]
 
 inputfile = ''
 probabilityfile= ''
+repetitions=1
 try:
-	opts, args = getopt.getopt(argv,"hi:p",["ifile=","pfile="])
+	opts, args = getopt.getopt(argv,"hi:p:r",["ifile=","pfile=","repetitions="])
 except getopt.GetoptError:
-	print('jsonToTable.py -i <input-csv-file> -p <output probability file>')
+	print('jsonToTable.py -i <input-csv-file> -p <output probability file> -r 100')
 	sys.exit(2)
 for opt, arg in opts:
 	if opt == '-h':
-		print('jsonToTable.py -i input-csv-file> -p <output probability file>')
+		print('jsonToTable.py -i input-csv-file> -p <output probability file> -r 100')
 		sys.exit()
 	elif opt in ("-i", "--ifolder"):
 		inputfile = arg
 	elif opt in ("-p", "--pfile"):
 		probabilityfile = arg
+	elif opt in ("-r", "--repetitions"):
+		repetitions = int(arg)
 	else:
-		print('jsonToTable.py -i <input-csv-file> -p <output probability file>')
+		print('jsonToTable.py -i <input-csv-file> -p <output probability file> -r 100')
 		sys.exit(2)
 print('Input csv file is ', inputfile)
 print('Probability file is', probabilityfile)
+print('Repetitions are', repetitions)
 
 
 #random_state = np.random.RandomState(0)
@@ -76,42 +82,47 @@ logo = LeaveOneGroupOut()
 probabilities = []
 labels = []
 
-r = 0
-for train, test in logo.split(data, y, groups=groups):
-	r+=1
-	print("Train/Test round "+ str(r) + "/"+ str(len(set(groups))))
-	X_train, X_test, y_train, y_test = data[train], data[test], y[train], y[test]
+for repeat in range(repetitions):
 
-	for i in range(X_train.shape[1]):
-		m = min(X_train[:,i])
-		X_train[X_train[:,i]=='nan',i]=m
-		X_test[X_test[:,i]=='nan',i]=m
+	r = 0
+	for train, test in logo.split(data, y, groups=groups):
+		r+=1
+		print("Train/Test round "+ str(r) + "/"+ str(len(set(groups))) + " of repetition " + str(repeat) + "/" + str(repetitions))
+		X_train, X_test, y_train, y_test = data[train], data[test], y[train], y[test]
 
-	X_train = X_train.astype(float)
-	X_test = X_test.astype(float)
-	'''
-	#### impute median
-	imp = Imputer(missing_values='NaN', strategy='median', axis=0)
-	imp.fit(X_train)
-	X_train_transformed = imp.transform(X_train)
-	'''
-	X_train_transformed = X_train
-	####
-	#### normalize
-	normalizer = preprocessing.Normalizer()
-	normalizer.fit(X_train_transformed)
-	X_train_normalized = normalizer.transform(X_train_transformed)
-	'''
-	X_train_normalized = X_train
+		for i in range(X_train.shape[1]):
+			m = min(X_train[:,i])
+			X_train[X_train[:,i]=='nan',i]=m
+			X_test[X_test[:,i]=='nan',i]=m
 
-	X_test_transformed  = imp.transform(X_test)
-	'''
-	X_test_transformed = X_test
-	X_test_normalized = normalizer.transform(X_test_transformed)
+		X_train = X_train.astype(float)
+		X_test = X_test.astype(float)
+		'''
+		#### impute median
+		imp = Imputer(missing_values='NaN', strategy='median', axis=0)
+		imp.fit(X_train)
+		X_train_transformed = imp.transform(X_train)
+		'''
 
-	X_test_normalized = X_test
-	probabilities.extend(classifier.fit(X_train_normalized, y_train).predict_proba(X_test_normalized)[:, 1])
-	labels.extend(y_test)
+		X_train_rnd, y_train_rnd = shuffle(X_train, y_train, random_state=random.randint(0, 4294967295))
+		X_test_rnd, y_test_rnd = shuffle(X_test, y_test, random_state=random.randint(0, 4294967295))
+		X_train_transformed = X_train_rnd
+		####
+		#### normalize
+		normalizer = preprocessing.Normalizer()
+		normalizer.fit(X_train_transformed)
+		X_train_normalized = normalizer.transform(X_train_transformed)
+		'''
+		X_train_normalized = X_train
+
+		X_test_transformed  = imp.transform(X_test)
+		'''
+		X_test_transformed = X_test_rnd
+		X_test_normalized = normalizer.transform(X_test_transformed)
+
+		X_test_normalized = X_test_rnd
+		probabilities.extend(classifier.fit(X_train_normalized, y_train_rnd).predict_proba(X_test_normalized)[:, 1])
+		labels.extend(X_train_rnd)
 
 
 
