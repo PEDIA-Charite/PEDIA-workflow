@@ -121,11 +121,12 @@ rule json:
 	input:
 		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
 		omim="OMIM/genemap2.txt",
-		json="../data/PEDIA/jsons/phenomized/{sample}.json"
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"json_simulation/{background}/CV/{sample}.json"
 	shell:
-		"java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
+		"java -jar {input.simulator} extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
 
 
 ################### REAL VCFS################################
@@ -204,12 +205,13 @@ rule jsonRealTestData:
 	input:
 		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
 		omim="OMIM/genemap2.txt",
-		json="../data/PEDIA/jsons/phenomized/{sample}.json"
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"json_simulation/real/test/{sample}.json"
 	shell:
 		"""
-		java -jar -Xmx50g simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar extendjson \
+		java -jar -Xmx50g {input.simulator} extendjson \
 		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
 		"""
 
