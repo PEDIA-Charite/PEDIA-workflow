@@ -19,7 +19,7 @@ argv = sys.argv[1:]
 
 inputfile = ''
 probabilityfile= ''
-repetitions=1
+repetitions = 1
 try:
 	opts, args = getopt.getopt(argv,"hi:p:r",["ifile=","pfile=","repetitions="])
 except getopt.GetoptError:
@@ -87,7 +87,7 @@ for repeat in range(repetitions):
 	r = 0
 	for train, test in logo.split(data, y, groups=groups):
 		r+=1
-		print("Train/Test round "+ str(r) + "/"+ str(len(set(groups))) + " of repetition " + str(repeat) + "/" + str(repetitions))
+		print("Train/Test round "+ str(r) + "/"+ str(len(set(groups))) + " of repetition " + str(repeat+1) + "/" + str(repetitions))
 		X_train, X_test, y_train, y_test = data[train], data[test], y[train], y[test]
 
 		for i in range(X_train.shape[1]):
@@ -122,7 +122,7 @@ for repeat in range(repetitions):
 
 		X_test_normalized = X_test_rnd
 		probabilities.extend(classifier.fit(X_train_normalized, y_train_rnd).predict_proba(X_test_normalized)[:, 1])
-		labels.extend(X_train_rnd)
+		labels.extend(y_test_rnd)
 
 
 
