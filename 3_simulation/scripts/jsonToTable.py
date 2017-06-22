@@ -70,14 +70,15 @@ for filename in glob.glob(inputfile+'/*.json'):
 		phenoScore = entry.get("pheno_score", np.nan)
 
 
-		if getKey(case,geneID) in hashedData:
-			value = hashedData[getKey(case,geneID)]
-			featureScore = max(featureScore,value["feature_score"])
-			caddPhredScore = max(featureScore,value["cadd_phred_score"])
-			combinedScore = max(featureScore,value["combined_score"])
-			caddRawSscore = max(featureScore,value["cadd_raw_score"])
-			gestaltScore = max(featureScore,value["boqa_score"])
-			phenoScore = max(featureScore,value["pheno_score"])
+		if getKey(case, geneID) in hashedData:
+			value = hashedData[getKey(case, geneID)]
+			featureScore = max(featureScore, value["feature_score"])
+			caddPhredScore = max(caddPhredScore, value["cadd_phred_score"])
+			combinedScore = max(combinedScore, value["combined_score"])
+			caddRawSscore = max(caddRawSscore, value["cadd_raw_score"])
+			gestaltScore = max(gestaltScore, value["gestalt_score"])
+			boqaScore = max(boqaScore, value["boqa_score"])
+			phenoScore = max(phenoScore, value["pheno_score"])
 
 		hashedData[getKey(case,geneID)] = {"case": case, "gene_id": geneID, "feature_score": featureScore, "cadd_phred_score": caddPhredScore, "combined_score":  combinedScore, "cadd_raw_score":  caddRawSscore, "gestalt_score":  gestaltScore, "boqa_score":  boqaScore, "pheno_score": phenoScore, "label": label}
 
