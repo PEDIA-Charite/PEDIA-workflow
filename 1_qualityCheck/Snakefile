@@ -37,6 +37,7 @@ for filename in ftp_filelist:
 
 debug="Results"
 jsonsoriginal="json/original"
+mappedjsons="json/mapped"
 results="json/currated"
 
 onstart:
@@ -50,6 +51,9 @@ onstart:
     touch {results}/empty.json;
     tar -cvzf json/backup/currated{date}{time}.tar.gz {results}/*.json;
     rm {results}/empty.json;
+    touch {mappedjsons}/empty.json;
+    tar -cvzf json/backup/original{date}{time}.tar.gz {mappedjsons}/*.json;
+    rm {mappedjsons}/empty.json;
     """
     )
     print("Backup ready")
@@ -61,7 +65,7 @@ rule all:
         "variants.vcf",
         "config.yml",
         "pyhgvs/pygr.done",
-        touch(results+"/currated.done"),
+        touch(results+"/currated.done")
         expand("json/currated/{sample}.json", sample=SAMPLES)
 
 
@@ -106,26 +110,38 @@ rule install_dependencies:
         """
 
 # Download jsons
-rule dowloadJSONs:
+rule downloadJSONs:
     input:
-        script="scripts/JsonsDownload.py",
-        login="scripts/protected/gene-talk_server.json",
-    output:
-        "json/original/{sample}.json"
+        script="scripts/download.py"
     params:
-        sample="{sample}"
+        output="json/original/"
     conda:
         "envs/python2.7.yml"
     shell:
         """
-        python {input.script} --sample {params.sample} --login {input.login} --output {output}
+        python {input.script} {params.output}
+        """
+
+#Mapping to old JSON-Format
+
+rule runMapping:
+    input:
+        scripts="scripts/mapping.py"
+    output:
+        touch("Mapping.done")
+    params:
+        jsonsoriginal=jsonsoriginal,
+        mappedjsons=mappedjsons
+    shell:
+        """
+        python {input.scripts} --jsonsoriginal {params.jsonsoriginal} --mappedjsons {params.mappedjsons}
         """
 
 # Run the quality check.
 rule runQuality:
     input:
         script="scripts/JsonsQC.py",
-        jsons=expand("json/original/{sample}.json", sample=SAMPLES),
+        mapping = "Mapping.done",
         log="QC_progress.xls",
         genome=downloadReference("data/hg19.fa"),
         genomeidx=downloadReference("data/hg19.fa.fai"),
@@ -135,15 +151,15 @@ rule runQuality:
     output:
         vcf="variants.vcf",
         config="config.yml",
-        currated=touch(results+"/currated.done"),
-        jsons=expand("json/currated/{sample}.json", sample=SAMPLES)
+        currated=touch(results+"/currated.done")
+        #jsons=expand("json/currated/{sample}.json", sample=SAMPLES)
     params:
         debug=debug,
-        jsonsoriginal=jsonsoriginal,
+        mappedjsons=mappedjsons,
         results=results
     conda:
         "envs/python2.7.yml"
     shell:
         """
-        python {input.script} --jsonsoriginal {params.jsonsoriginal} --log {input.log} --genomefile {input.genome} --debugfolder {params.debug} --genefile {input.genefile} --jsoncurrated {params.results} --errordict {input.errordict} --vcf {output.vcf} --config {output.config}
+        python {input.script} --mappedjsons {params.mappedjsons} --log {input.log} --genomefile {input.genome} --debugfolder {params.debug} --genefile {input.genefile} --jsoncurrated {params.results} --errordict {input.errordict} --vcf {output.vcf} --config {output.config}
         """
