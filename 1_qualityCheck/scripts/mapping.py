@@ -18,7 +18,7 @@ import argparse
 
 def makegenedict():  # creates a dictionary of genemap2.txt containing the omim id of a gene as key and genesymbol,entrez gene id as values
     genedict = {}
-    with open("../genemap2.txt") as genemap:
+    with open("genemap2.txt") as genemap:
         genemap = genemap.readlines()[3:]
         genemap = csv.DictReader(genemap, delimiter="\t")
         for line in genemap:
@@ -698,7 +698,7 @@ def get_syndrome_omim(omim_str_array):
 def get_phenotype_gene_dict():
     count = 0
     pg_dict = {}
-    with open("../morbidmap.txt") as csvfile:
+    with open("morbidmap.txt") as csvfile:
         r = csv.reader(csvfile, delimiter='\t')
         for row in r:
             if count > 3 and len(row) > 1:

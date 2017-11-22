@@ -5,9 +5,6 @@ subworkflow downloadReference:
     snakefile: "../data/referenceGenome/Snakefile"
 
 
-
-configfile: "scripts/protected/gene-talk_server.json"
-
 import datetime as dt
 now=dt.datetime.now()
 date=now.strftime('%Y-%m-%d')
@@ -16,23 +13,23 @@ time=now.strftime('%H:%M:%S')
 SAMPLES = set()
 
 #### get sample names from server
-import ftplib as ftp # Dateien vom Server holen / import JSONs from server
-import os
-json_server=ftp.FTP(config['url'])
-json_server.login(config['login'],config['password'])
-
-directory='/'
-json_server.cwd(directory)
-ftp_filelist=json_server.nlst(directory)
-
-directory='/'
-json_server.cwd(directory)
-ftp_filelist=json_server.nlst(directory)
-
-# iterate over remote files
-for filename in ftp_filelist:
-    if filename[-5:]=='.json':
-        SAMPLES.add(os.path.splitext(filename)[0])
+#import ftplib as ftp # Dateien vom Server holen / import JSONs from server
+#import os
+#json_server=ftp.FTP(config['url'])
+#json_server.login(config['login'],config['password'])
+#
+#directory='/'
+#json_server.cwd(directory)
+#ftp_filelist=json_server.nlst(directory)
+#
+#directory='/'
+#json_server.cwd(directory)
+#ftp_filelist=json_server.nlst(directory)
+#
+## iterate over remote files
+#for filename in ftp_filelist:
+#    if filename[-5:]=='.json':
+#        SAMPLES.add(os.path.splitext(filename)[0])
 
 
 debug="Results"
@@ -45,12 +42,15 @@ onstart:
     shell(
     """
     mkdir -p json/backup;
+	mkdir -p {jsonsoriginal}
     touch {jsonsoriginal}/empty.json;
     tar -cvzf json/backup/original{date}{time}.tar.gz {jsonsoriginal}/*.json;
     rm {jsonsoriginal}/empty.json;
+	mkdir -p {results}
     touch {results}/empty.json;
     tar -cvzf json/backup/currated{date}{time}.tar.gz {results}/*.json;
     rm {results}/empty.json;
+	mkdir -p {mappedjsons}
     touch {mappedjsons}/empty.json;
     tar -cvzf json/backup/original{date}{time}.tar.gz {mappedjsons}/*.json;
     rm {mappedjsons}/empty.json;
@@ -65,7 +65,7 @@ rule all:
         "variants.vcf",
         "config.yml",
         "pyhgvs/pygr.done",
-        touch(results+"/currated.done")
+        touch(results+"/currated.done"),
         expand("json/currated/{sample}.json", sample=SAMPLES)
 
 
@@ -115,8 +115,6 @@ rule downloadJSONs:
         script="scripts/download.py"
     params:
         output="json/original/"
-    conda:
-        "envs/python2.7.yml"
     shell:
         """
         python {input.script} {params.output}
