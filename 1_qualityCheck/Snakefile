@@ -117,7 +117,7 @@ rule downloadJSONs:
         output="json/original/"
     shell:
         """
-        python {input.script} {params.output}
+        python2.7 {input.script} {params.output}
         """
 
 #Mapping to old JSON-Format
