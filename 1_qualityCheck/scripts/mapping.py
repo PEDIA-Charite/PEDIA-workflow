@@ -742,6 +742,9 @@ if __name__ == '__main__':
                        "feature_score", "gestalt_score", "has_mask"]
     syn_gene_dict = get_phenotype_gene_dict()
     for fileName in os.listdir(case_path):
+        if fileName == '.gitignore':
+            continue
+
         test = fileName
         # debugging for jsons file not yet mapped
         if test not in os.listdir(newpath) and os.path.isfile(case_path + test):
