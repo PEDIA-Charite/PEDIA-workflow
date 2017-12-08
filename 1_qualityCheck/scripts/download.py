@@ -24,13 +24,21 @@ def backup_s3_folder(aws_access_key, aws_secret_key, download_location):
         filename = filename.strip('/')
         path = path.strip('/')
         dlpath = os.path.join(download_location, path, filename)
+        if os.path.exists(dlpath):
+            logging.info("File {} already exists. Skipping...".format(dlpath))
+            continue
         try:
-            logging.info("Downloading ", filename)
+            if not os.path.exists(os.path.join(download_location, path)):
+                os.makedirs(os.path.join(download_location, path))
+            logging.info("Downloading {}".format(filename))
+            print(key.key)
             bucket.download_file(key.key, dlpath)
         except (OSError,S3ResponseError) as e:
             logging.error(e)
 
+
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     parser = ArgumentParser()
     parser.add_argument('dl_dir')
     download_location = parser.parse_args().dl_dir
