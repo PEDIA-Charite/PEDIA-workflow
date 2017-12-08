@@ -1,0 +1,6 @@
+# snakemake requirements
+snakemake
+ratelimiter
+
+#aws s3 download
+boto3
