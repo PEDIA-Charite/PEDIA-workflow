@@ -1,51 +1,41 @@
 #!/usr/bin/env python
 
-import boto
+import boto3
 import sys, os
-from boto.s3.key import Key
-from boto.exception import S3ResponseError
+from argparse import ArgumentParser
+import logging
 
+AWS_BUCKET_NAME = "fdna-pedia-dump"
 
+def backup_s3_folder(aws_access_key, aws_secret_key, download_location):
+    # use Amazon S3 resource
+    s3 = boto3.resource('s3', aws_access_key_id=aws_access_key,
+    aws_secret_access_key=aws_secret_key)
 
-DOWNLOAD_LOCATION_PATH = sys.argv[1]
-if not os.path.exists(DOWNLOAD_LOCATION_PATH):
-    print ("Making download directory")
-    os.mkdir(DOWNLOAD_LOCATION_PATH)
+    if not os.path.exists(download_location):
+        logging.info("Making download directory")
+        os.mkdir(download_location)
 
-def backup_s3_folder():
-    BUCKET_NAME = "fdna-pedia-dump"
+    bucket = s3.Bucket(AWS_BUCKET_NAME)
 
-    # Comment the following two lines after you add ID and key to you environment
-    # path.
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_KEY_ID") # set your AWS_KEY_ID  on your environment path
-    AWS_ACCESS_SECRET_KEY = os.getenv("AWS_ACCESS_KEY") # set your AWS_ACCESS_KEY  on your environment path
-    conn  = boto.connect_s3(AWS_ACCESS_KEY_ID, AWS_ACCESS_SECRET_KEY)
-    bucket = conn.get_bucket(BUCKET_NAME)
-
-    #goto through the list of files
-    bucket_list = bucket.list()
-
-    for l in bucket_list:
-        key_string = str(l.key)
-        s3_path = DOWNLOAD_LOCATION_PATH + key_string
+    for key in bucket.objects.all():
+        # strip leading slashes for path joining
+        path, filename = os.path.split(key.key)
+        filename = filename.strip('/')
+        path = path.strip('/')
+        dlpath = os.path.join(download_location, path, filename)
         try:
-            print ("Current File is ", s3_path)
-            l.get_contents_to_filename(s3_path)
-
+            logging.info("Downloading ", filename)
+            bucket.download_file(key.key, dlpath)
         except (OSError,S3ResponseError) as e:
-            print(e)
-            pass
-            # check if the file has been downloaded locally
-            if not os.path.exists(s3_path):
-                try:
-                    os.makedirs(s3_path)
-                except OSError as exc:
-                    # let guard againts race conditions
-                    import errno
-
-                    if exc.errno != errno.EEXIST:
-                        raise
+            logging.error(e)
 
 if __name__ == '__main__':
-    backup_s3_folder()
-
+    parser = ArgumentParser()
+    parser.add_argument('dl_dir')
+    download_location = parser.parse_args().dl_dir
+    aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_key = os.getenv("AWS_ACCESS_SECRET_KEY")
+    if aws_secret_key is None or aws_access_key is None:
+        logging.error('Please set env vars: AWS_ACCESS_KEY_ID and AWS_ACCESS_SECRET_KEY')
+    backup_s3_folder(aws_access_key, aws_secret_key, download_location)
