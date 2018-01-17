@@ -146,7 +146,7 @@ rule copyReal:
 	shell:
 		"""
 		cp {input.vcf} {output.vcf};
-		cp {input.vcf} {output.index}
+		cp {input.index} {output.index}
 		"""
 '''
 rule bgZipRealVCF:
