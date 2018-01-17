@@ -50,11 +50,76 @@ def get_omim_files(mimdir='', api_key='', use_cached=True):
             ,'morbidmap' : morbidmap
             }
 
+class PhenomizerService(requests.Session):
+    def __init__(self, url, user, password):
+        '''
+        Create a new phenomizer service instance.
+
+        Params:
+            url: Url of phenomizer service
+        '''
+        super().__init__()
+        self.url = url
+        self.user = user
+        self.password = password
+
+    def request_phenomize(self, hpo_ids):
+        params = {
+                'mobilequery' : 'true'
+                ,'username' : self.user
+                ,'password' : self.password
+                ,'terms' : hpo_ids
+                ,'numres' : 100
+                }
+        r = self.get(self.url, params=params)
+        print(r.url)
+        r.raise_for_status()
+        return r
+
+    def request_boqa(self, hpo_ids):
+        params = {
+                'username' : self.user
+                ,'password' : self.password
+                ,'mobilequery' : 'true'
+                ,'doboqa' : 'true'
+                ,'terms' : hpo_ids
+                ,'numres' : 100
+                }
+        r = self.get(self.url, params=params)
+        print(r.url)
+        return r
+
+def phenomize_argv():
+    parser = ArgumentParser()
+    parser.add_argument('inputdir')
+    parser.add_argument('outputdir')
+    args = parser.parse_args()
+    return args.inputdir, args.outputdir
+
 
 if __name__ == '__main__':
-    m = get_omim_files(api_key=os.getenv('OMIM_KEY'))
+    # omim_key = os.getenv('OMIM_KEY')
+    # cached = os.getenv('OMIM_CACHED')
+    # cached = cached == 'TRUE'
 
+    # if omim_key is None and not cached:
+    #     print(
+#'''Please set OMIM_KEY in your environment variables to retrieve OMIM morbidmap.
+#Alternatively provide genemap and morbidmap in the script directory and set OMIM_CACHED to TRUE'''
+    #     )
+    #     sys.exit(1)
 
+    # inputdir, outputdir = phenomize_argv()
+
+    # m = get_omim_files(api_key=omim_key)
+
+    phenomizer_url = os.getenv('PHENOMIZER_URL')
+    phenomizer_user = os.getenv('PHENOMIZER_USER')
+    phenomizer_pw = os.getenv('PHENOMIZER_PW')
+
+    pheno = PhenomizerService(phenomizer_url, phenomizer_user, phenomizer_pw)
+    r = pheno.request_phenomize(['HP:0000118'])
+    print(r.text)
 
 
 ## ##### command-line input ####
