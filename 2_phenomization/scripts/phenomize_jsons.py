@@ -17,7 +17,7 @@ jSON Phenomization tools
 
 '''
 
-RE_GENE_SYMBOL = re.compile('(\w+) \((\d+)\)')
+RE_OMIM_PHEN = re.compile('.* (\d{6}) \((\d)\)')
 
 def retrieve_file(path, url, cached, names):
     '''
@@ -29,10 +29,8 @@ def retrieve_file(path, url, cached, names):
         with open(path, 'wb') as f:
             for data in r.iter_content():
                 f.write(data)
-
     return pandas.read_table(path, delimiter='\t', comment='#', names=names, dtype=str)
 
-RE_OMIM_PHEN = re.compile('.* (\d{6}) \((\d)\)')
 
 def extract_omim(raw_omim):
     if pandas.isna(raw_omim):
@@ -103,7 +101,6 @@ class PhenomizerService(requests.Session):
         rawdata = io.StringIO(rstring)
         df = pandas.read_table(rawdata, sep='\t', index_col=None, header=None, names=names)
         return df
-
 
     def request_phenomize(self, hpo_ids):
         params = {
@@ -259,7 +256,6 @@ class JsonProcessor:
         filepath = os.path.join(self.outputdir, filename)
         with open(filepath, 'w') as f:
             json.dump(json, f)
-
 
 def phenomize_argv():
     parser = ArgumentParser()
