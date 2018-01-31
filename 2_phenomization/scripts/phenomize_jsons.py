@@ -6,6 +6,7 @@ import re
 from argparse import ArgumentParser
 import requests
 import logging
+import configparser
 
 import pandas
 import numpy
@@ -33,6 +34,8 @@ def retrieve_file(path, url, cached, names):
 
 
 def extract_omim(raw_omim):
+    '''Extract phenotypic MIM number from the phenotypic string.
+    '''
     if pandas.isna(raw_omim):
         return numpy.nan
     match = RE_OMIM_PHEN.search(raw_omim)
@@ -69,6 +72,9 @@ def get_omim_files(mimdir='', api_key='', use_cached=True):
             }
 
 class PhenomizerService(requests.Session):
+    '''Handling of interop with Phenomizer service, which provides the pheno and boqa scores used in the process.
+    '''
+
     phen_names = ['value','score','disease-id','disease-name','gene-symbol','gene-id']
     boqa_names = ['p', 'nothing', 'disease-id','disease-name']
     def __init__(self, url, user, password):
@@ -126,6 +132,9 @@ class PhenomizerService(requests.Session):
         return df
 
 class Annotator:
+    '''Add phenomization and boqa scores to the geneList present in the json file.
+    '''
+
     def __init__(self, pheno_args, omim_args):
         self.phenomizer = PhenomizerService(**pheno_args)
         self.omim = get_omim_files(api_key=omim_args['key'])
@@ -143,21 +152,42 @@ class Annotator:
         omim_entry = self.omim['mim2gene'].loc[self.omim['mim2gene']['gene_symbol'] == gene_name]
         return omim_entry
 
+    def fill_missing(self, row):
+        omim = self.get_omim_with_id(row['gene_id'])
+        if omim.empty:
+            return row
+        omim = omim.iloc[0]
+        if omim.empty:
+            return row
+        if pandas.isna(row['gene_omim_id']):
+            row['gene_omim_id'] = omim['mim_number']
+        if pandas.isna(row['gene_symbol']):
+            row['gene_symbol'] = omim['gene_symbol']
+        logging.info(
+                "Filled missing for gene_id {} with {} mim and {} symbol".format(
+                    row['gene_id'],row['gene_omim_id'],row['gene_symbol'])
+                )
+        return row
+
     def process(self, inputjs):
         outputjs = {}
         outputjs = inputjs
         outputjs['processing']=['python phenomize_jsons.py']
 
         bq = self.get_boqa(inputjs)
-        bq_df = pandas.DataFrame({'score_id':list(bq.keys()),'score_boqa':list(bq.values())})
+        bq_df = pandas.DataFrame({'gene_id':list(bq.keys()),'boqa_score':list(bq.values())})
         pheno = self.get_pheno(inputjs)
-        pheno_df = pandas.DataFrame({'score_id':list(pheno.keys()),'score_pheno':list(pheno.values())})
+        pheno_df = pandas.DataFrame({'gene_id':list(pheno.keys()),'pheno_score':list(pheno.values())})
 
         scores = bq_df.merge(pheno_df, how='outer')
         entries = pandas.DataFrame(inputjs['geneList'])
-        new_data = entries.merge(scores, left_on='gene_id', right_on='score_id',how='outer')
+        new_data = entries.merge(scores, left_on='gene_id', right_on='gene_id',how='outer')
+        # we still need omim id and gene symbol for all entries
+        new_data = new_data.apply(self.fill_missing,axis=1)
 
-        outputjs['geneList'] = new_data.to_dict('records').values()
+        new_dicts = new_data.to_dict('records')
+
+        outputjs['geneList'] = new_dicts
         return outputjs
 
     def get_pheno(self, inputjs):
@@ -227,6 +257,9 @@ class Annotator:
 
 
 class JsonProcessor:
+    '''Generator class to serve json files from the specified folder and handle saving of edited objects back as jsons.
+    '''
+
     def __init__(self, inputdir, outputdir):
         self._cache = {}
         self.inputdir = inputdir.rstrip('/\\')
@@ -252,40 +285,31 @@ class JsonProcessor:
         fobj = json.load(open(os.path.join(self.inputdir,fname), 'r'))
         return fname, fobj
 
-    def save(self, filename, json):
+    def save(self, filename, obj):
         filepath = os.path.join(self.outputdir, filename)
         with open(filepath, 'w') as f:
-            json.dump(json, f)
-
-def phenomize_argv():
-    parser = ArgumentParser()
-    parser.add_argument('inputdir')
-    parser.add_argument('outputdir')
-    args = parser.parse_args()
-    return args.inputdir, args.outputdir
+            json.dump(obj, f)
 
 
 if __name__ == '__main__':
-    phenomizer_args = {
-            'url' : os.getenv('PHENOMIZER_URL')
-            ,'user' : os.getenv('PHENOMIZER_USER')
-            ,'password' : os.getenv('PHENOMIZER_PW')
-    }
-    omim_args = {
-            'key' : os.getenv('OMIM_KEY')
-            ,'cached' : os.getenv('OMIM_CACHED').upper() == 'TRUE'
-    }
+    parser = ArgumentParser()
+    parser.add_argument('inputdir')
+    parser.add_argument('outputdir')
+    parser.add_argument('--configfile','-c', type=str, default='config.ini')
+    args = parser.parse_args()
 
-    if omim_args['key'] is None and not omim_args['cached']:
-        print(
-'''ease set OMIM_KEY in your environment variables to retrieve OMIM morbidmap.
-Altnatively provide genemap and morbidmap in the script directory and set OMIM_CACHED to TRUE'''
-        )
-        sys.exit(1)
+    config = configparser.ConfigParser()
+    config.read(args.configfile)
+    phen_config = config['phenomization']
 
-    annot = Annotator(pheno_args=phenomizer_args,omim_args=omim_args)
+    omim_args = {'key':phen_config['OMIM_Key'],'cached':phen_config['OMIM_Cached']}
+    phenom_args = {'url':phen_config['Phenomizer_Url']
+            ,'user':phen_config['Phenomizer_User']
+            ,'password':phen_config['Phenomizer_Password']}
 
-    files = JsonProcessor(*phenomize_argv())
+    annot = Annotator(pheno_args=phenom_args,omim_args=omim_args)
+
+    files = JsonProcessor(args.inputdir, args.outputdir)
 
     for filename, js in files:
         annot.process(js)
