@@ -1,242 +1,316 @@
-
-# JSON, dirs and http requests
-import json, requests, os
-
-
-# GetOpt to read cli inputs
-import sys, getopt
-
-# use regular expressions
+import json
+import requests
+import os
+import sys
 import re
+from argparse import ArgumentParser
+import requests
+import logging
+import configparser
+
+import pandas
+import numpy
+import io
+
+'''
+jSON Phenomization tools
+---
+
+'''
+
+RE_OMIM_PHEN = re.compile('.* (\d{6}) \((\d)\)')
+
+def retrieve_file(path, url, cached, names):
+    '''
+    Get file from local filesystem. If it doesnt exists or cached is false, save from remote url to the local path
+    and thereafter read from local filesystem.
+    '''
+    if not os.path.exists(path) or not cached:
+        r = requests.get(url)
+        with open(path, 'wb') as f:
+            for data in r.iter_content():
+                f.write(data)
+    return pandas.read_table(path, delimiter='\t', comment='#', names=names, dtype=str)
+
+
+def extract_omim(raw_omim):
+    '''Extract phenotypic MIM number from the phenotypic string.
+    '''
+    if pandas.isna(raw_omim):
+        return numpy.nan
+    match = RE_OMIM_PHEN.search(raw_omim)
+    if match is None:
+        return numpy.nan
+    return match.group(1)
+
+def get_omim_files(mimdir='', api_key='', use_cached=True):
+    '''
+    Download omim files from official website resources or get them locally if they already exist
+
+    Args:
+        mimdir: Directory where omim files are saved and retrieved, defaults to the current working directory
+        api_key: OMIM API key retrieve it from the official omim website
+        use_cached: Whether already downloaded files are used, if False omim files are always downloaded
+
+    Returns:
+        Data stucture with mim2gene and morbidmap
+    '''
+    mim2gene = retrieve_file('mim2gene.txt'
+            ,'https://omim.org/static/omim/data/mim2gene.txt'
+            ,use_cached
+            ,['mim_number','mim_entry_type','entrez_id', 'gene_symbol','ensembl'])
+
+    morbidmap_url = 'https://data.omim.org/downloads/{}/morbidmap.txt'.format(api_key)
+    morbidmap = retrieve_file('morbidmap.txt', morbidmap_url, use_cached
+            ,['phenotype', 'gene_symbol', 'mim_number', 'cyto_location'])
+
+    morbidmap['phen_mim_number'] = morbidmap['phenotype'].apply(extract_omim)
+
+    return {
+            'mim2gene' : mim2gene
+            ,'morbidmap' : morbidmap
+            }
+
+class PhenomizerService(requests.Session):
+    '''Handling of interop with Phenomizer service, which provides the pheno and boqa scores used in the process.
+    '''
+
+    phen_names = ['value','score','disease-id','disease-name','gene-symbol','gene-id']
+    boqa_names = ['p', 'nothing', 'disease-id','disease-name']
+    def __init__(self, url, user, password):
+        '''
+        Create a new phenomizer service instance.
+
+        Params:
+            url: Url of phenomizer service
+        '''
+        super().__init__()
+        self.url = url
+        self.user = user
+        self.password = password
+        retry = requests.packages.urllib3.util.retry.Retry(
+                total = 3
+                ,read = 3
+                ,connect = 3
+                ,backoff_factor = 0.3
+                , status_forcelist=(500,)
+                )
+        adapter = requests.adapters.HTTPAdapter(max_retries = retry)
+
+        self.mount('http://', adapter)
+        self.mount('https://', adapter)
+
+    def get_df(self, url, params, names):
+        r = self.get(url, params=params)
+        r.raise_for_status()
+        rstring = "\n".join([ s for s in r.text.split('\n') if not s.startswith('#') or s == '' ])
+        rawdata = io.StringIO(rstring)
+        df = pandas.read_table(rawdata, sep='\t', index_col=None, header=None, names=names)
+        return df
+
+    def request_phenomize(self, hpo_ids):
+        params = {
+                'mobilequery' : 'true'
+                ,'username' : self.user
+                ,'password' : self.password
+                ,'terms' : hpo_ids
+                ,'numres' : 100
+                }
+        df = self.get_df(self.url, params=params,names=self.phen_names)
+        return df
+
+    def request_boqa(self, hpo_ids):
+        params = {
+                'username' : self.user
+                ,'password' : self.password
+                ,'mobilequery' : 'true'
+                ,'doboqa' : 'true'
+                ,'terms' : hpo_ids
+                ,'numres' : 100
+                }
+        df = self.get_df(self.url, params=params,names=self.boqa_names)
+        return df
+
+class Annotator:
+    '''Add phenomization and boqa scores to the geneList present in the json file.
+    '''
+
+    def __init__(self, pheno_args, omim_args):
+        self.phenomizer = PhenomizerService(**pheno_args)
+        self.omim = get_omim_files(api_key=omim_args['key'])
+
+
+    def get_morbidmap(self, omim_id):
+        mm_entry = self.omim['morbidmap'].loc[self.omim['morbidmap']['phen_mim_number'] == omim_id]
+        return mm_entry
+
+    def get_omim_with_id(self, gene_id):
+        omim_entry = self.omim['mim2gene'].loc[self.omim['mim2gene']['entrez_id'].astype('float32') == float(gene_id)]
+        return omim_entry
+
+    def get_omim_with_name(self, gene_name):
+        omim_entry = self.omim['mim2gene'].loc[self.omim['mim2gene']['gene_symbol'] == gene_name]
+        return omim_entry
+
+    def fill_missing(self, row):
+        omim = self.get_omim_with_id(row['gene_id'])
+        if omim.empty:
+            return row
+        omim = omim.iloc[0]
+        if omim.empty:
+            return row
+        if pandas.isna(row['gene_omim_id']):
+            row['gene_omim_id'] = omim['mim_number']
+        if pandas.isna(row['gene_symbol']):
+            row['gene_symbol'] = omim['gene_symbol']
+        logging.info(
+                "Filled missing for gene_id {} with {} mim and {} symbol".format(
+                    row['gene_id'],row['gene_omim_id'],row['gene_symbol'])
+                )
+        return row
+
+    def process(self, inputjs):
+        outputjs = {}
+        outputjs = inputjs
+        outputjs['processing']=['python phenomize_jsons.py']
+
+        bq = self.get_boqa(inputjs)
+        bq_df = pandas.DataFrame({'gene_id':list(bq.keys()),'boqa_score':list(bq.values())})
+        pheno = self.get_pheno(inputjs)
+        pheno_df = pandas.DataFrame({'gene_id':list(pheno.keys()),'pheno_score':list(pheno.values())})
+
+        scores = bq_df.merge(pheno_df, how='outer')
+        entries = pandas.DataFrame(inputjs['geneList'])
+        new_data = entries.merge(scores, left_on='gene_id', right_on='gene_id',how='outer')
+        # we still need omim id and gene symbol for all entries
+        new_data = new_data.apply(self.fill_missing,axis=1)
+
+        new_dicts = new_data.to_dict('records')
+
+        outputjs['geneList'] = new_dicts
+        return outputjs
+
+    def get_pheno(self, inputjs):
+        hpo_ids = ",".join(inputjs['features'])
+        if hpo_ids == '':
+            return {}
+        try:
+            hpo_df = self.phenomizer.request_phenomize(hpo_ids)
+        except:
+            logging.warning("{} generated request error".format(hpo_ids))
+            return {}
+        hpo_df['value'] = 1 - hpo_df['value']
+        score_dict = {}
+        for i,h in hpo_df.iterrows():
+            if pandas.isna(h['gene-symbol']):
+                continue
+            gene_ids = [ x.strip() for x in h['gene-id'].split(',') ]
+            genes = [ x.strip() for x in h['gene-symbol'].split(',') ]
+            assert len(gene_ids) == len(genes) ,'{} gene ids and {} genes'.format(gene_ids,genes)
+            ## unnecessary as long as we assume that all genes have ids
+            # genes = [ RE_GENE_SYMBOL.match(x)
+            #         for x in genes if RE_GENE_SYMBOL.match(x) is not None ]
+            for g in gene_ids:
+                if g not in score_dict:
+                    score_dict[g] = h['value']
+                else:
+                    score_dict[g] = max(h['value'],score_dict[g])
+
+        return score_dict
+
+    def get_boqa(self, inputjs):
+        hpo_ids = ",".join(inputjs['features'])
+        if hpo_ids == '':
+            return {}
+        try:
+            boqa_df = self.phenomizer.request_boqa(hpo_ids)
+        except:
+            logging.warning("{} generated boqa request error".format(hpo_ids))
+        score_dict = {}
+        for i,h in boqa_df.iterrows():
+            if pandas.isna(h['disease-id']):
+                continue
+            if 'OMIM' not in h['disease-id']:
+                continue
+            mim = h['disease-id'].split(':')[2]
+            mm_genes = self.get_morbidmap(mim)
+            if mm_genes.empty:
+                logging.warning('OMIM {} not contained in morbidmap.'.format(mim))
+                continue
+            if mm_genes.shape[0] > 1:
+                mm_genes = [ y.split(',') for y in mm_genes['gene_symbol'] ]
+                mm_genes = [ x.strip() for y in mm_genes for x in y ]
+            else:
+                mm_genes = mm_genes['gene_symbol']
+                mm_genes = mm_genes.iloc[0]
+                mm_genes = [ x.strip() for x in mm_genes.split(',') ]
+            gene_ids = [ self.get_omim_with_name(x)
+                for x in mm_genes ]
+            gene_ids = [ x['entrez_id'].iloc[0] for x in gene_ids if not x.empty ]
+            for gi in gene_ids:
+                if gi not in score_dict:
+                    score_dict[gi] = h['p']
+                else:
+                    score_dict[gi] = max(h['p'],score_dict[gi])
+        return score_dict
 
 
 
+class JsonProcessor:
+    '''Generator class to serve json files from the specified folder and handle saving of edited objects back as jsons.
+    '''
+
+    def __init__(self, inputdir, outputdir):
+        self._cache = {}
+        self.inputdir = inputdir.rstrip('/\\')
+        self.inputindex = 0
+        self.outputdir = outputdir.rstrip('/\\')
+
+        if not os.path.exists(self.outputdir):
+            os.makedirs(self.outputdir)
+
+        self.filenames = os.listdir(self.inputdir)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.inputindex < len(self.filenames) - 1:
+            cur, self.inputindex = self.inputindex, self.inputindex + 1
+            return self.load(self.filenames[cur])
+        else:
+            raise StopIteration()
+
+    def load(self, fname):
+        fobj = json.load(open(os.path.join(self.inputdir,fname), 'r'))
+        return fname, fobj
+
+    def save(self, filename, obj):
+        filepath = os.path.join(self.outputdir, filename)
+        with open(filepath, 'w') as f:
+            json.dump(obj, f)
 
 
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('inputdir')
+    parser.add_argument('outputdir')
+    parser.add_argument('--configfile','-c', type=str, default='config.ini')
+    args = parser.parse_args()
 
+    config = configparser.ConfigParser()
+    config.read(args.configfile)
+    phen_config = config['phenomization']
 
+    omim_args = {'key':phen_config['OMIM_Key'],'cached':phen_config['OMIM_Cached']}
+    phenom_args = {'url':phen_config['Phenomizer_Url']
+            ,'user':phen_config['Phenomizer_User']
+            ,'password':phen_config['Phenomizer_Password']}
 
+    annot = Annotator(pheno_args=phenom_args,omim_args=omim_args)
 
-##### command-line input ####
+    files = JsonProcessor(args.inputdir, args.outputdir)
 
-# CLI-Options
-morbidmap = ''
-mimfile = ''
-phenomizerconfig = ''
-outputfolder = ''
-inputfile = ''
-outputfile = ''
-
-argv = sys.argv[1:]
-
-try:
-	opts, args = getopt.getopt(argv,"h::",["help","mimfile=","morbidmap=","phenomizerconfig=","inputfile=","outputfile="])
-except getopt.GetoptError as e:
-    print(e)
-    print("phenomize_jsons.py --mimfile <mim2gene.txt> --morbidmap <morbidmap.txt> --phenomizerconfig <protected/phenomizer_server.json> --inputfile <input.json> --outputfile <output.json>")
-    sys.exit(2)
-
-for opt, arg in opts:
-    if opt in ("-h", "--help"):
-        print("phenomize_jsons.py --mimfile <mim2gene.txt> --morbidmap <morbidmap.txt> --phenomizerconfig <protected/phenomizer_server.json> --inputfile <input.json> --outputfile <output.json>")
-        sys.exit(1)
-    elif opt in ("--morbidmap"):
-        morbidmap = arg
-    elif opt in ("--mimfile"):
-        mimfile = arg
-    elif opt in ("--phenomizerconfig"):
-        phenomizerconfig = arg
-    elif opt in ("--outputfile"):
-    	outputfile = arg
-    elif opt in ("--inputfile"):
-    	inputfile = arg
-
-print 'Mimfile:',mimfile
-print 'Morbidmap file:',morbidmap
-print 'Phenomizerconfig file:',phenomizerconfig
-print 'Input file:',inputfile
-print 'Output file:',outputfile
-
-####
-# function to load mim and mobidmap file
-####
-
-
-
-def load_omim():
-	# gene_id -> {mimid: <id>, gene: <symbol>}
-	global mim
-	# omim_syndrom_id -> [<symbol1>, <symbol2>,...]
-	global omimID2gene
-	# symbol -> gene_id
-	global geneToGeneID
-
-	# init maps
-	geneToGeneID={}
-	mim={}
-	omimID2gene={}
-
-	#load morbidmap and set omimID2gene
-	omim_sydrom_id_pattern = re.compile(".+, (\d+) \(\d+\)")
-	for line in open(morbidmap):
-		if line.startswith("#") or line.startswith("{"): # skip headers or sucessibility
-			continue
-		fields=line[:-1].split('\t')
-
-		#if len(fields)>1:
-		search_result = omim_sydrom_id_pattern.findall(fields[0])
-		if len(search_result) > 0:
-			omim_syndrom_id = int(search_result[0])
-			genes=fields[1].split(', ')
-			#print(ID, genes)
-			if omim_syndrom_id in omimID2gene:
-			    for gene in genes:
-			        omimID2gene[omim_syndrom_id].append(gene)
-			if omim_syndrom_id not in omimID2gene:
-			    omimID2gene[omim_syndrom_id]=genes
-
-	# load mimfile and set mim and geneToGeneID
-	for line in open(mimfile):
-		if line.startswith("#"): # skip headers
-			continue
-		fields=line[:-1].split('\t')
-		entry = fields[1]
-		if ((entry == "gene") & (fields[2] != "")):
-			mimid=fields[0]
-			gene=fields[3]
-			gene_id=int(fields[2])
-			mim[gene_id]={"mimid": mimid,"gene": gene}
-			geneToGeneID[gene] = gene_id
-
-
-def gethpoIDs(data):
-	return data['features']
-
-###################
-# annotate phenomizer
-###################
-
-def annotate_phenomizer(data, url_prefix, url_suffix):   #load omim first
-
-
-	data['processing']=['python phenomize_jsons.py']
-
-	#### Get phenomizer
-	gene_pattern = re.compile("(.+) \((\d+)\)")
-	scores={}
-	url_hpos =','.join(gethpoIDs(data))
-	link=url_prefix + url_hpos + url_suffix
-	print(link)
-
-	# recieve test
-	content = requests.get(link).text
-	lines=content.split('\n')
-	for line in lines:
-		fields=line.split('\t')
-		if len(fields)>3:
-			phenoscore= 1-float(fields[0])
-			genes=fields[4]
-			if len(genes)>1:
-			    genes=genes.split(', ')
-			    for geneterm in genes:
-					gene_id = int(gene_pattern.findall(geneterm)[0][1])
-					gene = str(gene_pattern.findall(geneterm)[0][0])
-					if gene_id not in mim:
-						mim[gene_id]={"mimid": "?","gene": gene}
-					if gene not in geneToGeneID:
-						geneToGeneID[gene]=gene_id
-					if gene_id not in scores:
-						scores[gene_id] = phenoscore
-					else:
-						scores[gene_id]=max(scores[gene_id], phenoscore)
-
-	usedIDs=set()
-	for entry in data['geneList']:
-	#                if data['geneList'][j]['gene_symbol'] not in scores:
-	#                    data['geneList'][j]['pheno_score']=float(0)
-		gene_id = int(entry['gene_id'])
-		if gene_id in scores:
-			entry['pheno_score']=scores[gene_id]
-			usedIDs.add(gene_id)
-	for gene_id in scores:
-		if gene_id in usedIDs:
-			continue
-		entry={}
-		entry['gene_omim_id']=mim[gene_id]['mimid']
-		entry['gene_symbol']=mim[gene_id]['gene']
-		entry['pheno_score']=scores[gene_id]
-		entry['gene_id']=gene_id
-		data['geneList'].append(entry)
-
-	return data
-
-
-###################
-# annotate boqa
-###################
-def annotate_boqa(data, url_prefix, url_suffix):   #load omim first
-
-	##### geterate link
-	scores={}
-	usedIDs = set()
-	url_hpos = ','.join(gethpoIDs(data));
-	link = url_prefix + url_hpos + url_suffix
-	print(link)
-
-	## get context from link
-	content = requests.get(link).text
-	lines=content.split('\n')
-	for line in lines:
-		fields=line.split('\t')
-		if len(fields)>2: # there could be lines with only 2 entries
-			boqascore= float(fields[0])
-
-			syndromDB = fields[2].split(":")[0]
-			if (syndromDB == "OMIM"): # skip orphanet
-				omim_syndrom_id = int(fields[2].split(":")[2])
-				if omim_syndrom_id in omimID2gene:
-					genes=omimID2gene[omim_syndrom_id]
-					for gene in genes:
-						if gene not in geneToGeneID:
-							print "cannot get gene_id for gene " + gene
-							continue
-						gene_id = geneToGeneID[gene]
-						if gene_id not in scores:
-							scores[gene_id] = boqascore
-						else:
-							scores[gene_id]=max(scores[gene_id], boqascore)
-	usedIDs=set()
-	for entry in data['geneList']:
-	#                if data['geneList'][j]['gene_symbol'] not in scores:
-	#                    data['geneList'][j]['pheno_score']=float(0)
-		gene_id = int(entry['gene_id'])
-		if gene_id in scores:
-			entry['boqa_score']=scores[gene_id]
-			usedIDs.add(gene_id)
-	for gene_id in scores:
-		if gene_id in usedIDs:
-			continue
-		entry={}
-		entry['gene_omim_id']=mim[gene_id]['mimid']
-		entry['gene_symbol']=mim[gene_id]['gene']
-		entry['boqa_score']=scores[gene_id]
-		entry['gene_id']=gene_id
-		data['geneList'].append(entry)
-
-	return data
-
-load_omim()
-
-## load config fille to login on phenomizer/boqa
-config = json.loads(open(phenomizerconfig).read())
-
-# load data to input
-with open(inputfile) as json_data:
-	data = json.load(json_data)
-
-data = annotate_phenomizer(data, config['phenomizer'], "&numres=100")
-data = annotate_boqa(data, config['boqa'], "&numres=100")
-
-#write data in pouput
-with open(outputfile, 'w') as f:
-	json.dump(data, f)
+    for filename, js in files:
+        annot.process(js)
+        files.save(filename, annot.process(js))
