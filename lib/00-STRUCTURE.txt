@@ -1,0 +1,14 @@
+# Library structure
+
+. base folder
+
+This directory contains utility functions which are used in other functions. If some function is to be used in multiple scripts/classes/steps of the pipeline, it should probably be put here.
+
+api folder
+
+Contains any connectors to external apis, such as entrez, mutalyzer or the phenomizer.
+
+model folder
+
+Contains classes containing models for the file structures we are working with. This includes variant information, case information and additional information gathered through additional processing.
+Any object containing information that is being mutated in the pipeline process should probably be here.

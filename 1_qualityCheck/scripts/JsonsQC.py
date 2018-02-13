@@ -49,7 +49,7 @@ errordict= ''
 mVCF= ''
 configfile= ''
 try:
-	opts, args = getopt.getopt(argv,"h::",["help","jsonsoriginal=","log=","genomefile=","debugfolder=","genefile=","jsoncurrated=","errordict=","config=", "vcf="])
+	opts, args = getopt.getopt(argv,"h::",["help","mappedjsons=","log=","genomefile=","debugfolder=","genefile=","jsoncurrated=","errordict=","config=", "vcf="])
 except getopt.GetoptError as e:
     print(e)
     print('JsonQC.py --jsonsoriginal --log ')
@@ -59,7 +59,7 @@ for opt, arg in opts:
     if opt in ("-h", "--help"):
         print('jsonToTable.py -i <input-folder> -o <output-file.tsv>')
         sys.exit(1)
-    elif opt in ("--jsonsoriginal"):
+    elif opt in ("--mappedjsons"):
         jsonsoriginal = arg
     elif opt in ("--log"):
         logfile = arg
@@ -87,7 +87,8 @@ print 'Errordict:',errordict
 print 'ConfigFile:',configfile
 print 'Multi-VCF:',mVCF
 
-
+if not os.path.exists(debugfolder):
+    os.makedirs(debugfolder)
 # # Read genome sequence using pygr.
 genome = SequenceFileDB(genomefile)
 #
@@ -146,20 +147,21 @@ def checkjsons(step,folder):
     for file in os.listdir(folder):
         if file[-5:]=='.json':
             with open(folder+'/'+file) as json_data:
+                print file
                 d=json.load(json_data)
 
                 # Infos aus JSON extrahieren / get relevant information from JSON
                 try:
-                    submitterteam=d['submitter']['team']
+                    submitterteam=d['submitter']['user_team']
                 except KeyError:
                     print (file)
                     with open('nosubmitter.txt', 'a') as nosub:
                         nosub.write(file)
                         continue
                 if submitterteam==None:
-                    submitterteam=d['submitter']['name']
-                submitter=d['submitter']['name']
-                mail=d['submitter']['email']
+                    submitterteam=d['submitter']['user_name']
+                submitter=d['submitter']['user_name']
+                mail=d['submitter']['user_email']
                 vcf=d['vcf']
                 # Grundaufbau des Dictionaries mit Zaehlung der Cases und der VCFs / define dictionary
                 if submitterteam not in overview.keys():
@@ -198,7 +200,7 @@ def checkjsons(step,folder):
                 if max_gscore==0:
                     append_incorrect(file, submitterteam, submitter, 'kein Bild')
                  ## keine molekulare Diagnose / no molecular diagnosis
-                if d['ranks']=='Non selected':
+                if d['selected_syndromes']=='Non selected':
                     append_incorrect(file, submitterteam, submitter, 'keine Diagnose angegeben')
                  ## Mutationen falsch eingetragen / something wrong with hgvs
                  ### mehrere Mutationen in mehreren Genen durchgehen / more than one mutatuion
