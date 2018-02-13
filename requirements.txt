@@ -1,6 +1,5 @@
-# snakemake requirements
-snakemake
-ratelimiter
-
-#aws s3 download
+pandas
+requests
 boto3
+hgvs
+biopython

@@ -3,133 +3,20 @@ import requests
 import os
 import sys
 import re
+import io
 from argparse import ArgumentParser
-import requests
 import logging
 import configparser
 
 import pandas
 import numpy
-import io
 
 '''
 jSON Phenomization tools
 ---
-
+These functions add phenomization scores from Phenomizer and Boqa to the case information available.
+Phenomization and Boqa entries without genetic correlate will also be added back to the list of genetic candidates.
 '''
-
-RE_OMIM_PHEN = re.compile('.* (\d{6}) \((\d)\)')
-
-def retrieve_file(path, url, cached, names):
-    '''
-    Get file from local filesystem. If it doesnt exists or cached is false, save from remote url to the local path
-    and thereafter read from local filesystem.
-    '''
-    if not os.path.exists(path) or not cached:
-        r = requests.get(url)
-        with open(path, 'wb') as f:
-            for data in r.iter_content():
-                f.write(data)
-    return pandas.read_table(path, delimiter='\t', comment='#', names=names, dtype=str)
-
-
-def extract_omim(raw_omim):
-    '''Extract phenotypic MIM number from the phenotypic string.
-    '''
-    if pandas.isna(raw_omim):
-        return numpy.nan
-    match = RE_OMIM_PHEN.search(raw_omim)
-    if match is None:
-        return numpy.nan
-    return match.group(1)
-
-def get_omim_files(mimdir='', api_key='', use_cached=True):
-    '''
-    Download omim files from official website resources or get them locally if they already exist
-
-    Args:
-        mimdir: Directory where omim files are saved and retrieved, defaults to the current working directory
-        api_key: OMIM API key retrieve it from the official omim website
-        use_cached: Whether already downloaded files are used, if False omim files are always downloaded
-
-    Returns:
-        Data stucture with mim2gene and morbidmap
-    '''
-    mim2gene = retrieve_file('mim2gene.txt'
-            ,'https://omim.org/static/omim/data/mim2gene.txt'
-            ,use_cached
-            ,['mim_number','mim_entry_type','entrez_id', 'gene_symbol','ensembl'])
-
-    morbidmap_url = 'https://data.omim.org/downloads/{}/morbidmap.txt'.format(api_key)
-    morbidmap = retrieve_file('morbidmap.txt', morbidmap_url, use_cached
-            ,['phenotype', 'gene_symbol', 'mim_number', 'cyto_location'])
-
-    morbidmap['phen_mim_number'] = morbidmap['phenotype'].apply(extract_omim)
-
-    return {
-            'mim2gene' : mim2gene
-            ,'morbidmap' : morbidmap
-            }
-
-class PhenomizerService(requests.Session):
-    '''Handling of interop with Phenomizer service, which provides the pheno and boqa scores used in the process.
-    '''
-
-    phen_names = ['value','score','disease-id','disease-name','gene-symbol','gene-id']
-    boqa_names = ['p', 'nothing', 'disease-id','disease-name']
-    def __init__(self, url, user, password):
-        '''
-        Create a new phenomizer service instance.
-
-        Params:
-            url: Url of phenomizer service
-        '''
-        super().__init__()
-        self.url = url
-        self.user = user
-        self.password = password
-        retry = requests.packages.urllib3.util.retry.Retry(
-                total = 3
-                ,read = 3
-                ,connect = 3
-                ,backoff_factor = 0.3
-                , status_forcelist=(500,)
-                )
-        adapter = requests.adapters.HTTPAdapter(max_retries = retry)
-
-        self.mount('http://', adapter)
-        self.mount('https://', adapter)
-
-    def get_df(self, url, params, names):
-        r = self.get(url, params=params)
-        r.raise_for_status()
-        rstring = "\n".join([ s for s in r.text.split('\n') if not s.startswith('#') or s == '' ])
-        rawdata = io.StringIO(rstring)
-        df = pandas.read_table(rawdata, sep='\t', index_col=None, header=None, names=names)
-        return df
-
-    def request_phenomize(self, hpo_ids):
-        params = {
-                'mobilequery' : 'true'
-                ,'username' : self.user
-                ,'password' : self.password
-                ,'terms' : hpo_ids
-                ,'numres' : 100
-                }
-        df = self.get_df(self.url, params=params,names=self.phen_names)
-        return df
-
-    def request_boqa(self, hpo_ids):
-        params = {
-                'username' : self.user
-                ,'password' : self.password
-                ,'mobilequery' : 'true'
-                ,'doboqa' : 'true'
-                ,'terms' : hpo_ids
-                ,'numres' : 100
-                }
-        df = self.get_df(self.url, params=params,names=self.boqa_names)
-        return df
 
 class Annotator:
     '''Add phenomization and boqa scores to the geneList present in the json file.
@@ -139,18 +26,6 @@ class Annotator:
         self.phenomizer = PhenomizerService(**pheno_args)
         self.omim = get_omim_files(api_key=omim_args['key'])
 
-
-    def get_morbidmap(self, omim_id):
-        mm_entry = self.omim['morbidmap'].loc[self.omim['morbidmap']['phen_mim_number'] == omim_id]
-        return mm_entry
-
-    def get_omim_with_id(self, gene_id):
-        omim_entry = self.omim['mim2gene'].loc[self.omim['mim2gene']['entrez_id'].astype('float32') == float(gene_id)]
-        return omim_entry
-
-    def get_omim_with_name(self, gene_name):
-        omim_entry = self.omim['mim2gene'].loc[self.omim['mim2gene']['gene_symbol'] == gene_name]
-        return omim_entry
 
     def fill_missing(self, row):
         omim = self.get_omim_with_id(row['gene_id'])
