@@ -5,7 +5,7 @@ channels:
  - r
  - bioconda
 dependencies:
- - snakemake
+ - snakemake=4.2.0
  - numpy
  - scikit-learn
  - matplotlib

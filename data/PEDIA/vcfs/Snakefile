@@ -9,6 +9,16 @@ rule all:
 		expand("annotated_vcfs/{sample}_annotated.vcf.gz", sample=SAMPLES),
 		expand("annotated_vcfs/{sample}_annotated.vcf.gz.tbi", sample=SAMPLES)
 
+rule decompress:
+	input:
+		"original/{sample}.vcf.gz"
+	output:
+		"original/{sample}.vcf"
+	shell:
+		"""
+		bgzip -d -c {input} | awk '{{gsub(/chr/,""); print}}' > {output}
+		"""
+
 rule sort:
 	input:
 		"original/{sample}.vcf"
@@ -17,6 +27,7 @@ rule sort:
 	shell:
 		"""
 		(cat '{input}' | egrep "^#"; cat '{input}' | egrep -v "^#" | sort -k1,1 -k2,2n) | bgzip -c > '{output}'
+		rm -f {input}
 		"""
 
 rule index_sorted:
@@ -31,15 +42,16 @@ rule annotate:
 	input:
 		vcf="sorted/{sample}.vcf.gz",
 		db="../../jannovar/data/hg19_refseq.ser",
-		exac="../../populationDBs/ExAC.r0.3.sites.vep.vcf.gz",
+		exac="../../populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../../populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
+		dbsnp="../../dbSNPs/b147/All_20160601.vcf.gz",
 		caddsnv="../../pathogenicityScores/whole_genome_SNVs.tsv.gz",
 		caddindel="../../pathogenicityScores/InDels.tsv.gz",
-		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
+		ref="../../referenceGenome/data/human_g1k_v37.fasta"
 	output:
 		"annotated_vcfs/{sample}_annotated.vcf.gz"
 	shell:
-		"java -jar ../../jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}'"
+	    "java -jar ../../jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --dbsnp-vcf {input.dbsnp} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}'"
 
 rule index_annotated:
 	input:
@@ -47,5 +59,24 @@ rule index_annotated:
 	output:
 		"annotated_vcfs/{sample}_annotated.vcf.gz.tbi"
 	shell:
-		"module load htslib/1.3.1 && "
 		"tabix '{input}'"
+
+rule filter:
+	input:
+		"annotated_vcfs/{sample}_annotated.vcf.gz"
+	output:
+		"filtered_vcfs/{sample}_annotated.vcf.gz"
+	shell:
+		"""
+		bcftools view -e 'INFO/EXAC_HOM_ALL>2' {input} | sed -e 's/nan/NaN/g' | bgzip -c > {output}
+		"""
+
+rule index_filter:
+	input:
+		"filtered_vcfs/{sample}_annotated.vcf.gz"
+	output:
+		"filtered_vcfs/{sample}_annotated.vcf.gz.tbi"
+	shell:
+		"""
+		tabix {input}
+		"""
