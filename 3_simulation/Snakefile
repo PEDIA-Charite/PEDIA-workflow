@@ -1,4 +1,12 @@
-configfile: "../data/PEDIA/jsons/config.yml"
+configfile: "../1_qualityCheck/config.yml"
+
+subworkflow phenomization_workflow: 
+	workdir: "../2_phenomization"
+	snakefile: "../2_phenomization/Snakefile"
+
+subworkflow vcfs_workflow: 
+	workdir: "../data/PEDIA/vcfs"
+	snakefile: "../data/PEDIA/vcfs/Snakefile"
 
 def allSamples(a,b):
 	samples = []
@@ -21,8 +29,6 @@ rule all:
 		"mutations/JsonsVCF_annotated.vcf.gz.tbi",
 		expand("vcf_simulation/{background}/{sample}.vcf.gz", sample=SAMPLES, background=BACKGROUNDS),
 		expand("json_simulation/{background}/CV/{sample}.json", sample=SAMPLES, background=BACKGROUNDS),
-		#expand("vcf_annotation/{sample}.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
-		#expand("vcf_annotation/{sample}.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
 		expand("vcf_annotation/{sample}.annotation.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
 		expand("vcf_annotation/{sample}.annotation.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
 		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
@@ -43,12 +49,12 @@ rule annotate:
 	input:
 		vcf="../data/PEDIA/mutations/variants.vcf.gz",
 		db="../data/jannovar/data/hg19_refseq.ser",
-		exac="../data/populationDBs/ExAC.r0.3.sites.vep.vcf.gz",
+		exac="../data/populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../data/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
 		kg="../data/populationDBs/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
 		caddsnv="../data/pathogenicityScores/whole_genome_SNVs.tsv.gz",
 		caddindel="../data/pathogenicityScores/InDels.tsv.gz",
-		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
+		ref="../data/referenceGenome/data/human_g1k_v37.fasta"
 	output:
 		"mutations/JsonsVCF_annotated.vcf.gz"
 	shell:
@@ -67,7 +73,6 @@ rule index:
 	output:
 		"mutations/JsonsVCF_annotated.vcf.gz.tbi"
 	shell:
-		"module load htslib/1.3.1 && "
 		"tabix '{input}'"
 
 
@@ -121,7 +126,7 @@ rule json:
 	input:
 		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
 		omim="OMIM/genemap2.txt",
-		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		json=phenomization_workflow("../data/PEDIA/jsons/phenomized/{sample}.json"),
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"json_simulation/{background}/CV/{sample}.json"
@@ -132,86 +137,37 @@ rule json:
 ################### REAL VCFS################################
 
 def getRealVCF(wc):
-	configfile: "../data/PEDIA/jsons/phenomized/%s.json" % wc.sample
+	configfile: "../1_qualityCheck/json/json_vcf/%s.json" % wc.sample
 	filename = config['vcf']['original_filename'].replace(" ", "_").replace("(", "").replace(")", "",1).replace(")", "_").replace(",", "").replace("..", ".").replace("..", ".").replace(".", "_")
-	return ("../data/PEDIA/vcfs/annotated_vcfs/%s_annotated.vcf.gz" % filename[0:-7])
+	vcf_index = "filtered_vcfs/%s_annotated.vcf.gz.tbi" % filename[0:-7]
+	vcf = vcf_index[0:-4] 
+	return [vcfs_workflow(vcf), vcfs_workflow(vcf_index)]
 
 rule copyReal:
 	input:
 		vcf=getRealVCF,
-		json="../data/PEDIA/jsons/phenomized/{sample}.json"
+		#json="../data/PEDIA/jsons/phenomized/{sample}.json"
+		json=phenomization_workflow("../data/PEDIA/jsons/phenomized/{sample}.json"),
 	output:
 		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
 		index="vcf_annotation/{sample}.annotation.vcf.gz.tbi"
 	shell:
 		"""
-		cp {input.vcf} {output.vcf};
-		cp {input.index} {output.index}
+		cp {input.vcf[0]} {output.vcf};
+		cp {input.vcf[1]} {output.index}
 		"""
-'''
-rule bgZipRealVCF:
-	input:
-		vcf=getRealVCF,
-		json="../data/PEDIA/jsons/phenomized/{sample}.json"
-	output:
-		vcf="vcf_annotation/{sample}.vcf.gz",
-		index="vcf_annotation/{sample}.vcf.gz.tbi"
-	shell:
-		"""
-		module load vcflib/v1.0.0-rc1;
-		module load htslib/1.3.1;
-		cat {input.vcf} | vcfstreamsort |  bgzip -c  > {output.vcf};
-		tabix {output.vcf}
-		"""
-
-
-rule annotateRealVCF:
-	input:
-		vcf="vcf_annotation/{sample}.vcf.gz",
-		index="vcf_annotation/{sample}.vcf.gz.tbi",
-		db="jannovar/data/hg19_refseq.ser",
-		exac="../data/ExAC.r0.3.sites.vep.vcf.gz",
-		uk="../data/UK10K_COHORT.20160215.sites.vcf.gz",
-		kg="../../data/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
-		caddsnv="../data/whole_genome_SNVs.tsv.gz",
-		caddindel="../data/InDels.tsv.gz",
-		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
-	output:
-		"vcf_annotation/{sample}.annotation.vcf.gz"
-	shell:
-		"""
-		java -jar jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db}
-		--exac-vcf {input.exac} --uk10k-vcf {input.uk} --1kg-vcf {input.kg}
-		--tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_
-		--ref-fasta {input.ref}
-		-o '{output}' -i '{input.vcf}'
-		"""
-
-
-rule indexRealVCF:
-	input:
-		"vcf_annotation/{sample}.annotation.vcf.gz"
-	output:
-		"vcf_annotation/{sample}.annotation.vcf.gz.tbi"
-	shell:
-		"""
-		module load htslib/1.3.1;
-		tabix '{input}'
-		"""
-
-'''
 
 rule jsonRealTestData:
 	input:
 		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
 		omim="OMIM/genemap2.txt",
-		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		json=phenomization_workflow("../data/PEDIA/jsons/phenomized/{sample}.json"),
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"json_simulation/real/test/{sample}.json"
 	shell:
 		"""
-		java -jar -Xmx50g {input.simulator} extendjson \
+		java -jar -Xmx20g {input.simulator} extendjson \
 		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
 		"""
 
