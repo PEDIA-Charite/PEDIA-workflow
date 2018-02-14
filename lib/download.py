@@ -18,7 +18,11 @@ saved to environment variables AWS_ACCESS_KEY_ID and AWS_ACCESS_SECRET_KEY, when
 function as a program or directly to the backup_s3_folder function.
 '''
 
-def backup_s3_folder(aws_access_key, aws_secret_key, download_location):
+def backup_s3_folder(aws_access_key='', aws_secret_key='', download_location='', config=None):
+    if config:
+        aws_access_key = config.aws['access_key']
+        aws_secret_key = config.aws['secret_key']
+        download_location = config.aws['download_location']
     # use Amazon S3 resource
     s3 = boto3.resource('s3', aws_access_key_id=aws_access_key,
     aws_secret_access_key=aws_secret_key)

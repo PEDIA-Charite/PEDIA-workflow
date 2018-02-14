@@ -122,10 +122,19 @@ class Omim:
 
     def mim_pheno_to_gene(self, mim_pheno):
         if str(mim_pheno) in self.phen_to_mim:
-            r = []
+            r = {}
             for mim_gene ,gene_symbol in self.phen_to_mim[str(mim_pheno)]:
                 entrez_id = self.mim_gene_to_entrez_id(mim_gene)
-                r.append({'gene_id':entrez_id, 'gene_symbol' : gene_symbol, 'gene_omim_id' : mim_gene })
+                r[mim_gene] = {'gene_id':entrez_id, 'gene_symbol' : gene_symbol, 'gene_omim_id' : mim_gene }
             return r
         else:
-            return []
+            return {}
+
+    def syndrome_name_to_omim(self, name, omim_list=[]):
+        '''Search for a syndrome name in morbidmap.
+        A given omim list can be used to further narrow down the correct answer.
+        '''
+        # TODO function not complete
+        query = name
+        q = self.morbidmap.loc[self.morbidmap['phenotype'].str.contains(query, case=False)]
+        print(q)

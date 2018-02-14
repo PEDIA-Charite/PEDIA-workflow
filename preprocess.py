@@ -13,6 +13,7 @@ import hgvs
 from lib import download
 from lib.api.phenomizer import PhenomizerService
 from lib.api.omim import Omim
+from lib.api.face2gene import Face2Gene
 
 from lib.model.json import NewJson, OldJson
 from lib.model.case import Case
@@ -23,22 +24,16 @@ def main():
     logging.basicConfig(filename=logfile_path,level=logging.WARNING)
     config = ConfigManager()
 
+    f2g = Face2Gene(config=config)
     ## Load configuration and initialize API bindings
-    aws_param = config.preprocess['aws_access_key', 'aws_secret_key', 'download_location']
-    omim_param = config.phenomization['OMIM_Key','OMIM_Dir','OMIM_Cached']
-    pheno_args = {
-            'url':config.phenomization['Phenomizer_Url'],
-            'user':config.phenomization['Phenomizer_User'],
-            'password':config.phenomization['Phenomizer_Password']
-            }
-    omim = Omim(*omim_param.values())
-    annot = PhenomizerService(**pheno_args)
+    omim = Omim(config=config)
+    phen = PhenomizerService(config=config)
 
     ### Download new files from AWS Bucket
-    # download.backup_s3_folder(**aws_param)
+    # download.backup_s3_folder(config=config)
 
     ### Initial Quality check of new json
-    unprocessed_jsons = os.path.join(aws_param['download_location'],'cases')
+    unprocessed_jsons = os.path.join(config.aws['download_location'],'cases')
     json_files = [os.path.join(unprocessed_jsons,x) for x in os.listdir(unprocessed_jsons) if os.path.splitext(x)[1] == '.json']
 
     # corrected is a directory which can contain manually edited case jsons
@@ -50,13 +45,14 @@ def main():
     print('Unfiltered', len(new_json_objs))
 
     filtered_new = [ j for j in new_json_objs if j.check()[0] ]
+
     print('Filtered rough criteria', len(filtered_new))
 
     case_objs = [ Case(j) for j in filtered_new ]
     case_objs = [ c for c in case_objs if c.variants ]
     print('Cases with created hgvs objects', len(case_objs))
 
-    [ e.syndromes_to_genes(omim) for e in case_objs ]
+    [ c.phenomize(phen) for c in case_objs ]
 
     pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
 

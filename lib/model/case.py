@@ -1,5 +1,5 @@
 from lib.model.json import OldJson, NewJson
-from lib.model.syndrome import syndromes_to_genes
+from lib.model.syndrome import Gene, Syndrome
 
 '''
 Case model created from json files.
@@ -10,7 +10,7 @@ class Case:
     Exposes the following properties:
     case_id - Unique identifier for the case in Face2Gene
     variants - list of hgvs objects describing valid hgvs variants
-    detected_syndromes - list of syndrome objects
+    analyzed_syndromes - dictionary of syndromes using omim id as key
     features - list of hpo terms
     diagnosis - list of syndromes selected as diagnosis
     submitter - submitter information containing fields for email, name, team
@@ -31,16 +31,27 @@ class Case:
     def _from_new_json(self, data):
         self.case_id = data.get_case_id()
         self.variants = data.get_variants()
-        self.detected_syndromes = data.get_syndrome_suggestions()
+        self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
         self.features = data.get_features()
-        self.diagnosis = data.get_diagnosis()
         self.submitter = data.get_submitter()
         self.vcf = data.get_vcf()
 
     def syndromes_to_genes(self, omim):
-        gene_list = syndromes_to_genes(self.detected_syndromes, omim)
-        self.genes = gene_list
-        return gene_list
+        return self.syndromes.to_genes(omim)
+
+    def phenomize(self, pheno):
+        '''Add phenomization information to genes from boqa and phenomizer.
+        Args:
+            omim - Omim object to handle id translation.
+            pheno - PhenomizerService to handle API calls for phenomizer and boqa.
+        '''
+        pheno_boqa = pheno.disease_boqa_phenomize(self.features)
+        if pheno_boqa is None:
+            return False
+        pheno_boqa.index = pheno_boqa.index.astype(int)
+        r = self.syndromes.merge(pheno_boqa, left_on='omim_id', how='outer', right_index=True)
+        self.syndromes = r
+        return True
 
     def check(self):
         '''Check whether Case fulfills all provided criteria.

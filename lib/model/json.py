@@ -3,9 +3,12 @@ import functools
 import os
 from pprint import pprint
 
+import pandas
+
+from lib.dataframe import explode_df_column
 from lib.utils import optional_descent, checkHGVS
 from lib.model.hgvs import HGVSModel
-from lib.model.syndrome import Syndrome
+from lib.model.syndrome import Syndrome, SyndromeList, Gene
 from lib.constants import CHROMOSOMAL_TESTS, POSITIVE_RESULTS
 
 '''
@@ -18,6 +21,21 @@ Class overview:
     OldJson - Old json format for compatibility concerns
     NewJson - Current json format
 '''
+
+def reduce_omim(syndrome_dict, f2g):
+    '''Check if syndrome dict contains a list of omim ids. If yes, query Face2Gene Library to see if we can pinpoint a certain omim id.
+    '''
+    if isinstance(syndrome_dict['omim_id'], list):
+        r = f2g.search_syndrome(syndrome_dict['syndrome_name'], syndrome_dict['omim_id'])
+        if r:
+            print(r)
+            if int(r) in syndrome_dict['omim_id']:
+                syndrome_dict['omim_id'] = r
+            else:
+                # raise an error if the search result is likely false
+                if r:
+                    raise KeyError('Search for {} returned not previously included omim id {}'.format(syndrome_dict['syndrome_name'], r))
+    return syndrome_dict
 
 class JsonFile:
     '''Base json class providing file system operations and basic schema operations.
@@ -158,102 +176,7 @@ class OldJson(JsonFile):
 
 
     def __init__(self, instdata, omim=None):
-        # mapping defines how another json can be translated into the current format
-        self.mapping_from_new = {
-            'submitter' : {
-                'team' : lambda x: x['submitter']['user_team'],
-                'name' : lambda x: x['submitter']['user_name']
-                },
-            # get the key or set the default noVCF
-            'vcf' : lambda x: x.get('vcf','noVCF'),
-            'geneList' : self._syndrome_to_geneList,
-            'features' : lambda x: x['features'],
-            'ranks' : lambda x: x['selected_syndromes'],
-            'genomicData' : self._genomic_entries_to_genomicData
-            }
-        self._omim = omim
-
-        if isinstance(instdata, str):
-            super().__init__(instdata)
-        else:
-            super().__init__()
-        if isinstance(instdata, NewJson):
-            assert omim is not None, 'OMIM object needed for mapping from new json'
-            self.map_from_new(instdata)
-
-    def map_from_new(self, newJson):
-        mapped = self._map(newJson._rawjs, self.mapping_from_new)
-        self._rawjs = mapped
-        return mapped
-
-    def _map(self, data, mapping):
-        '''Recursively traverse the mapping, but statically reference the originally data.'''
-        if isinstance(mapping, dict):
-            return {k:self._map(data, v) for k,v in mapping.items()}
-        # check that we can call the mapping as a function if it is not another level in our mapping dict
-        elif hasattr(mapping, '__call__'):
-            return mapping(data)
-        else:
-            raise TypeError
-
-    def _syndrome_to_geneList(self, data):
-        '''Convert a syndrome entry to older geneList format.
-        These functions should never need to be used directly.
-        '''
-        geneList = []
-        for s in data['selected_syndromes']:
-            # one liner creating omim list, this works via short circuiting in python
-            omim_list = not isinstance(s['omim_id'],list) and [s['omim_id']] or s['omim_id']
-            omim_genes  = [ self._omim.mim_pheno_to_mim_gene(o) for o in omim_list ]
-            omim_genes = set(filter(lambda x: x is not None, omim_genes))
-            for go in omim_genes:
-                g = {
-                        'syndrome_name' : s['syndrome_name'],
-                        'combined_score' : s.get('combined_score', None),
-                        'feature_score' : s.get('feature_score', None),
-                        'gestalt_score' : s.get('gestalt_score', None),
-                        'has_mask' : s.get('has_mask', None),
-                        'gene_id' : self._omim.mim_gene_to_entrez_id(go),
-                        'gene_symbol' : self._omim.mim_gene_to_symbol(go),
-                        'gene_omim_id' : go
-                        }
-                geneList.append(g)
-        return geneList
-
-    def _genomic_entries_to_genomicData(self, data):
-        '''Convert genomic entries to genomicData format.
-        '''
-
-        entry_list = []
-        for entry in data['genomic_entries']:
-            if entry['test_type'] is None:
-                print('Entry is empty.')
-                print(entry)
-                continue
-            hgvs = HGVSModel(entry)
-            testInformation = {
-                    'Molecular Test' : entry.get('test_type',''),
-                    'Notation' : optional_descent(entry, ('variants','variant_information')),
-                    'Genotype' : optional_descent(entry, ('variants','zygosity')),
-                    'Mutation Type' : optional_descent(entry, ('variants', 'notes')),
-                    'Gene Name' : 'gene' in entry and entry['gene'].get('gene_symbol', 'gene_omim_id' in entry['gene'] and 'OMIM-ID:{}'.format(entry['gene']['gene_omim_id']) or '') or ''
-                    }
-
-            mutations = {
-                    'additional info' : optional_descent(entry, ('variants','notes')),
-                    'Build' : optional_descent(entry, ('variants','mutation','chromosome','build')),
-                    'result' : entry.get('result', ''),
-                    'Inheritance Mode' : optional_descent(entry, ('variants','notes')),
-                    'HGVS-code' : hgvs.code,
-                    'alternative HGVS-code' : hgvs.alt_code
-                    }
-
-            r = {
-                    'Test Information' : testInformation,
-                    'Mutations' : mutations
-                    }
-            entry_list.append(r)
-        return entry_list
+        pass
 
 class NewJson(JsonFile):
     '''Implement the new Face2Gene schema as loaded from AWS.
@@ -326,16 +249,33 @@ class NewJson(JsonFile):
         variants = [ v for m in models if m.variants for v in m.variants ]
         return variants
 
-    def get_syndrome_suggestions(self):
-        syndromes = [Syndrome(**s) for s in self._rawjs['detected_syndromes'] if s]
-        return syndromes
+    def get_syndrome_suggestions_and_diagnosis(self):
+        # search for omim ids in the face2gene library if they are ambiguous
+        # it is quite slow and unclear how accurate it is. so we will leave it out first
+        # cleaned_syndromes = [ reduce_omim(s, f2g) for s in self._rawjs['detected_syndromes'] ]
+
+        syn = pandas.DataFrame.from_dict(self._rawjs['detected_syndromes'])
+        syn = syn.drop(['has_mask'], axis=1)
+        syn['omim_id'] = syn['omim_id'].apply(lambda x: not isinstance(x, list) and [x] or x)
+        syn = explode_df_column(syn, 'omim_id')
+        syn['omim_id'] = syn['omim_id'].astype(int)
+
+        # add diagnosis
+        selected = pandas.DataFrame.from_dict(self._rawjs['selected_syndromes'])
+        selected = selected.drop(['has_mask'], axis=1)
+        selected['omim_id'] = selected['omim_id'].apply(lambda x: not isinstance(x, list) and [x] or x)
+        selected = explode_df_column(selected, 'omim_id')
+        selected['confirmed'] = True
+
+        syn = syn.merge(selected, on=['omim_id', 'syndrome_name'], how='outer')
+        syn = syn.fillna({'confirmed':False})
+        syn = syn.reset_index(drop=True)
+
+        return syn
+
 
     def get_features(self):
         return self._rawjs['features']
-
-    def get_diagnosis(self):
-        diagnosis = [Syndrome(**s,confirmed=True) for s in self._rawjs['selected_syndromes'] if s]
-        return diagnosis
 
     def get_submitter(self):
         submitter = {
