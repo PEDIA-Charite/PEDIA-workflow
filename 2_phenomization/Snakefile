@@ -15,7 +15,7 @@ SAMPLES = allSamples(SINGLE_SAMPLES, VCF_SAMPLES)
 
 rule all:
     input:
-        expand("out/{sample}.json", sample=SAMPLES)
+        expand("../data/PEDIA/jsons/phenomized/{sample}.json", sample=SAMPLES)
 
 rule phenomize:
     input:
@@ -24,7 +24,7 @@ rule phenomize:
         morbmap="data/morbidmap.txt",
         server="scripts/protected/phenomizer_server.json",
     output:
-        "out/{sample}.json"
+        "../data/PEDIA/jsons/phenomized/{sample}.json"
     shell:
         """
         python scripts/phenomize_jsons.py --mimfile {input.mim} --morbidmap {input.morbmap} --phenomizerconfig {input.server} --inputfile {input.json} --outputfile {output}
