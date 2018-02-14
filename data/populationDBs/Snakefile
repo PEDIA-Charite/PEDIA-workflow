@@ -5,8 +5,8 @@ rule all:
 	input:
 		"ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
 		"ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz.tbi",
-		"ExAC.r0.3.1.sites.vep.vcf.gz",
-		"ExAC.r0.3.1.sites.vep.vcf.gz.tbi"
+		"ExAC.r1.sites.vep.vcf.gz",
+		"ExAC.r1.sites.vep.vcf.gz.tbi"
 
 
 rule download1KG:
@@ -21,10 +21,10 @@ rule download1KG:
 
 rule downloadExAC:
 	output:
-		file="ExAC.r0.3.1.sites.vep.vcf.gz",
-		index="ExAC.r0.3.1.sites.vep.vcf.gz.tbi"
+		file="ExAC.r1.sites.vep.vcf.gz",
+		index="ExAC.r1.sites.vep.vcf.gz.tbi"
 	shell:
 		"""
-		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release0.3.1/{output.file};
-		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release0.3.1/{output.index};
+		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/{output.file};
+		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/{output.index};
 		"""
