@@ -4,6 +4,7 @@ import logging
 
 import pandas
 import numpy
+import requests
 
 RE_OMIM_PHEN = re.compile('.* (\d{6}) \((\d)\)')
 
