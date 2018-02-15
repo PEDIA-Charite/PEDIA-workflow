@@ -29,7 +29,7 @@ def backup_s3_folder(aws_access_key='', aws_secret_key='', download_location='',
 
     if not os.path.exists(download_location):
         logging.info("Making download directory")
-        os.mkdir(download_location)
+        os.makedirs(download_location)
 
     bucket = s3.Bucket(AWS_BUCKET_NAME)
 
@@ -39,6 +39,7 @@ def backup_s3_folder(aws_access_key='', aws_secret_key='', download_location='',
         path, filename = os.path.split(key.key)
         filename = filename.strip('/')
         path = path.strip('/')
+        print(filename)
         dlpath = os.path.join(download_location, path, filename)
         all_files = i
         if os.path.exists(dlpath):
@@ -51,7 +52,7 @@ def backup_s3_folder(aws_access_key='', aws_secret_key='', download_location='',
             bucket.download_file(key.key, dlpath)
             downloaded += 1
         except:
-            logging.error(e)
+            raise
     logging.info("S3 Stats: Downloaded {} of {} files.".format(downloaded, all_files))
 
 if __name__ == '__main__':
