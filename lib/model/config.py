@@ -34,8 +34,12 @@ class ConfigManager:
         self._data = ConfigParser()
         self._data.read(conf_file)
 
-    def get(self, section: str, key: Union[str, list, tuple]) \
-            -> Union[dict, str, int, bool]:
+    def get(self, section: str, key: Union[str, [str], (str,)]) \
+            -> Union[{str: str}, str, int, bool]:
+        '''Get a single parameter or a list of parameters by name.
+        If an iterable is given a dictionary containing key value pairs will be
+        returned.
+        '''
         if isinstance(key, tuple) or isinstance(key, list):
             return {k: self.get(section, k) for k in key}
         elif isinstance(key, str):
