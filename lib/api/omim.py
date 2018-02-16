@@ -14,7 +14,13 @@ import requests
 
 RE_OMIM_PHEN = re.compile('.* (\d{6}) \((\d)\)')
 
+
 class Omim:
+    '''
+    Download omim files from official website resources or get them locally
+    if they already exist
+    '''
+
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) \
         AppleWebKit/537.36 (KHTML, like Gecko) \
@@ -24,8 +30,7 @@ class Omim:
     def __init__(self, api_key: str='', mimdir: str='data',
                  use_cached: bool=True, config: 'ConfigManager'=None):
         '''
-        Download omim files from official website resources or get them locally
-        if they already exist
+        Omim API requires an API key for the download of the morbidmap.
 
         Args:
             mimdir: Directory where omim files are saved and retrieved,
@@ -76,14 +81,14 @@ class Omim:
     def _create_phen_to_mim(self):
         '''Create dictionary mapping phenotypic omim ids to list of gene ids.
         '''
-        phens = self.morbidmap.to_dict('records')
+        pheno_entries = self.morbidmap.to_dict('records')
         phen_to_mim = {}
-        for p in phens:
-            phen_mim = p['phen_mim_number']
+        for entry in pheno_entries:
+            phen_mim = entry['phen_mim_number']
             if phen_mim is None:
                 continue
             phen_mim = str(phen_mim)
-            entry = (p['mim_number'], p['gene_symbol'].split(', ')[0])
+            entry = (entry['mim_number'], entry['gene_symbol'].split(', ')[0])
             if phen_mim in phen_to_mim:
                 phen_to_mim[phen_mim].append(entry)
             else:
@@ -96,10 +101,11 @@ class Omim:
         local path and thereafter read from local filesystem.
         '''
         if not os.path.exists(path) or not self._use_cached:
-            r = requests.get(url, headers=self.headers)
-            with open(path, 'wb') as f:
-                for data in r.iter_content():
-                    f.write(data)
+            resp = requests.get(url, headers=self.headers)
+            # save the downloaded file to a disk file
+            with open(path, 'wb') as savedfile:
+                for data in resp.iter_content():
+                    savedfile.write(data)
         return pandas.read_table(
             path, delimiter='\t', comment='#', names=names, dtype=str)
 
@@ -129,49 +135,46 @@ class Omim:
 
     def mim_gene_to_entrez_id(self, mim_gene):
         try:
-            r = self.mim2gene.at[str(mim_gene), 'entrez_id']
+            entrez_id = self.mim2gene.at[str(mim_gene), 'entrez_id']
         except KeyError:
-            r = ''
-        return r
+            entrez_id = ''
+        return entrez_id
 
     def mim_gene_to_symbol(self, mim_gene):
-        r = self.mim2gene.at[str(mim_gene), 'gene_symbol']
-        return r
+        gene_symbol = self.mim2gene.at[str(mim_gene), 'gene_symbol']
+        return gene_symbol
 
     def entrez_id_to_mim_gene(self, entrez_id):
         try:
-            r = self.entrez2gene.at[str(entrez_id), 'mim_number']
+            gene_omim_id = self.entrez2gene.at[str(entrez_id), 'mim_number']
         except KeyError:
-            r = ''
-        return r
+            gene_omim_id = ''
+        return gene_omim_id
 
     def mim_pheno_to_mim_gene(self, mim_pheno):
-        r = self._search_single(self.morbidmap, 'phen_mim_number', mim_pheno, 'mim_number')
-        return r
+        gene_omim_id = self._search_single(
+            self.morbidmap, 'phen_mim_number', mim_pheno, 'mim_number')
+        return gene_omim_id
 
     def mim_pheno_to_gene(self, mim_pheno):
+        '''Convert a phenotype omim id to a gene dictionary object containing
+        keys: gene_id, gene_symbol and gene_omim_id.
+        '''
         if str(mim_pheno) in self.phen_to_mim:
-            r = {}
+            gene_entry = {}
             for mim_gene, gene_symbol in self.phen_to_mim[str(mim_pheno)]:
                 entrez_id = self.mim_gene_to_entrez_id(mim_gene)
-                r[mim_gene] = {'gene_id': entrez_id,
-                               'gene_symbol': gene_symbol,
-                               'gene_omim_id': mim_gene}
-            return r
+                gene_entry[mim_gene] = {'gene_id': entrez_id,
+                                        'gene_symbol': gene_symbol,
+                                        'gene_omim_id': mim_gene}
+            return gene_entry
         else:
             return {}
 
-    def syndrome_name_to_omim(self, name, omim_list=[]):
-        '''Search for a syndrome name in morbidmap.  A given omim list can be
-        used to further narrow down the correct answer.
-        '''
-        # TODO function not complete
-        query = name
-        q = self.morbidmap.loc[self.morbidmap['phenotype'].str.contains(query, case=False)]
-        print(q)
-
 
 def main():
+    '''This should only be used for testing purposes.
+    '''
     omim = Omim(api_key='<INSERT CORRECT API KEY>', mimdir='test',
                 use_cached=False)
     print(omim.morbidmap)
