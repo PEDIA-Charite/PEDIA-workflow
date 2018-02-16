@@ -1,32 +1,43 @@
+'''
+Configuration loader to get parameters from a ini file.
+---
+This is mainly used to define download directories and API access.
+'''
+from typing import Union
 from configparser import ConfigParser
 
+
 class Indexer:
-    def __init__(self, obj, section):
+    '''Implement config sections as class attributes.
+    '''
+    def __init__(self, obj: 'ConfigManager', section: str):
         self._obj = obj
         self._section = section
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Union[str, tuple, list]):
         return self._obj.get(self._section, key)
+
 
 class ConfigManager:
     """Configuration for all steps in the pipeline.
     """
-    def __init__(self, conf_file='config.ini'):
-        self.load_config(conf_file)
+    def __init__(self, conf_file: str='config.ini'):
+        self._load_config(conf_file)
 
         # adding each section as an attribute to the class
         for section in self._data.sections():
             setattr(self, section, Indexer(self, section))
 
-    def load_config(self, conf_file):
+    def _load_config(self, conf_file: str):
         """Load necessary vars from config file.
         """
         self._data = ConfigParser()
         self._data.read(conf_file)
 
-    def get(self, section, key):
+    def get(self, section: str, key: Union[str, list, tuple]) \
+            -> Union[dict, str, int, bool]:
         if isinstance(key, tuple) or isinstance(key, list):
-            return {k:self.get(section, k) for k in key}
+            return {k: self.get(section, k) for k in key}
         elif isinstance(key, str):
             return self._data[section][key]
         else:
