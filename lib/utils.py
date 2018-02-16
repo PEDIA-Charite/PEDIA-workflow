@@ -5,39 +5,43 @@ some pandas dataframe utilities implementing more exotic functions
 '''
 
 import re
+from typing import Union
+
 import pandas
 
 RE_HGVS = re.compile('[gcmnrpGCMNRP]\.')
 
 
-def optional_descent(data, key_trail, default=''):
+def optional_descent(data: dict, key_trail: [str], default: str='') \
+        -> Union[dict, list, str]:
     '''Follow a iterable object of key names in a nested dict.'''
-    d = data
-    # do not attempt if not a dict
     if data == '':
         return data
 
     for k in key_trail:
-        if k in d:
-            d = d[k]
+        if k in data:
+            data = data[k]
         else:
             return default
-    return d
+    return data
 
 
-def checkHGVS(string):
-    # trick to remove all whitespace
-    string = "".join(string.split())
-    m = RE_HGVS.search(string)
-    return m is not None
+def check_hgvs(hgvs_string: str):
+    '''Check whether a possible HGVS String might be contained inside a string
+    using RE_HGVS, which only checks expressions of the form 'x.<etc>'
+    '''
+    # remove all whitespace
+    string = "".join(hgvs_string.split())
+    match = RE_HGVS.search(string)
+    return match is not None
 
 
-def list_all_in(a, b):
-    '''Check that all elements of a are in b.'''
-    if len(a) != len(b):
+def list_all_in(tested: list, reference: list) -> bool:
+    '''Check that all elements of tested list are in reference list.'''
+    if len(tested) > len(reference):
         return False
-    for i in a:
-        if i not in b:
+    for i in tested:
+        if i not in reference:
             return False
     return True
 
