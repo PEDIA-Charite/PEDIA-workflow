@@ -3,7 +3,7 @@ Configuration loader to get parameters from a ini file.
 ---
 This is mainly used to define download directories and API access.
 '''
-from typing import Union
+from typing import Union, Iterable, Dict
 from configparser import ConfigParser
 
 
@@ -34,8 +34,8 @@ class ConfigManager:
         self._data = ConfigParser()
         self._data.read(conf_file)
 
-    def get(self, section: str, key: Union[str, [str], (str,)]) \
-            -> Union[{str: str}, str, int, bool]:
+    def get(self, section: str, key: Union[str, Iterable[str]]) \
+            -> Union[Dict[str, str], str, int, bool]:
         '''Get a single parameter or a list of parameters by name.
         If an iterable is given a dictionary containing key value pairs will be
         returned.

@@ -11,12 +11,13 @@ Class overview:
 '''
 
 import json
+from typing import Union, Callable
 from functools import reduce
 import os
 
 import pandas
 
-from lib.dataframe import explode_df_column
+from lib.utils import explode_df_column
 # from lib.utils import optional_descent
 from lib.model.hgvs import HGVSModel
 from lib.constants import CHROMOSOMAL_TESTS, POSITIVE_RESULTS
@@ -48,48 +49,68 @@ class JsonFile:
     get_diagnosis - single syndrome suggestion object
     get_submitter - dict with keys team, email, name
     '''
-    def __init__(self, path: str, corrected_location=None):
-        self._correct_dir = corrected_location
-        self._path = path
+    def __init__(self, data: Union[dict, list], path: str='',
+                 base_path: str='', override: str='', save_path: str=''):
+        '''
+        Args:
+            data - loaded and deserialized jSON data
+            path - Path from which main json has been loaded
+            base_path - base folder of original data
+            override - base folder for json overrides. this is necessary for
+                loading of linked jsons
+        '''
+        self._js = data
+        self._load_path = path
+        self._base_dir = base_path
+        self._override_dir = override
+        self._save_path = save_path
+
+    @classmethod
+    def from_file(cls, path: str, corrected_location: str= '') -> 'JsonFile':
+        '''Load jSON from file.
+        Args:
+            path: Path to json file.
+            corrected_location: Alternative directory containing file
+                                overrides.
+        Returns:
+            jsonFile object with data loaded in _js.
+        '''
+        # split path into hierarchy of aws dump
         # our aws bucket is always structured into bucket_dir/cases containing
         # case jsons and bucket_dir/genomic_entries containing mutation
         # information
-        base, self._filename = os.path.split(path)
-        self._basedir, self._jsondir = os.path.split(base)
         # load a corrected json if it exists and is given
-        if self._correct_dir:
-            override = os.path.join(
-                self._correct_dir, self._jsondir, self._filename)
-            if os.path.exists(override):
-                path = override
-        self._rawjs = json.load(open(path, 'r'))
+        base, filename = os.path.split(path)
+        basedir, jsondir = os.path.split(base)
+        if corrected_location:
+            override = os.path.join(corrected_location, jsondir, filename)
+            path = os.path.exists(override) and override or path
 
-    def _load_json(self, directory, entry_id):
-        '''Load a json file based on id from specified intermediary directory.
+        json_data = json.load(open(path, 'r'))
+        # create the parent class
+        json_obj = cls(data=json_data, path=path, base_path=basedir,
+                       override=corrected_location)
+        return json_obj
+
+    def save_json(self):
+        '''Save the json data contained in self._js
         '''
-        filename = '{}.json'.format(entry_id)
-        entries_path = os.path.join(self._basedir, directory, filename)
-        # override entry path if another corrected path is available
-        if self._correct_dir:
-            corrected_path = os.path.join(
-                self._correct_dir, directory, filename)
-            if os.path.exists(corrected_path):
-                entries_path = corrected_path
-        if not os.path.exists(entries_path):
-            raise OSError("File {} not found".format(entry_id))
-        return json.load(open(entries_path, 'r'))
+        os.makedirs(os.path.split(self._save_path)[0], exist_ok=True)
+        with open(self._save_path, 'w') as output_json:
+            json.dump(self._js, output_json)
 
     def generate(self):
-        '''Get schema of rawjs.'''
+        '''Get schema of js.'''
         return self._generate_schema(self.raw)
 
-    def _generate_schema(self, data):
+    @classmethod
+    def _generate_schema(cls, data):
         '''Create schema of given raw json data. Some features might not be
         inferred further.'''
         if isinstance(data, dict):
-            return {k: self._generate_schema(v) for k, v in data.items()}
+            return {k: cls._generate_schema(v) for k, v in data.items()}
         elif isinstance(data, list):
-            partial_result = [self._generate_schema(v) for v in data]
+            partial_result = [cls._generate_schema(v) for v in data]
             out = []
             for part in partial_result:
                 if isinstance(part, dict):
@@ -114,47 +135,103 @@ class JsonFile:
         else:
             return schema
 
-    def check_schema(self, schema, rawjs):
+    @classmethod
+    def check_schema(cls, schema, data):
         '''Recursively check the specified schema against the provided schema
         '''
         if isinstance(schema, dict):
-            if not isinstance(rawjs, dict):
+            if not isinstance(data, dict):
                 return (False, "Not a dict")
             else:
                 out = {}
                 for k, child in schema.items():
-                    if k not in rawjs:
+                    if k not in data:
                         out[k] = (False, "No key")
                     else:
-                        out[k] = self.check_schema(child, rawjs[k])
+                        out[k] = cls.check_schema(child, data[k])
                 return out
         elif isinstance(schema, list):
-            if not isinstance(rawjs, list):
+            if not isinstance(data, list):
                 return (False, "Not a list")
             else:
                 if len(schema) == 0:
                     return (True, "")
                 out = []
-                for entry in rawjs:
+                for entry in data:
                     res = []
                     # multiple entries serve a as an OR option
                     for candidate in schema:
-                        res.append(self.check_schema(candidate, entry))
+                        res.append(cls.check_schema(candidate, entry))
                     if len(schema) == 1:
                         res = res[0]
                     out.append(res)
                 return out
         elif hasattr(schema, '__call__'):
-            return schema(rawjs)
+            return schema(data)
         else:
-            if rawjs is None:
+            if data is None:
                 return (False, "No value")
             elif schema == '':
                 return (True, "")
-            elif schema == rawjs:
+            elif schema == data:
                 return (True, "matches expected string")
             else:
                 return (False, "No value")
+
+    def _load_json(self, directory, entry_id):
+        '''Load a json file based on id from specified intermediary directory.
+        '''
+        filename = '{}.json'.format(entry_id)
+        entries_path = os.path.join(self._base_dir, directory, filename)
+        # override entry path if another corrected path is available
+        if self._override_dir:
+            corrected_path = os.path.join(
+                self._override_dir, directory, filename)
+            if os.path.exists(corrected_path):
+                entries_path = corrected_path
+        if not os.path.exists(entries_path):
+            raise OSError("File {} not found".format(entry_id))
+        return json.load(open(entries_path, 'r'))
+
+    def load_linked(self, directive:
+                    {'str': Callable[[str], Union[dict, list]]}):
+        '''Call linked with self. properties. This is just a self pointing
+        wrapper around linked.
+        Args:
+            directive: Define fields, on which loading operations should be
+            done
+        '''
+        self._js = self._linked(self._js, directive)
+
+    @classmethod
+    def _linked(cls, data, load_directive):
+        '''Load data according to the provided load directive. This will
+        recursively traverse the json structure and match it against the
+        provided loading directive.
+        '''
+        if isinstance(data, dict):
+            if not isinstance(load_directive, dict):
+                raise TypeError
+            out = {}
+            for k, entry in data.items():
+                # only load entries, for which we have defined a load directive
+                if k in load_directive:
+                    out[k] = cls._linked(entry, load_directive[k])
+                else:
+                    out[k] = entry
+            return out
+        elif isinstance(data, list):
+            if not isinstance(load_directive, list):
+                raise TypeError
+            # return the original list, if we have no directives defined
+            if len(load_directive) == 0:
+                return data
+            else:
+                return [cls._linked(v, load_directive[0]) for v in data]
+        else:
+            if not hasattr(load_directive, '__call__'):
+                raise TypeError("Not a loader function.")
+            return load_directive(data)
 
 
 class OldJson(JsonFile):
@@ -176,8 +253,31 @@ class OldJson(JsonFile):
             ]
     }
 
-    def __init__(self, instdata, omim=None):
-        pass
+    def __init__(self, data: dict, save_path: str=''):
+        super().__init__(data, save_path=save_path)
+
+    @classmethod
+    def from_case_object(cls, case: 'Case', path: str, omim: 'Omim') \
+            -> 'OldJson':
+        '''Create an old json object from a case entity. This is an alternative
+        constructor.
+        '''
+        genomic_data = [{'HGVS-code': str(v)} for v in case.variants]
+        data = {
+            'case_id': case.case_id,
+            'submitter': {
+                'name': case.submitter['email'],
+                'team': case.submitter['team']
+            },
+            'vcf': case.vcf,
+            'features': case.features,
+            'ranks': case.syndromes.to_dict('records'),
+            'geneList': case.get_gene_list(omim),
+            'genomicData': genomic_data
+        }
+        path = os.path.join(path, '{}.json'.format(case.case_id))
+        obj = cls(data, path)
+        return obj
 
 
 class NewJson(JsonFile):
@@ -205,17 +305,18 @@ class NewJson(JsonFile):
         'submitter': {'user_email': '', 'user_name': '', 'user_team': ''}
     }
 
-    def __init__(self, path: str, *args, **kwargs):
-        super().__init__(path, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # super().from_file(path, *args, **kwargs)
         # specifiy which fields contain filenames, that have to be loaded
         # afterwards
-        self._directive = {
+        directive = {
             'genomic_entries': [
                 lambda x: self._load_json('genomics_entries', x)
             ]
             }
         # load fields according to directives
-        self._load_linked()
+        self.load_linked(directive)
 
     def check(self) -> bool:
         '''Check whether Json fulfills all provided criteria.
@@ -235,27 +336,27 @@ class NewJson(JsonFile):
         # check maximum gestalt score
         max_gestalt_score = reduce(
             lambda x, y: max(x, y['gestalt_score']),
-            self._rawjs['detected_syndromes'], 0.0)
+            self._js['detected_syndromes'], 0.0)
         if max_gestalt_score <= 0:
             issues.append('Maximum gestalt score is 0. Probably no image has \
                           been provided.')
             valid = False
 
         # check that only one syndrome has been selected
-        if len(self._rawjs['selected_syndromes']) != 1:
+        if len(self._js['selected_syndromes']) != 1:
             issues.append(
                 '{} syndromes have been selected. Only 1 syndrome should be \
                 selected for PEDIA inclusion.'.format(
-                    len(self._rawjs['selected_syndromes'])))
+                    len(self._js['selected_syndromes'])))
             valid = False
 
         # check that molecular information is available at all
-        if len(self._rawjs['genomic_entries']) == 0:
+        if len(self._js['genomic_entries']) == 0:
             issues.append('No genomic entries available.')
             valid = False
 
         # check that no structural abnormalities have been detected
-        for entry in self._rawjs['genomic_entries']:
+        for entry in self._js['genomic_entries']:
             if entry['test_type'] in CHROMOSOMAL_TESTS:
                 if entry['result'] in POSITIVE_RESULTS:
                     issues.append(
@@ -266,12 +367,12 @@ class NewJson(JsonFile):
         return valid, issues
 
     def get_case_id(self) -> str:
-        return str(self._rawjs['case_id'])
+        return str(self._js['case_id'])
 
     def get_variants(self) -> ['hgvs']:
         '''Get a list of hgvs objects for variants.
         '''
-        models = [HGVSModel(entry) for entry in self._rawjs['genomic_entries']]
+        models = [HGVSModel(entry) for entry in self._js['genomic_entries']]
         variants = [v for m in models if m.variants for v in m.variants]
         return variants
 
@@ -282,7 +383,7 @@ class NewJson(JsonFile):
         '''
         # create a dataframe from the list of detected syndromes
         syndromes_df = pandas.DataFrame.from_dict(
-            self._rawjs['detected_syndromes'])
+            self._js['detected_syndromes'])
         # remove unneeded columns
         syndromes_df = syndromes_df.drop(['has_mask'], axis=1)
         # force omim_id to always be a list, required for exploding the df
@@ -295,7 +396,7 @@ class NewJson(JsonFile):
         # preprare the confirmed diagnosis for joining with the main syndrome
         # dataframe
         selected = pandas.DataFrame.from_dict(
-            self._rawjs['selected_syndromes'])
+            self._js['selected_syndromes'])
         selected = selected.drop(['has_mask'], axis=1)
         selected['omim_id'] = selected['omim_id'].apply(
             lambda x: not isinstance(x, list) and [x] or x)
@@ -320,15 +421,15 @@ class NewJson(JsonFile):
         '''Return a list of HPO IDs correponding to entered phenotypic
         features.
         '''
-        return self._rawjs['features']
+        return self._js['features']
 
     def get_submitter(self) -> {str: str}:
         '''Return a dictionary containing the submitter name, team and email.
         '''
         submitter = {
-                'name': self._rawjs['submitter']['user_name'],
-                'team': self._rawjs['submitter']['user_team'],
-                'email': self._rawjs['submitter']['user_email']
+                'name': self._js['submitter']['user_name'],
+                'team': self._js['submitter']['user_team'],
+                'email': self._js['submitter']['user_email']
                 }
         return submitter
 
@@ -337,41 +438,6 @@ class NewJson(JsonFile):
         '''
         # vcfs are saved inside documents and marked by is_vcf
         vcfs = [d['document_name']
-                for d in self._rawjs['documents']
+                for d in self._js['documents']
                 if d and d['is_vcf']]
         return vcfs
-
-    def _load_linked(self):
-        '''Call linked with self. properties. This is just a self pointing
-        wrapper around linked.
-        '''
-        self._rawjs = self._linked(self._rawjs, self._directive)
-
-    def _linked(self, data: dict, load_directive: dict):
-        '''Load data according to the provided load directive. This will
-        recursively traverse the json structure and match it against the
-        provided loading directive.
-        '''
-        if isinstance(data, dict):
-            if not isinstance(load_directive, dict):
-                raise TypeError
-            out = {}
-            for k, entry in data.items():
-                # only load entries, for which we have defined a load directive
-                if k in load_directive:
-                    out[k] = self._linked(entry, load_directive[k])
-                else:
-                    out[k] = entry
-            return out
-        elif isinstance(data, list):
-            if not isinstance(load_directive, list):
-                raise TypeError
-            # return the original list, if we have no directives defined
-            if len(load_directive) == 0:
-                return data
-            else:
-                return [self._linked(v, load_directive[0]) for v in data]
-        else:
-            if not hasattr(load_directive, '__call__'):
-                raise TypeError("Not a loader function.")
-            return load_directive(data)

@@ -102,14 +102,16 @@ class HGVSModel:
         See doc/genomic_entry.md for reference on the format of genomic
         entries.
         '''
+        entry_id = entry_dict['entry_id']
         entry_dict = ERROR_FIXER[entry_dict]
         if not entry_dict:
-            print('Skipping empty entry in error dict. It needs to be \
-                  manually fixed in {} first.'.format(ERROR_FIXER.filename()))
+            print(('Skipping empty entry {} in error dict. It needs to be '
+                   'manually fixed in {} first.').format(
+                      entry_id, ERROR_FIXER.get_filepath()))
             self.variants = []
             return
 
-        self.entry_id = entry_dict['entry_id']
+        self.entry_id = entry_id
         self.gene = 'gene' in entry_dict and entry_dict['gene'] or {
             'gene_id': '', 'gene_symbol': '', 'gene_omim_id': ''}
         self.result = 'result' in entry_dict and entry_dict['result'] or \
@@ -276,8 +278,8 @@ class HGVSModel:
         created hgvs strings do not have to be correct. They should be
         validated using an additional validator.
         '''
-        hgvs_string = "{transcript}:{prefix}.{position}{orig}{operation}\
-            {sub}".format(
+        hgvs_string = \
+            "{transcript}:{prefix}.{position}{orig}{operation}{sub}".format(
                 transcript=transcript,
                 prefix=prefix,
                 position=position,
@@ -310,19 +312,19 @@ class HGVSModel:
             position2 = position2 and position2 or position1
             assert position1 == position2, 'Position 1 and 2 are not equal'
             position2 = ''
-            hgvs_temp = "{transcript}:{prefix}.{orig}{position1}\
-                {position2}{sub}"
+            hgvs_temp = \
+                "{transcript}:{prefix}.{orig}{position1}{position2}{sub}"
         else:
             if orig and sub:
-                hgvs_temp = "{transcript}:{prefix}.{orig}{position1}_{sub}\
-                    {position2}{operation}"
+                hgvs_temp = ("{transcript}:{prefix}.{orig}"
+                             "{position1}_{sub}{position2}{operation}")
             else:
                 position1 = position1 and position1 or position2
                 position2 = position2 and position2 or position1
                 assert position1 == position2, 'Position 1 and 2 are not equal'
                 position2 = ''
-                hgvs_temp = "{transcript}:{prefix}.{orig}{sub}{position1}\
-                    {position2}{operation}"
+                hgvs_temp = ("{transcript}:{prefix}.{orig}{sub}{position1}"
+                             "{position2}{operation}")
         hgvs_string = hgvs_temp.format(
                 transcript=transcript,
                 prefix=prefix,

@@ -2,8 +2,49 @@
 Case model created from json files.
 '''
 from functools import reduce
-from typing import Union
+from typing import Union, Dict
+
+import pandas
+
 from lib.model.json import OldJson, NewJson
+
+
+def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
+    '''Get gene information from row information.
+    This includes: all scores, gene_symbol, gene_id, gene_omim_id, syndrome_id
+    '''
+    disease_id = rowdata['omim_id']
+    # get dict containing gene_id, gene_symbol, gene_omim_id
+    genes = list(omim.mim_pheno_to_gene(disease_id).values())
+    # get all three scores provided by face2gene
+    gestalt_score = pandas.notna(rowdata['gestalt_score']) \
+        and rowdata['gestalt_score'] or 0.0
+    feature_score = pandas.notna(rowdata['gestalt_score']) \
+        and rowdata['feature_score'] or 0.0
+    combined_score = pandas.notna(rowdata['combined_score']) \
+        and rowdata['combined_score'] or 0.0
+    # get scores from phenomizer
+    if 'value_pheno' in rowdata:
+        pheno_score = pandas.notna(rowdata['value_pheno']) \
+            and rowdata['value_pheno'] or 0.0
+    else:
+        pheno_score = 0.0
+
+    if 'value_boqa' in rowdata:
+        boqa_score = pandas.notna(rowdata['value_boqa']) \
+            and rowdata['value_boqa'] or 0.0
+    else:
+        boqa_score = 0.0
+
+    resp = pandas.Series({
+        "disease_id": disease_id,
+        "genes": genes,
+        "gestalt_score": gestalt_score,
+        "feature_score": feature_score,
+        "combined_score": combined_score,
+        "pheno_score": pheno_score,
+        "boqa_score": boqa_score})
+    return resp
 
 
 class Case:
@@ -47,6 +88,22 @@ class Case:
         self.syndromes = self.syndromes.merge(
             pheno_boqa, left_on='omim_id', how='outer', right_index=True)
         return True
+
+    def get_gene_list(self, omim: 'Omim', recreate: bool=False) \
+            -> Dict[str, str]:
+        '''Get list of genes from syndromes. Save them back to self.genes
+        for faster lookup afterwards.
+        '''
+        # return existing gene list, if it already exists
+        if hasattr(self, 'gene_scores') and not recreate:
+            if self.gene_scores:
+                return self.gene_scores
+
+        gene_table = self.syndromes.apply(
+            lambda x: create_gene_table(x, omim), axis=1)
+        gene_scores = gene_table.to_dict('records')
+        self.gene_scores = gene_scores
+        return gene_scores
 
     def check(self) -> bool:
         '''Check whether Case fulfills all provided criteria.

@@ -40,7 +40,7 @@ def main():
     # that should differ from the original only in content, not in overall structure.
     # this should make resolving some exotic errors a lot easier
     corrected = config.preprocess['corrected_location']
-    new_json_objs = [NewJson(f, corrected) for f in json_files]
+    new_json_objs = [NewJson.from_file(f, corrected) for f in json_files]
 
     print('Unfiltered', len(new_json_objs))
 

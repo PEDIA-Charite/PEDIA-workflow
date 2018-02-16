@@ -97,7 +97,7 @@ class PhenomizerService(requests.Session):
         if prefilter:
             for colname, required_string in prefilter.items():
                 dataframe = dataframe.loc[
-                    dataframe[required_string].str.contains(required_string)]
+                    dataframe[colname].str.contains(required_string)]
         return dataframe
 
     def disease_boqa_phenomize(self, hpo_ids: [str]) -> pandas.DataFrame:
