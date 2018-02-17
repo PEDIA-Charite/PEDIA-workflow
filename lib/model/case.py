@@ -7,6 +7,17 @@ from typing import Union, Dict
 import pandas
 
 from lib.model.json import OldJson, NewJson
+from lib.utils import explode_df_column
+
+
+def genes_to_single_cols(rowdata: pandas.Series) -> pandas.Series:
+    '''Separate gene dict in genes column into separate columns.
+    '''
+    gene_dict = rowdata['genes']
+    rowdata.drop('genes', inplace=True)
+    genes = pandas.Series(gene_dict)
+    rowdata = rowdata.append(genes)
+    return rowdata
 
 
 def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
@@ -88,6 +99,7 @@ class Case:
         # dataframe which contains face2gene scores
         self.syndromes = self.syndromes.merge(
             pheno_boqa, left_on='omim_id', how='outer', right_index=True)
+        self.syndromes.reset_index(drop=True, inplace=True)
         return True
 
     def get_gene_list(self, omim: 'Omim', recreate: bool=False) \
@@ -102,6 +114,10 @@ class Case:
 
         gene_table = self.syndromes.apply(
             lambda x: create_gene_table(x, omim), axis=1)
+        # explode the gene table on genes to separate the genetic entries
+        gene_table = explode_df_column(gene_table, 'genes')
+        gene_table = gene_table.apply(genes_to_single_cols, axis=1)
+
         gene_scores = gene_table.to_dict('records')
         self.gene_scores = gene_scores
         return gene_scores
