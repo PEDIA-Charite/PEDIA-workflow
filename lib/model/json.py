@@ -264,6 +264,7 @@ class OldJson(JsonFile):
         '''
         genomic_data = [{'HGVS-code': str(v)} for v in case.variants]
         data = {
+            'algo_deploy_version': case.algo_version,
             'case_id': case.case_id,
             'submitter': {
                 'name': case.submitter['email'],
@@ -368,6 +369,9 @@ class NewJson(JsonFile):
 
     def get_case_id(self) -> str:
         return str(self._js['case_id'])
+
+    def get_algo_version(self) -> str:
+        return str(self._js['algo_deploy_version'])
 
     def get_variants(self) -> ['hgvs']:
         '''Get a list of hgvs objects for variants.

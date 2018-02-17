@@ -65,6 +65,7 @@ class Case:
     def _from_json_object(self, data: Union[OldJson, NewJson]):
         '''Load case information from json object.
         '''
+        self.algo_version = data.get_algo_version()
         self.case_id = data.get_case_id()
         self.variants = data.get_variants()
         self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
