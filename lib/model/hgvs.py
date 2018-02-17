@@ -144,6 +144,13 @@ class HGVSModel:
             Tuple containing a list of entered hgvs objects and a list of
             generated hgvs candidate strings.
         '''
+        self.zygosity = 'zygosity' in variant_dict \
+            and variant_dict['zygosity'] or 'UNKNOWN'
+
+        # might be something like cdna_level etc
+        variant_information = 'variant_information' in variant_dict \
+            and variant_dict['variant_information'] or 'UNKNOWN'
+        self.variant_info = variant_information
 
         # get information necessary for hgvs assembly
         # this step can be skipped if we already have an override
@@ -159,8 +166,6 @@ class HGVSModel:
         # various sources
         hgvs_candidates = []
 
-        variant_information = 'variant_information' in variant_dict \
-            and variant_dict['variant_information'] or 'UNKNOWN'
 
         hgvs_description = 'hgvs_variant_description' in variant_dict \
             and variant_dict['hgvs_variant_description'] or ''

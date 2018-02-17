@@ -262,7 +262,26 @@ class OldJson(JsonFile):
         '''Create an old json object from a case entity. This is an alternative
         constructor.
         '''
-        genomic_data = [{'HGVS-code': str(v)} for v in case.variants]
+        genomic_data = []
+        for model in case.hgvs_models:
+            data = {
+                'Test Information': {
+                    'Molecular Test': model.test_type,
+                    'Notation': model.variant_info,
+                    'Genotype': model.zygosity,
+                    'Mutation Type': model.test_type,
+                    'Gene Name': model.gene['gene_symbol']
+                },
+                'Mutations': {
+                    'additional info': '',
+                    'Build': 'GRCh37',
+                    'result': model.result,
+                    'Inheritance Mode': '',
+                    'HGVS-code': ", ".join([str(v) for v in model.variants])
+                }
+            }
+            genomic_data.append(data)
+
         data = {
             'algo_deploy_version': case.algo_version,
             'case_id': case.case_id,
@@ -379,7 +398,7 @@ class NewJson(JsonFile):
         '''
         models = [HGVSModel(entry) for entry in self._js['genomic_entries']]
         variants = [v for m in models if m.variants for v in m.variants]
-        return variants
+        return variants, models
 
     def get_syndrome_suggestions_and_diagnosis(self) -> pandas.DataFrame:
         '''Return a pandas dataframe containing all suggested syndromes and the

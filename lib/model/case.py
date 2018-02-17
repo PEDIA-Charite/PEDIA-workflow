@@ -78,7 +78,9 @@ class Case:
         '''
         self.algo_version = data.get_algo_version()
         self.case_id = data.get_case_id()
-        self.variants = data.get_variants()
+        # get both the list of hgvs variants and the hgvs models used in the
+        # parsing
+        self.variants, self.hgvs_models = data.get_variants()
         self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
         self.features = data.get_features()
         self.submitter = data.get_submitter()
