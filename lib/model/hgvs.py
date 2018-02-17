@@ -102,6 +102,7 @@ class HGVSModel:
         See doc/genomic_entry.md for reference on the format of genomic
         entries.
         '''
+        self._js = entry_dict
         self.entry_id = entry_dict['entry_id']
         print('Processing genomic entry', self.entry_id)
 
@@ -112,19 +113,23 @@ class HGVSModel:
         self.test_type = entry_dict['test_type'] or 'UNKNOWN'
         self.variant_type = entry_dict['variant_type'] or 'UNKNOWN'
 
-        if entry_dict in ERROR_FIXER:
-            self.variants = [HGVS_PARSER.parse_hgvs_variant(s)
-                             for s in ERROR_FIXER[entry_dict]]
-        else:
-            variants, candidates = self._parse_variants(entry_dict['variants'])
-            # check if valid hgvs codes have been found
-            if variants:
-                self.variants = variants
-            else:
-                ERROR_FIXER.add_faulty(entry_dict, candidates)
-                self.variants = []
+        variants = self._parse_variants(entry_dict['variants'])
+        failed = []
+        for var in variants:
+            checked = MUTALYZER.checkSyntax(var)
+            if not checked['valid']:
+                message = ["{}:{}".format(v['errorcode'], v['message']) for v
+                           in checked['messages']['SoapMessage']]
+                failed.append(str(var))
+                variants.remove(var)
+        if failed:
+            info = dict(self._js,
+                        message=message)
+            valid_variants = [str(v) for v in variants]
+            ERROR_FIXER.error[self.entry_id] = (info, failed, valid_variants)
+        self.variants = variants
 
-    def _parse_variants(self, variant_dict: dict) -> (list, list):
+    def _parse_variants(self, variant_dict: dict) -> list:
         '''Create variant information from entries in the form of hgvs codes.
         If information is not parseable, create entry in error dictionary which
         can be filled by hand.
@@ -139,8 +144,16 @@ class HGVSModel:
             Tuple containing a list of entered hgvs objects and a list of
             generated hgvs candidate strings.
         '''
+
+        # get information necessary for hgvs assembly
+        # this step can be skipped if we already have an override
+        if self.entry_id in ERROR_FIXER.error:
+            variants = ERROR_FIXER.error[self.entry_id]
+            return variants
+
+        # return empty if variants are empty
         if not variant_dict:
-            return [], []
+            return []
 
         # candidates are possible hgvs strings, these are collected from
         # various sources
@@ -166,6 +179,8 @@ class HGVSModel:
 
         # try to parse collected hgvs strings
         # only return successfully parsed hgvs strings
+        failures = 0
+        failed = []
         for candidate in hgvs_candidates:
             cleaned_hgvs = clean_hgvs(candidate)
             if cleaned_hgvs:
@@ -173,9 +188,15 @@ class HGVSModel:
                     var = HGVS_PARSER.parse_hgvs_variant(cleaned_hgvs)
                     variants.append(var)
                 except hgvs.exceptions.HGVSParseError:
-                    print('{}: Error parsing {}, uncleaned {}'.format(
-                        self.entry_id, cleaned_hgvs, candidate))
-        return variants, hgvs_candidates
+                    failures += 1
+                    failed.append(cleaned_hgvs)
+        # add failed and partial failues to error dictionaries
+        if not variants:
+            ERROR_FIXER.error[self.entry_id] = (self._js, hgvs_candidates, [])
+        elif failures > 0:
+            success = [str(v) for v in variants]
+            ERROR_FIXER.partial[self.entry_id] = (success, failed)
+        return variants
 
     def _get_mutations(self, data: dict) -> [dict]:
         '''Get mutation information from mutation fields.
