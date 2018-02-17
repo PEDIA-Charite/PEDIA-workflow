@@ -267,8 +267,9 @@ class OldJson(JsonFile):
             'algo_deploy_version': case.algo_version,
             'case_id': case.case_id,
             'submitter': {
-                'name': case.submitter['email'],
-                'team': case.submitter['team']
+                'user_email': case.submitter['email'],
+                'user_team': case.submitter['team'],
+                'user_name': case.submitter['name']
             },
             'vcf': case.vcf,
             'features': case.features,
