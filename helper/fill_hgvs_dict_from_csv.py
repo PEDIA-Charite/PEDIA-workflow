@@ -14,9 +14,11 @@ with open(FILE_PATH, 'r') as csv_file:
         if not mutation_id:
             mutation_id = prev_id
         prev_id = mutation_id
-        corrected_hgvs_code = row['correct HGVS']
+        # remove trailing whitespace
+        corrected_hgvs_code = row['correct HGVS'].strip()
         if not corrected_hgvs_code:
             continue
+
 
         if mutation_id in corrected_entries:
             corrected_entries[mutation_id].append(corrected_hgvs_code)

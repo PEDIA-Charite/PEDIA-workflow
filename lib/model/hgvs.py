@@ -102,16 +102,9 @@ class HGVSModel:
         See doc/genomic_entry.md for reference on the format of genomic
         entries.
         '''
-        entry_id = entry_dict['entry_id']
-        entry_dict = ERROR_FIXER[entry_dict]
-        if not entry_dict:
-            print(('Skipping empty entry {} in error dict. It needs to be '
-                   'manually fixed in {} first.').format(
-                      entry_id, ERROR_FIXER.get_filepath()))
-            self.variants = []
-            return
+        self.entry_id = entry_dict['entry_id']
+        print('Processing genomic entry', self.entry_id)
 
-        self.entry_id = entry_id
         self.gene = 'gene' in entry_dict and entry_dict['gene'] or {
             'gene_id': '', 'gene_symbol': '', 'gene_omim_id': ''}
         self.result = 'result' in entry_dict and entry_dict['result'] or \
@@ -119,13 +112,17 @@ class HGVSModel:
         self.test_type = entry_dict['test_type'] or 'UNKNOWN'
         self.variant_type = entry_dict['variant_type'] or 'UNKNOWN'
 
-        variants, candidates = self._parse_variants(entry_dict['variants'])
-        # check if valid hgvs codes have been found
-        if variants:
-            self.variants = variants
+        if entry_dict in ERROR_FIXER:
+            self.variants = [HGVS_PARSER.parse_hgvs_variant(s)
+                             for s in ERROR_FIXER[entry_dict]]
         else:
-            ERROR_FIXER.add_faulty(entry_dict, candidates)
-            self.variants = []
+            variants, candidates = self._parse_variants(entry_dict['variants'])
+            # check if valid hgvs codes have been found
+            if variants:
+                self.variants = variants
+            else:
+                ERROR_FIXER.add_faulty(entry_dict, candidates)
+                self.variants = []
 
     def _parse_variants(self, variant_dict: dict) -> (list, list):
         '''Create variant information from entries in the form of hgvs codes.

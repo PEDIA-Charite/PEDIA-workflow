@@ -5,7 +5,6 @@ This class is mainly used to handle erroneous hgvs codes.
 '''
 import os
 import json
-from typing import Union
 
 
 class ErrorFixer:
@@ -45,16 +44,14 @@ class ErrorFixer:
             j = {}
         self._data = j
 
-    def __getitem__(self, entry: Union[str, int]) -> [str]:
+    def __getitem__(self, entry: dict) -> [str]:
         '''Genomic entry id as key and return a list of cleaned hgvs codes.
         '''
-        if not entry:
-            return entry
         key = str(entry['entry_id'])
-        if key in self._data:
-            return self._data[key]['cleaned']
-        else:
-            return entry
+        return self._data[key]['cleaned']
+
+    def __contains__(self, entry: dict) -> bool:
+        return str(entry['entry_id']) in self._data
 
     def add_faulty(self, entry: dict, wrong_strings: [str]) -> bool:
         '''Add a faulty genomic entry and optionally wrong automatically
