@@ -156,6 +156,7 @@ class HGVSModel:
         # this step can be skipped if we already have an override
         if self.entry_id in ERROR_FIXER.error:
             variants = ERROR_FIXER.error[self.entry_id]
+            variants = [HGVS_PARSER.parse_hgvs_variant(v) for v in variants]
             return variants
 
         # return empty if variants are empty
@@ -165,7 +166,6 @@ class HGVSModel:
         # candidates are possible hgvs strings, these are collected from
         # various sources
         hgvs_candidates = []
-
 
         hgvs_description = 'hgvs_variant_description' in variant_dict \
             and variant_dict['hgvs_variant_description'] or ''
