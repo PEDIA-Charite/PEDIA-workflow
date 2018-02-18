@@ -19,6 +19,7 @@ from lib.model.json import NewJson, OldJson
 from lib.model.case import Case
 from lib.model.config import ConfigManager
 
+
 def main():
     logfile_path = 'logs.txt'
     logging.basicConfig(filename=logfile_path,level=logging.WARNING)
