@@ -106,8 +106,11 @@ class HGVSModel:
         self.entry_id = entry_dict['entry_id']
         print('Processing genomic entry', self.entry_id)
 
-        self.gene = 'gene' in entry_dict and entry_dict['gene'] or {
-            'gene_id': '', 'gene_symbol': '', 'gene_omim_id': ''}
+        gene_top = 'gene' in entry_dict and entry_dict['gene'] or {}
+        gene_variant = 'gene' in entry_dict['variants'] \
+            and entry_dict['variants']['gene'] or {}
+        self.gene = gene_top or gene_variant \
+            or {'gene_id': '', 'gene_symbol': '', 'gene_omim_id': ''}
         self.result = 'result' in entry_dict and entry_dict['result'] or \
             'UNKNOWN'
         self.test_type = entry_dict['test_type'] or 'UNKNOWN'
