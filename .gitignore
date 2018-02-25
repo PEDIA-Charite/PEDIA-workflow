@@ -5,6 +5,18 @@
 .snakemake
 *.done
 
+# python files
+__pycache__
+*.pyc
+
+# configuration files - might contain SENSITIVE data !!!!!
+config.ini
+
+# static data, such as genomic data for exome simulation
+data
+# dynamic data, such as json files
+process
+
 simulation/background/data/refseq/
 
 3_simulation/background/data/refseq/
