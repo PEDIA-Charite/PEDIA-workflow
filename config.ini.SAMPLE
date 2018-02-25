@@ -1,0 +1,15 @@
+[general]
+logfile = preprocess.log
+
+[preprocess]
+aws_access_key = <AWS KEY>
+aws_secret_key = <AWS Secret>
+download_location = process/aws_dir
+
+[phenomization]
+OMIM_Key = <OMIM Key>
+OMIM_Cached = yes
+OMIM_Dir = data
+Phenomizer_Url = <Phenomizer Url>
+Phenomizer_User = <User>
+Phenomizer_Password = <Password>

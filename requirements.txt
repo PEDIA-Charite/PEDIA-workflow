@@ -1,0 +1,7 @@
+pandas
+requests
+boto3
+hgvs
+biopython
+ratelimit
+zeep
