@@ -9,6 +9,8 @@ import hgvs
 import hgvs.parser
 import hgvs.validator
 import hgvs.exceptions
+import hgvs.assemblymapper
+
 
 from lib.errorfixer import ErrorFixer
 from lib.api.mutalyzer import Mutalyzer
@@ -34,6 +36,19 @@ RE_HGVS = re.compile(r'[gcmnrp]\.\d+', re.IGNORECASE)
 # sequences
 RE_DOUBLE_BRACKETS = re.compile(
     r'([\w_.]+)\([\w_.]+\):([\w_.><]+)\([\w_.>]+\)')
+
+
+def checkgenomevariant(variant: "SequenceVariant", hdp: "hgvs.dataprovider") -> bool:
+    '''Checks if variant can be successfully mapped to a genomic variant'''
+    checked=True
+    vm = hgvs.assemblymapper.AssemblyMapper(
+        hdp, assembly_name='GRCh37', alt_aln_method='splign')
+    try:
+        vm.c_to_g(variant)
+    except Exception as e:
+        checked=False
+
+    return checked
 
 
 def extract_amino(protein_code: str) -> str:
