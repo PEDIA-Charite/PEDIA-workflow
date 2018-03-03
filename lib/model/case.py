@@ -4,10 +4,39 @@ Case model created from json files.
 import logging
 from typing import Union, Dict
 
+
 import pandas
+import hgvs.parser
+import hgvs.assemblymapper
 
 from lib.model.json import OldJson, NewJson
 from lib.utils import explode_df_column
+
+# creation of hgvs objects from hgvs strings
+HGVS_PARSER = hgvs.parser.Parser()
+# mapping of oding variants
+#HGVS_DATA_PROVIDER = hgvs.dataproviders.uta.connect()
+
+
+def parsevariant(variant: "SequenceVariant", hdp: "hgvs.dataprovider") -> tuple:
+    '''Parses variant object to genomic variant
+    and returns data for vcf generation'''
+    vm = hgvs.assemblymapper.AssemblyMapper(
+        hdp, assembly_name='GRCh37', alt_aln_method='splign')
+    var_g = vm.c_to_g(variant)
+    chrom = int(var_g.ac.split(".")[0][-2:])
+    offset = int(var_g.posedit.pos.start.base)
+    ref = var_g.posedit.edit.ref
+    try:
+        alt = var_g.posedit.edit.alt
+    except AttributeError:
+        if "dup" in str(var_g):
+            alt = ref + ref
+        elif "del" in str(var_g):
+            alt = ""
+        else:
+            alt = "."
+    return chrom, offset, ref, alt
 
 
 LOGGER = logging.getLogger(__name__)
@@ -63,7 +92,8 @@ class Case:
     features - list of hpo terms
     diagnosis - list of syndromes selected as diagnosis
     submitter - submitter information containing fields for email, name, team
-    vcf - list of vcf filenames
+    realvcf - list of vcf filenames
+    vcf - dataframe containing variant information in vcf format
     '''
 
     def __init__(self, data: Union[OldJson, NewJson],
@@ -76,7 +106,7 @@ class Case:
         self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
         self.features = data.get_features()
         self.submitter = data.get_submitter()
-        self.vcf = data.get_vcf()
+        self.realvcf = data.get_vcf()
         self.gene_scores = None
         # also save the json object to easier extract information from the
         # new format
@@ -195,3 +225,32 @@ class Case:
             available real vcf
         '''
         return not self.vcf
+
+    def get_vcf(self) -> pandas.DataFrame:
+        '''Returns vcf data'''
+        return multivcf
+
+    def create_vcf(self,  hdp: "hgvs.dataprovider") -> pandas.DataFrame:
+        '''Create dataframe from variant information
+        '''
+        if self.hgvs_models[0].zygosity.lower() == 'hemizygous':
+            genotype = '1'
+        elif self.hgvs_models[0].zygosity.lower() == 'homozygous':
+            genotype = '1/1'
+        elif self.hgvs_models[0].zygosity.lower() == 'heterozygous' or self.hgvs_models[0] == 'compound heterozygous':
+            genotype = '0/1'
+        else:
+            genotype = './1'
+        data = []
+        for v in self.variants:
+            chrom, offset, ref, alt = parsevariant(v, HGVS_DATA_PROVIDER)
+            data.append((chrom, offset, '.', ref, alt, '.', '.', 'HGVS=' + str(v), 'GT', v.ac, genotype))
+
+        vcf = pandas.DataFrame(data,columns=[
+            '#CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT', 'NM', self.case_id])
+
+        vcf = vcf.sort_values(by=['#CHROM', "POS"])
+        vcf = vcf.reset_index(drop=True)
+        vcf = vcf.fillna(value='0/0')
+
+        return vcf
