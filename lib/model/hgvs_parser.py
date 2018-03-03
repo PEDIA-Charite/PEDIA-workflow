@@ -38,6 +38,19 @@ RE_DOUBLE_BRACKETS = re.compile(
     r'([\w_.]+)\([\w_.]+\):([\w_.><]+)\([\w_.>]+\)')
 
 
+def checkgenomevariant(variant: "SequenceVariant", hdp: "hgvs.dataprovider") -> bool:
+    '''Checks if variant can be successfully mapped to a genomic variant'''
+    checked=True
+    vm = hgvs.assemblymapper.AssemblyMapper(
+        hdp, assembly_name='GRCh37', alt_aln_method='splign')
+    try:
+        vm.c_to_g(variant)
+    except Exception as e:
+        checked=False
+
+    return checked
+
+
 def extract_amino(protein_code: str) -> str:
     '''Extract the three letter Code from the Face2Gene Amino acid description.
     They follow the scheme: X (XXX), although nonsense is written as Ter
