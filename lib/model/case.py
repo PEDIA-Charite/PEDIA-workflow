@@ -14,6 +14,32 @@ from lib.model.json import OldJson, NewJson
 from lib.utils import explode_df_column
 from lib import constants
 
+# creation of hgvs objects from hgvs strings
+HGVS_PARSER = hgvs.parser.Parser()
+# mapping of oding variants
+#HGVS_DATA_PROVIDER = hgvs.dataproviders.uta.connect()
+
+
+def parsevariant(variant: "SequenceVariant", hdp: "hgvs.dataprovider") -> tuple:
+    '''Parses variant object to genomic variant
+    and returns data for vcf generation'''
+    vm = hgvs.assemblymapper.AssemblyMapper(
+        hdp, assembly_name='GRCh37', alt_aln_method='splign')
+    var_g = vm.c_to_g(variant)
+    chrom = int(var_g.ac.split(".")[0][-2:])
+    offset = int(var_g.posedit.pos.start.base)
+    ref = var_g.posedit.edit.ref
+    try:
+        alt = var_g.posedit.edit.alt
+    except AttributeError:
+        if "dup" in str(var_g):
+            alt = ref + ref
+        elif "del" in str(var_g):
+            alt = ""
+        else:
+            alt = "."
+    return chrom, offset, ref, alt
+
 
 LOGGER = logging.getLogger(__name__)
 
