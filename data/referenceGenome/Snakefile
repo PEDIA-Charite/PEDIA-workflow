@@ -6,7 +6,9 @@ NOT_USED=['11_gl000202_random', '17_ctg5_hap1', '17_gl000203_random', '17_gl0002
 rule all:
     input:
         "data/hg19.fa",
-        "data/hg19.fa.fai"
+        "data/hg19.fa.fai",
+        "data/human_g1k_v37.fasta",
+        "data/human_g1k_v37.fasta.fai"
 
 
 rule downloadHG19:
@@ -44,6 +46,35 @@ rule index:
         "data/hg19.fa"
     output:
         "data/hg19.fa.fai"
+    shell:
+        """
+        samtools faidx {input}
+        """
+
+rule download_v37:
+    input:
+    output:
+        temp("data/human_g1k_v37.fasta.gz")
+    shell:
+        """
+        wget -O {output} ftp://ftp.ncbi.nlm.nih.gov/1000genomes/ftp/technical/reference/human_g1k_v37.fasta.gz
+        """
+
+rule extract_v37:
+    input:
+        "data/human_g1k_v37.fasta.gz"
+    output:
+        "data/human_g1k_v37.fasta"
+    shell:
+        """
+        bgzip -d {input}
+        """
+
+rule index_v37:
+    input:
+        "data/human_g1k_v37.fasta"
+    output:
+        "data/human_g1k_v37.fasta.fai"
     shell:
         """
         samtools faidx {input}
