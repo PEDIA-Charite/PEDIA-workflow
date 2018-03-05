@@ -198,7 +198,7 @@ rule indexVCFConcat1KG:
 rule filterExAC:
 	input:
 		refseq="data/refseq/ref_GRCh37.p13_top_level.bed.gz",
-		vcf="../../data/ExAC.r0.3.sites.vep.vcf.gz"
+		vcf="../../data/populationDBs/ExAC.r1.sites.vep.vcf.gz"
 	output:
 		vcf="results/ExAC/ExAC.refSeq105.vcf.gz",
 		idx="results/ExAC/ExAC.refSeq105.vcf.gz.tbi"
@@ -249,14 +249,14 @@ rule filterIRAN:
 rule annotateAFs:
 	input:
 		vcf="results/{background}/{background}.refSeq105.vcf.gz",
-		db="../jannovar/data/hg19_refseq.ser",
-		jannovar="../jannovar/jannovar-cli-0.21-SNAPSHOT.jar",
-		exac="../../data/ExAC.r0.3.sites.vep.vcf.gz",
-		uk="../../data/UK10K_COHORT.20160215.sites.vcf.gz",
-		kg="../../data/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
-		caddsnv="../../data/whole_genome_SNVs.tsv.gz",
-		caddindel="../../data/InDels.tsv.gz",
-		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
+		db="../../data/jannovar/data/hg19_refseq.ser",
+		jannovar="../../data/jannovar/jannovar-cli-0.21-SNAPSHOT.jar",
+		exac="../../data/populationDBs/ExAC.r1.sites.vep.vcf.gz",
+		uk="../../data/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
+		kg="../../data/populationDBs/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
+		caddsnv="../../data/pathogenicityScores/whole_genome_SNVs.tsv.gz",
+		caddindel="../../data/pathogenicityScores/InDels.tsv.gz",
+		ref="../../data/referenceGenome/data/human_g1k_v37.fasta"
 	output:
 		"results/{background}/{background}.refSeq105.AF.vcf.gz"
 	run:
