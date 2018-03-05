@@ -30,7 +30,7 @@ outputfile = ''
 argv = sys.argv[1:]
 
 try:
-	opts, args = getopt.getopt(argv,"h::",["help","mimfile=","morbidmap=","phenomizerconfig=","inputfile=","outputfile="])
+    opts, args = getopt.getopt(argv,"h::",["help","mimfile=","morbidmap=","phenomizerconfig=","inputfile=","outputfile="])
 except getopt.GetoptError as e:
     print(e)
     print("phenomize_jsons.py --mimfile <mim2gene.txt> --morbidmap <morbidmap.txt> --phenomizerconfig <protected/phenomizer_server.json> --inputfile <input.json> --outputfile <output.json>")
@@ -51,11 +51,11 @@ for opt, arg in opts:
     elif opt in ("--inputfile"):
     	inputfile = arg
 
-print 'Mimfile:',mimfile
-print 'Morbidmap file:',morbidmap
-print 'Phenomizerconfig file:',phenomizerconfig
-print 'Input file:',inputfile
-print 'Output file:',outputfile
+print('Mimfile:' + mimfile)
+print('Morbidmap file:' + morbidmap)
+print('Phenomizerconfig file:' + phenomizerconfig)
+print('Input file:' + inputfile)
+print('Output file:' + outputfile)
 
 ####
 # function to load mim and mobidmap file
@@ -132,23 +132,23 @@ def annotate_phenomizer(data, url_prefix, url_suffix):   #load omim first
 	content = requests.get(link).text
 	lines=content.split('\n')
 	for line in lines:
-		fields=line.split('\t')
-		if len(fields)>3:
-			phenoscore= 1-float(fields[0])
-			genes=fields[4]
-			if len(genes)>1:
-			    genes=genes.split(', ')
-			    for geneterm in genes:
-					gene_id = int(gene_pattern.findall(geneterm)[0][1])
-					gene = str(gene_pattern.findall(geneterm)[0][0])
-					if gene_id not in mim:
-						mim[gene_id]={"mimid": "?","gene": gene}
-					if gene not in geneToGeneID:
-						geneToGeneID[gene]=gene_id
-					if gene_id not in scores:
-						scores[gene_id] = phenoscore
-					else:
-						scores[gene_id]=max(scores[gene_id], phenoscore)
+            fields=line.split('\t')
+            if len(fields)>3:
+                phenoscore= 1-float(fields[0])
+                genes=fields[4]
+                if len(genes)>1:
+                    genes=genes.split(', ')
+                    for geneterm in genes:
+                        gene_id = int(gene_pattern.findall(geneterm)[0][1])
+                        gene = str(gene_pattern.findall(geneterm)[0][0])
+                        if gene_id not in mim:
+                            mim[gene_id]={"mimid": "?","gene": gene}
+                        if gene not in geneToGeneID:
+                            geneToGeneID[gene]=gene_id
+                        if gene_id not in scores:
+                            scores[gene_id] = phenoscore
+                        else:
+                            scores[gene_id]=max(scores[gene_id], phenoscore)
 
 	usedIDs=set()
 	for entry in data['geneList']:
@@ -198,7 +198,7 @@ def annotate_boqa(data, url_prefix, url_suffix):   #load omim first
 					genes=omimID2gene[omim_syndrom_id]
 					for gene in genes:
 						if gene not in geneToGeneID:
-							print "cannot get gene_id for gene " + gene
+							print("cannot get gene_id for gene " + gene)
 							continue
 						gene_id = geneToGeneID[gene]
 						if gene_id not in scores:
