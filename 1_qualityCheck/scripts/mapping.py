@@ -111,6 +111,8 @@ def getTestInformation_GeneName(genomicEntry):
             return genomicEntry['gene']['gene_symbol']
         elif 'gene_omim_id' in genomicEntry['gene']:
             return 'OMIM-ID:' + genomicEntry['gene']['gene_symbol']
+        elif 'gene' in genomicEntry['variants']:
+            return genomicEntry['variants']['gene']['gene_symbol']
 
     return ''
 
@@ -524,9 +526,9 @@ def getGenomicDataCorrectFormat(fileWrongFormat, path):
     genomicEntries = fileWrongFormat['genomic_entries']
     if genomicEntries:   # check whether genomicEntries is empty, because otherwise it is of type list which will cause an error in the next line
         for entry in genomicEntries:
-            if not os.path.isfile(path + entry + '.json'):
+            if not os.path.isfile(path + str(entry) + '.json'):
                 continue
-            genomicEntry = json.load(open(path + entry + '.json'))
+            genomicEntry = json.load(open(path + str(entry) + '.json'))
             # initialize entry for genomicData list
             genomicDataElement = {}
             # create content
@@ -710,14 +712,40 @@ def get_phenotype_gene_dict():
             count = count + 1
     return pg_dict
 
-def rename_document_vcf(documents, case_id):
+
+def rename_document_vcf(documents, case_id, vcf_path, new_vcf_path):
     vcf = {}
+    vcf_file_list = os.listdir(vcf_path)
+    # go to vcf folder to check file and copy to new data/PEDIA/vcfs
+    
+    # 46073 is special case
+    if case_id == 46073:
+        return vcf
     for doc in documents:
         if isinstance(doc, list):
             continue
-        if doc['is_vcf'] == '1':
-            vcf['original_filename'] = doc['document_name']
-            vcf['case_id'] = case_id
+        if doc['is_vcf'] == 1:
+            vcf_name = ""
+            for name in vcf_file_list:
+                if str(case_id) in name:
+                    vcf_name = name
+            print(vcf_name)
+            new_file = str(case_id) + '.vcf.gz'
+            if vcf_name.endswith('.gz'):
+                if new_file not in os.listdir(new_vcf_path):
+                    cmd = 'cp ' + vcf_path + vcf_name + ' ' + new_vcf_path + new_file
+                    os.system(cmd)
+            elif vcf_name.endswith('.vcf'):
+                if new_file not in os.listdir(new_vcf_path):
+                    cmd = 'bgzip -c ' + vcf_path + vcf_name + ' > ' + new_vcf_path + new_file
+                    os.system(cmd)
+            elif vcf_name.endswith('.zip'):
+                if new_file not in os.listdir(new_vcf_path):
+                    cmd = 'unzip -p ' + vcf_path + vcf_name + ' | bgzip > ' + new_vcf_path + new_file
+                    os.system(cmd)
+            print(new_file)
+            if vcf_name != "":
+                vcf['original_filename'] = new_file
     return vcf
 # ===============================
 # ===== main script =============
@@ -728,10 +756,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Mapping disorder to gene')
     parser.add_argument('-j', '--jsonsoriginal', help='path of original json folder')
     parser.add_argument('-m', '--mappedjsons', help='path of mapped json folder')
+    parser.add_argument('-f', '--vcf', help='path of vcf file we want to copy to')
     args = parser.parse_args()
 
     path = args.jsonsoriginal
     case_path = args.jsonsoriginal + '/cases/'
+    vcf_path = args.jsonsoriginal + '/vcfs/'
+    new_vcf_path = args.vcf
     genomic_path = args.jsonsoriginal + '/genomics_entries/'
     newpath = args.mappedjsons + '/'
     if not os.path.exists(newpath):
@@ -756,11 +787,15 @@ if __name__ == '__main__':
             #results.append(result)
             geneList = []
             file_content["genomicData"] = result
-            file_content['vcf'] = rename_document_vcf(file_content['documents'], file_content['case_id'])
+            file_content['vcf'] = rename_document_vcf(file_content['documents'], file_content['case_id'], vcf_path, new_vcf_path)
             for syndrome in file_content["detected_syndromes"]:
                 syndromename = syndrome["syndrome_name"]
                 try:  # debugging
                     idsinjson = syndrome["omim_id"]
+                    #print(idsinjson)
+                    if (type(idsinjson) == str):
+                        idsinjson = int(idsinjson)
+
                     if (type(idsinjson) == list):  # if syndrome has multiple omim ids in the json file
                         genes = []
                         features = {"syndrome_name": syndromename}
