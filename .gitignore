@@ -29,7 +29,7 @@ data/pathogenicityScores/InDels\.tsv\.gz
 
 data/pathogenicityScores/InDels\.tsv\.gz\.tbi
 
-data/jannovar/data/hg19/
+data/jannovar/data/
 
 1_qualityCheck/scripts/protected/
 
