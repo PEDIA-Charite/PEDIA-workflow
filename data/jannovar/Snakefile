@@ -1,0 +1,13 @@
+# download the data!
+rule all:
+	input:
+		"data/hg19_refseq.ser"
+
+rule download_jannovar_ser:
+	output:
+		file="data/hg19_refseq.ser"
+	shell:
+		"""
+		java -jar jannovar-cli-0.21-SNAPSHOT.jar download -d hg19/refseq
+		"""
+
