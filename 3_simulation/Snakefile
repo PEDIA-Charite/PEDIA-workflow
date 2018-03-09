@@ -102,14 +102,14 @@ rule spikein:
 		vcf="mutations/JsonsVCF_annotated.vcf.gz",
 		omim="OMIM/genemap2.txt",
 		back=getBackground,
-		back_1kg="background/results/1KG/1KG.refSeq105.AF.vcf.gz",
-		back_exac="background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz",
-		back_iran="background/results/IRAN/IRAN.refSeq105.AF.vcf.gz"
+		back_1kg="/home/la60312/pedia/3_simulation/background/results/1KG/1KG.refSeq105.AF.vcf.gz",
+		#back_exac="background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz",
+		#back_iran="background/results/IRAN/IRAN.refSeq105.AF.vcf.gz"
 	output:
 		"vcf_simulation/{background}/{sample}.vcf.gz"
 	shell:
 		"""
-		java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v {input.back} -m {input.vcf} --sample {wildcards.sample}
+		java -jar /home/la60312/pedia/3_simulation/simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v {input.back} -m {input.vcf} --sample {wildcards.sample}
 		"""
 	'''
 		if not containsVcf(wildcards):
@@ -137,8 +137,8 @@ rule json:
 ################### REAL VCFS################################
 
 def getRealVCF(wc):
-	configfile: "../1_qualityCheck/json/json_vcf/%s.json" % wc.sample
-	filename = config['vcf']['original_filename'].replace(" ", "_").replace("(", "").replace(")", "",1).replace(")", "_").replace(",", "").replace("..", ".").replace("..", ".").replace(".", "_")
+	configfile: "../1_qualityCheck/json/currated/%s.json" % wc.sample
+	filename = config['vcf']['original_filename']
 	vcf_index = "filtered_vcfs/%s_annotated.vcf.gz.tbi" % filename[0:-7]
 	vcf = vcf_index[0:-4] 
 	return [vcfs_workflow(vcf), vcfs_workflow(vcf_index)]
@@ -146,14 +146,13 @@ def getRealVCF(wc):
 rule copyReal:
 	input:
 		vcf=getRealVCF,
-		#json="../data/PEDIA/jsons/phenomized/{sample}.json"
-		json=phenomization_workflow("../data/PEDIA/jsons/phenomized/{sample}.json"),
+		json=phenomization_workflow("../data/PEDIA/jsons/phenomized/{sample}.json")
 	output:
 		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
 		index="vcf_annotation/{sample}.annotation.vcf.gz.tbi"
 	shell:
 		"""
-		cp {input.vcf[0]} {output.vcf};
+		cp {input.vcf[0]} {output.vcf}
 		cp {input.vcf[1]} {output.index}
 		"""
 
