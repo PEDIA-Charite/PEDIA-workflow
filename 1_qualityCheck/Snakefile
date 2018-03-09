@@ -1,9 +1,6 @@
-
-
 subworkflow downloadReference:
     workdir: "../data/referenceGenome"
     snakefile: "../data/referenceGenome/Snakefile"
-
 
 import datetime as dt
 now=dt.datetime.now()
@@ -52,7 +49,7 @@ onstart:
     rm {results}/empty.json;
 	mkdir -p {mappedjsons}
     touch {mappedjsons}/empty.json;
-    tar -cvzf json/backup/original{date}{time}.tar.gz {mappedjsons}/*.json;
+    tar -cvzf json/backup/mapped{date}{time}.tar.gz {mappedjsons}/*.json;
     rm {mappedjsons}/empty.json;
     """
     )
@@ -60,105 +57,69 @@ onstart:
 
 rule all:
     input:
-        "pyhgvs/hgvs/pyhgvs/data/genes.refGene",
-        expand("json/original/{sample}.json", sample=SAMPLES),
         "variants.vcf",
+        "../data/PEDIA/mutations/variants.vcf.gz",
+        touch(jsonsoriginal + '/download.done'),
         "config.yml",
-        "pyhgvs/pygr.done",
         touch(results+"/currated.done"),
-        expand("json/currated/{sample}.json", sample=SAMPLES)
-
-
-# download and install pyhgvs. Really old library to manage hgvs but right now there is no good alternative
-# Maybe "hgvs" But it seems to be difficult to run behind a proxy.
-rule pyhgvs:
-    input:
-    conda:
-        "envs/python2.7.yml"
-    output:
-        "pyhgvs/hgvs/pyhgvs/data/genes.refGene"
-    shell:
-        """
-        mkdir -p pyhgvs;
-        cd pyhgvs;
-        rm -rf hgvs;
-        git clone https://github.com/counsyl/hgvs.git;
-        cd hgvs;
-        python setup.py install;
-        """
-
-rule install_dependencies:
-    input:
-        "pyhgvs/hgvs/pyhgvs/data/genes.refGene"
-    conda:
-        "envs/python2.7.yml"
-    output:
-        temp(touch("dependencies.done"))
-    shell:
-        """
-        python -c "import xlrd";
-        if [ `echo $?` != 0 ]; then pip install xlrd; fi;
-
-        python -c "import pygr";
-        if [ `echo $?` != 0 ]; then pip install pygr; fi;
-
-        python -c "import xlwt";
-        if [ `echo $?` != 0 ]; then pip install xlwt; fi;
-
-        python -c "import pyhgvs";
-        if [ `echo $?` != 0 ]; then cd pyhgvs/hgvs && python setup.py install; fi;
-        """
+        expand("json/currated/{sample}.json", sample=SAMPLES),
+        "hgvs_error_report.csv"
 
 # Download jsons
 rule downloadJSONs:
     input:
-        script="scripts/download.py"
+        script = "scripts/download.py"
+    output:
+        done = touch(jsonsoriginal + '/download.done')
     params:
-        output="json/original/"
+        output = "json/original/"
     shell:
         """
         python {input.script} {params.output}
         """
 
 #Mapping to old JSON-Format
-
 rule runMapping:
     input:
-        scripts="scripts/mapping.py"
+        scripts = "scripts/mapping.py"
     output:
-        touch("Mapping.done")
+        done = touch("Mapping.done")
     params:
         jsonsoriginal=jsonsoriginal,
         mappedjsons=mappedjsons,
-        vcf_folder="../data/PEDIA/vcfs/original/"
+        vcf_folder="../data/PEDIA/vcfs/original/",
+        err_dict="hgvs_errors.json",
+        err_dict_partial="hgvs_partial.json"
     shell:
         """
-        python {input.scripts} --jsonsoriginal {params.jsonsoriginal} --mappedjsons {params.mappedjsons} --vcf {params.vcf_folder}
+        python2 {input.scripts} --jsonsoriginal {params.jsonsoriginal} --mappedjsons {params.mappedjsons} --vcf {params.vcf_folder} --errjson {params.err_dict} --errpartialjson {params.err_dict_partial}
         """
 
 # Run the quality check.
 rule runQuality:
     input:
-        script="scripts/JsonsQC.py",
-        mapping = "Mapping.done",
-        log="QC_progress.xls",
-        genome=downloadReference("data/hg19.fa"),
-        genomeidx=downloadReference("data/hg19.fa.fai"),
-        libraries="dependencies.done",
-        genefile="pyhgvs/hgvs/pyhgvs/data/genes.refGene",
-        errordict="hgvs_errordict.json",
+        script = "scripts/JsonsQC.py",
+        mapping = "Mapping.done"
     output:
-        vcf="variants.vcf",
-        config="config.yml",
-        currated=touch(results+"/currated.done")
-        #jsons=expand("json/currated/{sample}.json", sample=SAMPLES)
+        vcf = "variants.vcf",
+        config = "config.yml",
+        currated = touch(results+"/currated.done"),
+        errordict = "hgvs_error_report.csv"
     params:
-        debug=debug,
         mappedjsons=mappedjsons,
         results=results
-    conda:
-        "envs/python2.7.yml"
     shell:
         """
-        python {input.script} --mappedjsons {params.mappedjsons} --log {input.log} --genomefile {input.genome} --debugfolder {params.debug} --genefile {input.genefile} --jsoncurrated {params.results} --errordict {input.errordict} --vcf {output.vcf} --config {output.config}
+        python2 {input.script} --mappedjsons {params.mappedjsons} --output {params.results} --errorlog {output.errordict} --vcf {output.vcf} --sample {output.config}
+        """
+
+rule multiVCF:
+    input:
+        currated = results+"/currated.done",
+        vcf = "variants.vcf"
+    output:
+        mutation_vcf = "../data/PEDIA/mutations/variants.vcf.gz",
+    shell:
+        """
+        bgzip -c {input.vcf} > {output.mutation_vcf}
         """

@@ -11,6 +11,7 @@ import requests
 import getopt
 import sys
 import argparse
+import urllib2
 
 
 # METHODS
@@ -56,7 +57,7 @@ def getTestInformation(genomicEntry):
     return testInformation
 
 
-def getMutations(genomicEntry):
+def getMutations(genomicEntry, entry_id, err_json, err_partial):
     mutations = {}
 
     mutations['additional info'] = getMutations_AddInfo(genomicEntry)
@@ -65,8 +66,22 @@ def getMutations(genomicEntry):
     mutations['Inheritance Mode'] = getMutations_InheritanceMode(genomicEntry)
 
     # deal with the possibility of two hgvs codes of differing quality
-    primaryHGVSCode, alternativeHGVSCode = getMutations_HGVSCode(genomicEntry)
-    mutations['HGVS-code'] = primaryHGVSCode
+    primaryHGVSCode, alternativeHGVSCode = getMutations_HGVSCode(genomicEntry, entry_id)
+    if str(entry_id) in err_json:
+        new_code = err_json[str(entry_id)]['cleaned']
+        if len(new_code) > 0:
+            mutations['HGVS-code'] = ', '.join(new_code)
+        else:
+            if str(entry_id) in err_partial:
+                new_code = err_partial[str(entry_id)]['correct']
+                mutations['HGVS-code'] = ', '.join(new_code)
+            else:
+                mutations['HGVS-code'] = primaryHGVSCode
+    elif str(entry_id) in err_partial:
+        new_code = err_partial[str(entry_id)]['correct']
+        mutations['HGVS-code'] = ', '.join(new_code)
+    else:
+        mutations['HGVS-code'] = primaryHGVSCode
     if alternativeHGVSCode:
         mutations['alternative HGVS-code'] = alternativeHGVSCode
 
@@ -171,7 +186,12 @@ def getHGVSCodeFromField(genomicEntry):
     return ''
 
 
-def getMutations_HGVSCode(genomicEntry):
+def removeErrorStr(code):
+    fixed_code = code.replace("deldel", "del")
+    fixed_code = fixed_code.replace('<', '>')
+    return fixed_code
+
+def getMutations_HGVSCode(genomicEntry, entry_id):
     """ Get two hgvs codes from a given genomic entry and order them by quality.
     They are obtained
     1) directly as a string from the item 'hgvs_variant_description'
@@ -182,10 +202,12 @@ def getMutations_HGVSCode(genomicEntry):
     """
 
     # check various keys for detailed genetic information and create hgvs key from them
-    hgvsCodeCreated = getHGVSCodeFromDetails(genomicEntry)
+    hgvsCodeCreated = getHGVSCodeFromDetails(genomicEntry, entry_id)
     # check hgvs variant description item for a hgvs code string
     hgvsString = getHGVSCodeFromField(genomicEntry)
 
+    hgvsCodeCreated = removeErrorStr(hgvsCodeCreated) 
+    hgvsString = removeErrorStr(hgvsString) 
     # assess quality of hgvs codes and deal with them appropriatly
     # in case of similiar quality the created hgvs code is prioritized
     if isCorrectHGVSString(hgvsCodeCreated):
@@ -204,8 +226,29 @@ def getMutations_HGVSCode(genomicEntry):
 
     return (primaryHGVSCode, alternativeHGVSCode)
 
+def checkMutalyzer(code):
+    url = "https://mutalyzer.nl/position-converter?assembly_name_or_alias=GRCh37&description=" + code
+    try:
+        page = urllib2.urlopen(url)
+        data = page.read()
+    except:
+        print('Could not connect: ' + code)
+        data = 'empty'
+    if 'Found transcripts' in data:
+        return code
+    elif 'We found these versions' in data:
+        newtranscript = data.split('We found these versions: ')[1].split('<p></p>')[0].split('</p>')[0]
+        newtranscript = newtranscript + ':' + code.split(':')[1]
+        return newtranscript
+    elif 'could not be found in our database (or is not a transcript).' in data:
+        print('no transcript found: ' + code)
+        return code
+    else:
+        print('please check: ' + code)
+        return code
 
-def getHGVSCodeFromDetails(genomicEntry):
+
+def getHGVSCodeFromDetails(genomicEntry, entry_id):
     """ Create a hgvs code string from various fields in the given genomic entry.
 
     The input information is not completed or validated in any way. If parts of
@@ -229,22 +272,47 @@ def getHGVSCodeFromDetails(genomicEntry):
             if 'variants' in genomicEntry:
                 if 'variant_information' in genomicEntry['variants']:
                     variantInfo = genomicEntry['variants']['variant_information']
-
                     # variant type: coding dna level
+                    two_mut = False
+                    if 'mutation1' in genomicEntry['variants']:
+                        two_mut = True
+
                     if variantInfo == 'CDNA_LEVEL':
-                        referenceSequenceHGVS = findReferenceSequenceDNA(
-                            genomicEntry)
-                        variantHGVS = findVariantDNA(genomicEntry)
-                        if (referenceSequenceHGVS + variantHGVS):
-                            return referenceSequenceHGVS + ':c.' + variantHGVS
+                        if two_mut == False:
+                            referenceSequenceHGVS = findReferenceSequenceDNA(
+                                genomicEntry, 0)
+                            variantHGVS = findVariantDNA(genomicEntry, 0)
+                            if (referenceSequenceHGVS + variantHGVS):
+                                return checkMutalyzer((referenceSequenceHGVS + ':c.' + variantHGVS).replace(' ', ''))
+                        else:
+                            print(str(entry_id) + ' has 2 mutations')
+                            result = []
+                            for i in [1, 2]:
+                                referenceSequenceHGVS = findReferenceSequenceDNA(
+                                    genomicEntry, i)
+                                variantHGVS = findVariantDNA(genomicEntry, i)
+                                if (referenceSequenceHGVS + variantHGVS):
+                                    result.append(checkMutalyzer((referenceSequenceHGVS + ':c.' + variantHGVS).replace(' ', '')))
+                            return ', '.join(result)
 
                     # variant type: genomic dna level
                     elif variantInfo == 'GENOMIC_DNA_LEVEL':
-                        referenceSequenceHGVS = findReferenceSequenceGenomic(
-                            genomicEntry)
-                        variantHGVS = findVariantDNA(genomicEntry)
-                        if (referenceSequenceHGVS + variantHGVS):
-                            return referenceSequenceHGVS + ':g.' + variantHGVS
+                        if two_mut == False:
+                            referenceSequenceHGVS = findReferenceSequenceGenomic(
+                                genomicEntry, 0)
+                            variantHGVS = findVariantDNA(genomicEntry, 0)
+                            if (referenceSequenceHGVS + variantHGVS):
+                                return checkMutalyzer((referenceSequenceHGVS + ':g.' + variantHGVS).replace(' ', ''))
+                        else:
+                            print(str(entry_id) + ' has 2 mutations')
+                            result = []
+                            for i in [1, 2]:
+                                referenceSequenceHGVS = findReferenceSequenceGenomic(
+                                    genomicEntry, i)
+                                variantHGVS = findVariantDNA(genomicEntry, i)
+                                if (referenceSequenceHGVS + variantHGVS):
+                                    result.append(checkMutalyzer((referenceSequenceHGVS + ':g.' + variantHGVS).replace(' ', '')))
+                            return ', '.join(result)
 
                     # variant type: protein level
                     elif variantInfo == 'PROTEIN_LEVEL':
@@ -252,16 +320,22 @@ def getHGVSCodeFromDetails(genomicEntry):
                             genomicEntry)
                         variantHGVS = findVariantProtein(genomicEntry)
                         if (referenceSequenceHGVS + variantHGVS):
-                            return referenceSequenceHGVS + ':p.' + variantHGVS
+                            return checkMutalyzer((referenceSequenceHGVS + ':p.' + variantHGVS).replace(' ', ''))
 
     return ''
 
 
-def findReferenceSequenceDNA(genomicEntry):
+def findReferenceSequenceDNA(genomicEntry, index):
 
+    if index == 0:
+        mutation_str = 'mutation'
+    elif index == 1:
+        mutation_str = 'mutation1'
+    elif index == 2:
+        mutation_str = 'mutation2'
     # check for correct annotation
-    if 'mutation' in genomicEntry['variants']:
-        mutation = genomicEntry['variants']['mutation']
+    if mutation_str in genomicEntry['variants']:
+        mutation = genomicEntry['variants'][mutation_str]
         if 'transcript' in mutation:
             return mutation['transcript']
 
@@ -276,11 +350,17 @@ def findReferenceSequenceDNA(genomicEntry):
     return ''
 
 
-def findReferenceSequenceGenomic(genomicEntry):
-    if 'mutation' in genomicEntry['variants']:
-        if 'chromosome' in genomicEntry['variants']['mutation']:
-            if 'number' in genomicEntry['variants']['mutation']['chromosome']:
-                return genomicEntry['variants']['mutation']['chromosome']['number']
+def findReferenceSequenceGenomic(genomicEntry, index):
+    if index == 0:
+        mutation_str = 'mutation'
+    elif index == 1:
+        mutation_str = 'mutation1'
+    elif index == 2:
+        mutation_str = 'mutation2'
+    if mutation_str in genomicEntry['variants']:
+        if 'chromosome' in genomicEntry['variants'][mutation_str]:
+            if 'number' in genomicEntry['variants'][mutation_str]['chromosome']:
+                return genomicEntry['variants'][mutation_str]['chromosome']['number']
     return ''
 
 
@@ -289,10 +369,16 @@ def findReferenceSequenceProtein(genomicEntry):
     return ''
 
 
-def findVariantDNA(genomicEntry):
+def findVariantDNA(genomicEntry, index):
     # check for correct annotation
-    if 'mutation' in genomicEntry['variants']:
-        mutation = genomicEntry['variants']['mutation']
+    if index == 0:
+        mutation_str = 'mutation'
+    elif index == 1:
+        mutation_str = 'mutation1'
+    elif index == 2:
+        mutation_str = 'mutation2'
+    if mutation_str in genomicEntry['variants']:
+        mutation = genomicEntry['variants'][mutation_str]
         if 'mutation_type' in mutation:
             mutationType = mutation['mutation_type']
 
@@ -520,7 +606,7 @@ def isVariantDescription(variantString):
         return 0
 
 
-def getGenomicDataCorrectFormat(fileWrongFormat, path):
+def getGenomicDataCorrectFormat(fileWrongFormat, path, err_json, err_partial):
     genomicData = []
 
     genomicEntries = fileWrongFormat['genomic_entries']
@@ -533,7 +619,7 @@ def getGenomicDataCorrectFormat(fileWrongFormat, path):
             genomicDataElement = {}
             # create content
             testInformation = getTestInformation(genomicEntry)
-            mutations = getMutations(genomicEntry)
+            mutations = getMutations(genomicEntry, entry, err_json, err_partial)
             # put together
             genomicDataElement['Test Information'] = testInformation
             genomicDataElement['Mutations'] = mutations
@@ -541,6 +627,10 @@ def getGenomicDataCorrectFormat(fileWrongFormat, path):
 
     return genomicData
 
+def getErrorDict(json_path, partial_path):
+    hgvs_errordict = json.load(open(json_path, 'r'))
+    hgvs_error_parital_dict = json.load(open(partial_path, 'r'))
+    return hgvs_errordict, hgvs_error_parital_dict
 
 def inputIsEmpty(file):
     genomicEntries = file['genomic_entries']
@@ -729,7 +819,6 @@ def rename_document_vcf(documents, case_id, vcf_path, new_vcf_path):
             for name in vcf_file_list:
                 if str(case_id) in name:
                     vcf_name = name
-            print(vcf_name)
             new_file = str(case_id) + '.vcf.gz'
             if vcf_name.endswith('.gz'):
                 if new_file not in os.listdir(new_vcf_path):
@@ -743,7 +832,6 @@ def rename_document_vcf(documents, case_id, vcf_path, new_vcf_path):
                 if new_file not in os.listdir(new_vcf_path):
                     cmd = 'unzip -p ' + vcf_path + vcf_name + ' | bgzip > ' + new_vcf_path + new_file
                     os.system(cmd)
-            print(new_file)
             if vcf_name != "":
                 vcf['original_filename'] = new_file
     return vcf
@@ -751,12 +839,13 @@ def rename_document_vcf(documents, case_id, vcf_path, new_vcf_path):
 # ===== main script =============
 # ===============================
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Mapping disorder to gene')
     parser.add_argument('-j', '--jsonsoriginal', help='path of original json folder')
     parser.add_argument('-m', '--mappedjsons', help='path of mapped json folder')
     parser.add_argument('-f', '--vcf', help='path of vcf file we want to copy to')
+    parser.add_argument('-e', '--errjson', help='path of error dict json')
+    parser.add_argument('-p', '--errpartialjson', help='path of error partial dict json')
     args = parser.parse_args()
 
     path = args.jsonsoriginal
@@ -765,9 +854,11 @@ if __name__ == '__main__':
     new_vcf_path = args.vcf
     genomic_path = args.jsonsoriginal + '/genomics_entries/'
     newpath = args.mappedjsons + '/'
+    json_path = args.errjson
+    partial_path = args.errpartialjson
+    err_json, partial_json = getErrorDict(json_path, partial_path)
     if not os.path.exists(newpath):
         os.makedirs(newpath)
-    #results = []
     genedict = makegenedict()
     defaultfeatures = ["combined_score",
                        "feature_score", "gestalt_score", "has_mask"]
@@ -779,12 +870,11 @@ if __name__ == '__main__':
         test = fileName
         # debugging for jsons file not yet mapped
         if test not in os.listdir(newpath) and os.path.isfile(case_path + test):
+            print(fileName)
             mainurl = "https://api.omim.org/api/entry/search?"
             file_content = json.load(open(case_path + fileName))
             result = []  # HGVS result
-            #result.append(fileName)
-            result = getGenomicDataCorrectFormat(file_content, genomic_path)
-            #results.append(result)
+            result = getGenomicDataCorrectFormat(file_content, genomic_path, err_json, partial_json)
             geneList = []
             file_content["genomicData"] = result
             file_content['vcf'] = rename_document_vcf(file_content['documents'], file_content['case_id'], vcf_path, new_vcf_path)
@@ -792,7 +882,6 @@ if __name__ == '__main__':
                 syndromename = syndrome["syndrome_name"]
                 try:  # debugging
                     idsinjson = syndrome["omim_id"]
-                    #print(idsinjson)
                     if (type(idsinjson) == str):
                         idsinjson = int(idsinjson)
 
@@ -835,5 +924,5 @@ if __name__ == '__main__':
                     with open("Other_Exceptions.txt", "a") as exceptions:
                         exceptions.write(
                             str(fileName) + "\t" + syndromename + "\n")
-        else:
-            print("already done")
+        #else:
+            #print("already done")
