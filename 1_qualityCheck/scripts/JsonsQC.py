@@ -49,11 +49,6 @@ hp = hgvs.parser.Parser()
 vm = hgvs.assemblymapper.AssemblyMapper(hdp, assembly_name='GRCh37')
 
 file_list = []
-#with open('../config_tmp.csv', 'r') as csvfile:
-#    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-#    for row in spamreader:
-#        file_list.append(row[0])
-#print(len(file_list))
 
 multivcf=pd.DataFrame(columns=['#CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT', 'NM'])
 vcfcounter=0
@@ -71,10 +66,6 @@ for filename in os.listdir(jsonoriginal):
     with open(jsonoriginal + '/' + filename) as json_data:
         print(' - ' + filename.split('.json')[0])
         file_counter = file_counter + 1
-        print('File count: ' + str(file_counter))
-        print('VCF File count: ' + str(len(vcf_list)))
-        print('NON File count: ' + str(len(non_vcf_list)))
-        print('TEST File count: ' + str(len(test_vcf_list)))
         d = json.load(json_data)
 
         gene_list = d['geneList']
@@ -91,6 +82,13 @@ for filename in os.listdir(jsonoriginal):
         vcf_found = False
         copy_flag = False
         caseID = d['case_id']
+
+
+        # This case has a long deletion. It can't be annotated by Jannovar
+        if str(caseID) == '158496':
+            continue
+
+
         if 'original_filename' in d['vcf']:
             vcf_found = True
         hgvslist = []
