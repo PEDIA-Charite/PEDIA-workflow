@@ -25,6 +25,8 @@ rule all:
         population_workflow("ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz.tbi"),
         population_workflow("ExAC.r1.sites.vep.vcf.gz"),
         population_workflow("ExAC.r1.sites.vep.vcf.gz.tbi"),
+        population_workflow("UK10K_COHORT.20160215.sites.vcf.gz"),
+        population_workflow("UK10K_COHORT.20160215.sites.vcf.gz.tbi"),
         reference_workflow("data/hg19.fa"),
         reference_workflow("data/hg19.fa.fai"),
         reference_workflow("data/human_g1k_v37.fasta"),
