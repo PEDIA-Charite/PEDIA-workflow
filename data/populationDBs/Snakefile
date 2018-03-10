@@ -6,7 +6,9 @@ rule all:
 		"ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
 		"ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz.tbi",
 		"ExAC.r1.sites.vep.vcf.gz",
-		"ExAC.r1.sites.vep.vcf.gz.tbi"
+		"ExAC.r1.sites.vep.vcf.gz.tbi",
+		"UK10K_COHORT.20160215.sites.vcf.gz",
+		"UK10K_COHORT.20160215.sites.vcf.gz.tbi"
 
 
 rule download1KG:
@@ -27,4 +29,14 @@ rule downloadExAC:
 		"""
 		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/{output.file};
 		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/{output.index};
+		"""
+
+rule downloadUK10K:
+	output:
+		file="UK10K_COHORT.20160215.sites.vcf.gz",
+		index="UK10K_COHORT.20160215.sites.vcf.gz.tbi"
+	shell:
+		"""
+		wget ftp://ngs.sanger.ac.uk/production/uk10k/UK10K_COHORT/REL-2012-06-02/{output.file};
+		wget ftp://ngs.sanger.ac.uk/production/uk10k/UK10K_COHORT/REL-2012-06-02/{output.index};
 		"""

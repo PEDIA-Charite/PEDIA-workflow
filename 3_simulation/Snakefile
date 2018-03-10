@@ -8,6 +8,10 @@ subworkflow vcfs_workflow:
 	workdir: "../data/PEDIA/vcfs"
 	snakefile: "../data/PEDIA/vcfs/Snakefile"
 
+subworkflow background_workflow: 
+	workdir: "background"
+	snakefile: "background/Snakefile"
+
 def allSamples(a,b):
 	samples = []
 	samples.extend(a)
@@ -79,7 +83,7 @@ rule index:
 
 rule ExAC_genotypes:
 	input:
-		"background/results/ExAC/ExAC.refSeq105.AF.vcf.gz"
+		background_workflow("results/ExAC/ExAC.refSeq105.AF.vcf.gz")
 	output:
 		"background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz"
 	shell:
@@ -89,11 +93,11 @@ rule ExAC_genotypes:
 
 def getBackground(wc):
 	if wc.background == "1KG":
-		return "background/results/1KG/1KG.refSeq105.AF.vcf.gz"
+		return background_workflow("results/1KG/1KG.refSeq105.AF.vcf.gz")
 	elif wc.background == "ExAC":
 		return expand("background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz", sample=[wc.sample])
 	elif wc.background == "IRAN":
-		return "background/results/IRAN/IRAN.refSeq105.AF.vcf.gz"
+		return background_workflow("results/IRAN/IRAN.refSeq105.AF.vcf.gz")
 
 
 rule spikein:
@@ -102,7 +106,7 @@ rule spikein:
 		vcf="mutations/JsonsVCF_annotated.vcf.gz",
 		omim="OMIM/genemap2.txt",
 		back=getBackground,
-		back_1kg="/home/la60312/pedia/3_simulation/background/results/1KG/1KG.refSeq105.AF.vcf.gz",
+		#back_1kg="background/results/1KG/1KG.refSeq105.AF.vcf.gz",
 		#back_exac="background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz",
 		#back_iran="background/results/IRAN/IRAN.refSeq105.AF.vcf.gz"
 	output:
