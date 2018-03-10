@@ -81,7 +81,8 @@ rule downloadJSONs:
 #Mapping to old JSON-Format
 rule runMapping:
     input:
-        scripts = "scripts/mapping.py"
+        scripts = "scripts/mapping.py",
+        done = touch(jsonsoriginal + '/download.done')
     output:
         done = touch("Mapping.done")
     params:
