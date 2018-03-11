@@ -252,7 +252,6 @@ multivcf.to_csv(mVCF+".tmp", sep='\t', index=False, header=True, quoting=csv.QUO
 
 with open(mVCF, 'w') as outfile:
     outfile.write('##fileformat=VCFv4.1\n##INFO=<ID=HGVS,Number=1,Type=String,Description="HGVS-Code">\n##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
-    outfile.write('\n')
     outfile.write('##contig=<ID=1,assembly=b37,length=249250621>\n')
     outfile.write('##contig=<ID=2,assembly=b37,length=243199373>\n')
     outfile.write('##contig=<ID=3,assembly=b37,length=198022430>\n')
