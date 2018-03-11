@@ -1,0 +1,2 @@
+#This is the version of current PEDIA project
+pedia_version = v0.1

@@ -62,3 +62,67 @@ Because of this special case (python 2.7 and 3.5) we have to tell snakemake to u
 ```
 
 Using this command conda will first create an enviroment with python 2.7 (defined in the file `envs/python2.7.yml`)
+
+
+### Run PEDIA pipeline
+There are three steps to run pipeline.
+1. Environment setup
+   * Go to data folder, and run 'snakemake all' to download all necessary files such as reference genome, population data.
+   * Setup amazon server key 'AWS_KEY_ID, AWS_ACCESS_KEY' on your environment path.
+   * Copy dbsnp files to data/dbSNP/b147
+   * Copy phenomization account/password file to 2_phenomization/scripts/protected
+   * Copy IRAN_trio files to 3_simulation/background/data/IRAN_trio/
+
+1. Download cases and perform quality check
+   Go to 1_qualityCheck folder, and enable the environment. 
+
+   ```
+   source activate pedia_quality
+   ```
+
+   If you haven't created the environment, please execute 
+   
+   ```
+   conda env create -f environment.yml'
+   ```
+   
+   After you enable the environment, run the following command to get the following output.
+   
+   ```
+   snakemake all
+   ```
+   * config.yml contains the cases passed quality check. SIMPLE_SAMPLES is the case with disease-causing mutation but without real VCF file. VCF_SAMPLES is the case with real VCF file. TEST_SAMPLE is the case with real VCF but without disease-causing mutation.
+   * json/currated is the folder which contains the JSON files passed QC.
+   * ../data/PEDIA/mutations/variants.vcf.gz  is the VCF file which contains disease-causing mutations of all cases.
+   * ../data/PEDIA/vcfs/original/ is the folder which contains the VCF files. In mapping.py, we rename the filename of VCF files to case_id.vcf.gz and store to ../data/PEDIA/vcfs/original/. The new filename is added in vcf field of the JSON file. For example,
+   ```
+   "vcf": {
+           "original_filename": "28827.vcf.gz"
+       },
+   ```
+
+1. Get pedia result
+   * Go to classifier folder.  Run 'source activate classifier' to enable the environment. If you haven't created the environment, please execute 'conda env create -f environment.ymal'.
+   * Perform 10 times 10 fold cross-validation on all 3 simulation population by running 'snakemake CV_all'. You can add --cores 3 to run it on parallel. The output will be in output/cv/CV_1KG, output/cv/CV_ExAC and output/cv/CV_IRAN. The classifier will trigger the simulation and phenomization if the files haven't been generated. It takes a long time for running the first time due to the process of simulation population data.
+
+   ```
+   snakemake -p --cores 3 CV_all
+   ```
+   * If you only want to run on 1KG simulation data, please execute this command 'snakemake ../output/cv/CV_1KG/run.log'. Please remind the working directory of classifier is in scripts folder, so to run on 1KG simulation you need to specify the output file '../output/cv/CV_1KG/run.log' instead of 'output/cv/CV_1KG/run.log '.
+
+   ```
+   snakemake ../output/cv/CV_1KG/run.log
+   ```
+   * The final JSON files are in 3_simulation/json_simulation folder.
+      * 3_simulation/json_simulation/1KG is the folder for all cases simulated by 1KG.
+      * 3_simulation/json_simulation/ExAC is the folder for all cases simulated by ExAC.
+      * 3_simulation/json_simulation/IRAN is the folder for all cases simulated by IRAN.
+      * 3_simulation/json_simulation/real/train is the folder for the cases without simulated by 1KG, ExAC or IRAN. We also have three folder under this folder.
+      * 3_simulation/json_simulation/real/test is the folder for the cases with real VCF file.
+
+1. How to read the PEDIA results?
+   * case_id.csv contains all genes with corresponding pedia scores in this case
+   * manhattan_case_id.png is the manhattan plot of the case
+   * manhattan_all.png is the manhattan plot of all cases
+   * rank_gene_1KG.csv contains the case_id and the predicted rank of disease-causing gene of each case.
+   * rank_1KG is the performance overview file. You will find the number of cases in each rank.
