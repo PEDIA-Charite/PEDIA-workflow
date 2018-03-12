@@ -15,11 +15,9 @@ from lib.utils import explode_df_column
 
 # creation of hgvs objects from hgvs strings
 HGVS_PARSER = hgvs.parser.Parser()
-# mapping of oding variants
-#HGVS_DATA_PROVIDER = hgvs.dataproviders.uta.connect()
 
 
-def parsevariant(variant: "SequenceVariant", hdp: "hgvs.dataprovider") -> tuple:
+def parsevariant(variant: "hgvs.sequencevariant.SequenceVariant", hdp: "hgvs.dataproviders.uta.UTA_postgresql") -> tuple:
     '''Parses variant object to genomic variant
     and returns data for vcf generation'''
     vm = hgvs.assemblymapper.AssemblyMapper(
@@ -34,7 +32,7 @@ def parsevariant(variant: "SequenceVariant", hdp: "hgvs.dataprovider") -> tuple:
         if "dup" in str(var_g):
             alt = ref + ref
         elif "del" in str(var_g):
-            alt = ""
+            alt = "."
         else:
             alt = "."
     return chrom, offset, ref, alt
@@ -96,7 +94,6 @@ class Case:
     realvcf - list of vcf filenames
     vcf - dataframe containing variant information in vcf format
     '''
-
 
     def __init__(self, data: Union[OldJson, NewJson],
                  error_fixer: "ErrorFixer"):
