@@ -6,19 +6,19 @@ from typing import Union, Dict
 
 
 import pandas
+import csv
 import hgvs.parser
 import hgvs.assemblymapper
+import hgvs.exceptions
 
 from lib.model.json import OldJson, NewJson
 from lib.utils import explode_df_column
 
 # creation of hgvs objects from hgvs strings
 HGVS_PARSER = hgvs.parser.Parser()
-# mapping of oding variants
-#HGVS_DATA_PROVIDER = hgvs.dataproviders.uta.connect()
 
 
-def parsevariant(variant: "SequenceVariant", hdp: "hgvs.dataprovider") -> tuple:
+def parsevariant(variant: "hgvs.sequencevariant.SequenceVariant", hdp: "hgvs.dataproviders.uta.UTA_postgresql") -> tuple:
     '''Parses variant object to genomic variant
     and returns data for vcf generation'''
     vm = hgvs.assemblymapper.AssemblyMapper(
@@ -33,7 +33,7 @@ def parsevariant(variant: "SequenceVariant", hdp: "hgvs.dataprovider") -> tuple:
         if "dup" in str(var_g):
             alt = ref + ref
         elif "del" in str(var_g):
-            alt = ""
+            alt = "."
         else:
             alt = "."
     return chrom, offset, ref, alt
@@ -224,14 +224,16 @@ class Case:
         Exclusion criteria are:
             available real vcf
         '''
-        return not self.vcf
+        return not self.vcflist
 
     def get_vcf(self) -> pandas.DataFrame:
         '''Returns vcf data'''
         return multivcf
 
     def create_vcf(self,  hdp: "hgvs.dataprovider") -> pandas.DataFrame:
-        '''Create dataframe from variant information
+        '''Create dataframe in vcf format from variant information
+        if the mapping of all coding variants was unsuccessfull a list of
+        error messages is returned
         '''
         if self.hgvs_models[0].zygosity.lower() == 'hemizygous':
             genotype = '1'
@@ -242,15 +244,33 @@ class Case:
         else:
             genotype = './1'
         data = []
+        errors = []
         for v in self.variants:
-            chrom, offset, ref, alt = parsevariant(v, HGVS_DATA_PROVIDER)
-            data.append((chrom, offset, '.', ref, alt, '.', '.', 'HGVS=' + str(v), 'GT', v.ac, genotype))
-
-        vcf = pandas.DataFrame(data,columns=[
+            # current method: try to parse all variants. If one variant can not be parsed
+            # save the errormessage and cancel vcf generation
+            try:
+                chrom, offset, ref, alt = parsevariant(v, hdp)
+                data.append((chrom, offset, '.', ref, alt, '.', '.',
+                             'HGVS=' + str(v), 'GT', v.ac, genotype))
+            except hgvs.exceptions.HGVSError as e:
+                errors.append(e)
+        vcf = pandas.DataFrame(data, columns=[
             '#CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT', 'NM', self.case_id])
-
         vcf = vcf.sort_values(by=['#CHROM', "POS"])
         vcf = vcf.reset_index(drop=True)
         vcf = vcf.fillna(value='0/0')
-
+        if vcf.empty:
+            return errors
         return vcf
+
+    def dump_vcf(self, path: str):
+        '''Dumps vcf file to given path
+        '''
+        if type(self.vcf) != list:
+            outputpath = path + self.case_id + '.vcf'
+            with open(outputpath, 'a') as outfile:
+                outfile.write(
+                    '##fileformat=VCFv4.1\n##INFO=<ID=HGVS,Number=1,Type=String,Description="HGVS-Code">\n##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
+
+            self.vcf.to_csv(outputpath, mode='a', sep='\t', index=False,
+                            header=True, quoting=csv.QUOTE_NONE)
