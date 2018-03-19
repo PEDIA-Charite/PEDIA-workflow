@@ -141,18 +141,18 @@ class Case:
         valid = True
         issues = []
         # check maximum gestalt score
-        max_gestalt_score = reduce(
-            lambda x, y: max(x, y.gestalt_score), self.detected_syndromes, 0.0)
+        max_gestalt_score = max(self.syndromes['gestalt_score'])
         if max_gestalt_score <= 0:
             issues.append('Maximum gestalt score is 0. \
                           Probably no image has been provided.')
             valid = False
 
         # check that only one syndrome has been selected
-        if len(self.diagnosis) != 1:
+        diagnosis = self.syndromes.loc[self.syndromes['confirmed']]
+        if len(diagnosis) != 1:
             issues.append(
                 '{} syndromes have been selected. Only 1 syndrome should be \
-                selected for PEDIA inclusion.'.format(len(self.diagnosis)))
+                selected for PEDIA inclusion.'.format(len(diagnosis)))
             valid = False
 
         # check that molecular information is available at all
