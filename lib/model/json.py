@@ -87,7 +87,8 @@ class JsonFile:
             override = os.path.join(corrected_location, jsondir, filename)
             path = os.path.exists(override) and override or path
 
-        json_data = json.load(open(path, 'r'))
+        with open(path, "r") as js_file:
+            json_data = json.load(js_file)
         # create the parent class
         json_obj = cls(data=json_data, path=path, base_path=basedir,
                        override=corrected_location)
@@ -192,7 +193,9 @@ class JsonFile:
                 entries_path = corrected_path
         if not os.path.exists(entries_path):
             raise OSError("File {} not found".format(entry_id))
-        return json.load(open(entries_path, 'r'))
+        with open(entries_path, "r") as entry_file:
+            js = json.load(entry_file)
+        return js
 
     def load_linked(self, directive:
                     {'str': Callable[[str], Union[dict, list]]}):
