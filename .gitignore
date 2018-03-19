@@ -38,3 +38,8 @@ data/jannovar/data/hg19/
 1_qualityCheck/json/backup/
 
 data/referenceGenome/data/
+
+# old output data
+old_data
+# pyenv directory
+env
