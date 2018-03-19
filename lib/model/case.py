@@ -104,10 +104,13 @@ class Case:
         self.syndromes.reset_index(drop=True, inplace=True)
         return True
 
-    def get_gene_list(self, omim: 'Omim', recreate: bool=False) \
+    def get_gene_list(self, omim: 'Omim', recreate: bool = False,
+                      filter_entrez_id: bool = True) \
             -> Dict[str, str]:
         '''Get list of genes from syndromes. Save them back to self.genes
         for faster lookup afterwards.
+        Args:
+            filter_entrez_id: Only include genes with existing entrez gene ids.
         '''
         # return existing gene list, if it already exists
         if hasattr(self, 'gene_scores') and not recreate:
@@ -119,6 +122,9 @@ class Case:
         # explode the gene table on genes to separate the genetic entries
         gene_table = explode_df_column(gene_table, 'genes')
         gene_table = gene_table.apply(genes_to_single_cols, axis=1)
+        # only select entries with non-empty gene ids
+        if filter_entrez_id:
+            gene_table = gene_table.loc[gene_table["gene_id"] != ""]
 
         gene_scores = gene_table.to_dict('records')
         self.gene_scores = gene_scores
