@@ -90,6 +90,9 @@ class HGVSModel:
                 'Only parsing of new genomic entry format has been implemented'
             )
 
+    def get_json(self):
+        return self._js
+
     def _parse_new(self, entry_dict: dict):
         '''New gene entry format contains:
         entry_id - entry id of gene entry json file

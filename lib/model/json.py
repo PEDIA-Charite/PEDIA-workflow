@@ -10,6 +10,7 @@ Class overview:
     NewJson - Current json format
 '''
 
+import logging
 import json
 from typing import Union, Callable
 from functools import reduce
@@ -230,6 +231,8 @@ class JsonFile:
                 return [cls._linked(v, load_directive[0]) for v in data]
         else:
             if not hasattr(load_directive, '__call__'):
+                logging.error(data)
+                logging.error(load_directive)
                 raise TypeError("Not a loader function.")
             return load_directive(data)
 
@@ -392,6 +395,9 @@ class NewJson(JsonFile):
 
     def get_algo_version(self) -> str:
         return str(self._js['algo_deploy_version'])
+
+    def get_js(self):
+        return self._js
 
     def get_variants(self) -> ['hgvs']:
         '''Get a list of hgvs objects for variants.
