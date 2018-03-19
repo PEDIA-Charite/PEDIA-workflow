@@ -1,3 +1,12 @@
+'''
+Convert new jsons to old jsons
+---
+This script has been used to convert information in the new jSON format to the
+older json format.
+
+This script should only be used as a reference for implementation and could be
+outdated for later API changes.
+'''
 # standard libraries
 import os
 import logging
