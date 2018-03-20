@@ -9,10 +9,12 @@ outdated for later API changes.
 '''
 # standard libraries
 import os
-import sys
 import logging
 
 import pickle
+import sys
+
+sys.path.append(os.getcwd())
 
 # 3rd party libraries
 # import hgvs
@@ -27,9 +29,6 @@ from lib.model.json import NewJson, OldJson
 from lib.model.case import Case
 from lib.model.config import ConfigManager
 
-# get modules defined in root directory
-sys.path.append(os.getcwd())
-
 
 def main():
     '''Create json files in the old format from new json files.
@@ -39,8 +38,8 @@ def main():
     config = ConfigManager()
 
     # Load configuration and initialize API bindings
-    omim = Omim(config=config)
-    phen = PhenomizerService(config=config)
+    # omim = Omim(config=config)
+    # phen = PhenomizerService(config=config)
 
     # Download new files from AWS Bucket
     # download.backup_s3_folder(config=config)
@@ -58,39 +57,10 @@ def main():
     new_json_objs = [NewJson.from_file(f, corrected) for f in json_files]
 
     # print('Unfiltered', len(new_json_objs))
-
     filtered_new = [j for j in new_json_objs if j.check()[0]]
-
-    print('Filtered rough criteria', len(filtered_new))
-
-    case_objs = [Case(j) for j in filtered_new]
-    case_objs = [c for c in case_objs if c.variants]
-    print('Cases with created hgvs objects', len(case_objs))
-    # batch call mutalyzer
-    correct_reference_transcripts(case_objs)
-    pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
-
-    # case_objs[0].phenomize(phen)
-    # print(case_objs[0].syndromes)
-    # case_objs = pickle.load(open('case_cleaned.p', 'rb'))
-
-    for case in case_objs:
-        print('Phenomizing', case.case_id)
-        case.phenomize(phen)
-    pickle.dump(case_objs, open('case_phenomized.p', 'wb'))
-    # case_objs = pickle.load(open('case_phenomized.p', 'rb'))
-    for case in case_objs:
-        print('Converting to old json', case.case_id)
-        old_js = OldJson.from_case_object(case, 'convert', omim)
-        old_js.save_json()
-
-    # save old format jsons to convert folder
-
-    # output_folder = 'curated'
-    # os.makedirs(output_folder,exist_ok=True)
-
-    # hdp=hgvs.dataproviders.uta.connect()
-    # newQC.checkjson(os.path.join(unprocessed_jsons,json_files[0]), hdp)
+    vcf_directory = os.path.join(config.aws['download_location'], "vcfs")
+    for json_case in filtered_new:
+        json_case.get_vcf(vcf_directory)
 
 
 if __name__ == '__main__':
