@@ -74,7 +74,14 @@ def clean_hgvs(hgvs_string: str) -> str:
     '''Remove extraneous information from possible hgvs code.
     '''
     # remove any whitespace first
+
     no_white = "".join(hgvs_string.split())
+    #resolve strings with deldel
+    if "deldel" in hgvs_string:
+        fixed_code = hgvs_string.replace("deldel", "del")
+        #exchange wrong "<" for ">"
+        fixed_code = fixed_code.replace('<', '>')
+        return fixed_code
     # resolve strings of format NORMAL(PROTEIN):NORMAL(PROTEIN)
     match = RE_DOUBLE_BRACKETS.search(no_white)
     return match and ":".join([match.group(1), match.group(2)]) or no_white
