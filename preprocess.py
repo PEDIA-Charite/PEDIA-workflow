@@ -1,6 +1,5 @@
 # standard libraries
 import os
-import sys
 import logging
 from pprint import pprint
 import json
@@ -19,9 +18,6 @@ from lib.api.face2gene import Face2Gene
 from lib.model.json import NewJson, OldJson
 from lib.model.case import Case
 from lib.model.config import ConfigManager
-
-
-sys.path.append(os.getcwd())
 
 
 def main():
