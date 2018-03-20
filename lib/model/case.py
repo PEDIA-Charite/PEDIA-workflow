@@ -25,16 +25,31 @@ def parsevariant(variant: "hgvs.sequencevariant.SequenceVariant", hdp: "hgvs.dat
     var_g = vm.c_to_g(variant)
     chrom = int(var_g.ac.split(".")[0][-2:])
     offset = int(var_g.posedit.pos.start.base)
-    ref = var_g.posedit.edit.ref
-    try:
+    var_type = var_g.posedit.edit.type
+    if var_type == 'ins':
+        seq = ""
+        seq = hdp.get_seq(var_g.ac)
+        ref = seq[offset - 1]
+        alt = ref + var_g.posedit.edit.alt
+    elif var_type == 'dup':
+        seq = hdp.get_seq(var_g.ac)
+        end = var_g.posedit.pos.end.base
+        offset = end
+        ref = seq[end - 1]
+        alt = ref + var_g.posedit.edit.ref
+    elif var_type == 'del':
+        seq = hdp.get_seq(var_g.ac)
+        offset = offset - 1
+        ref = var_g.posedit.edit.ref
+        ref = seq[offset - 1] + ref
+        alt = seq[offset - 1]
+    elif var_type == 'sub' or var_type == 'delins':
+        ref = var_g.posedit.edit.ref
         alt = var_g.posedit.edit.alt
-    except AttributeError:
-        if "dup" in str(var_g):
-            alt = ref + ref
-        elif "del" in str(var_g):
-            alt = "."
-        else:
-            alt = "."
+    else:
+        ref = var_g.posedit.edit.ref
+        alt = var_g.posedit.edit.alt
+        print(var_type)
     return chrom, offset, ref, alt
 
 
