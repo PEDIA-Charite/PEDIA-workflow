@@ -9,6 +9,7 @@ outdated for later API changes.
 '''
 # standard libraries
 import os
+import sys
 import logging
 
 import pickle
@@ -25,6 +26,9 @@ from lib.api.mutalyzer import correct_reference_transcripts
 from lib.model.json import NewJson, OldJson
 from lib.model.case import Case
 from lib.model.config import ConfigManager
+
+# get modules defined in root directory
+sys.path.append(os.getcwd())
 
 
 def main():
