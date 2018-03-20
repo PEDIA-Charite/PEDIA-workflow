@@ -26,16 +26,31 @@ def parsevariant(variant: "hgvs.sequencevariant.SequenceVariant", hdp: "hgvs.dat
     var_g = vm.c_to_g(variant)
     chrom = int(var_g.ac.split(".")[0][-2:])
     offset = int(var_g.posedit.pos.start.base)
-    ref = var_g.posedit.edit.ref
-    try:
+    var_type = var_g.posedit.edit.type
+    if var_type == 'ins':
+        seq = ""
+        seq = hdp.get_seq(var_g.ac)
+        ref = seq[offset - 1]
+        alt = ref + var_g.posedit.edit.alt
+    elif var_type == 'dup':
+        seq = hdp.get_seq(var_g.ac)
+        end = var_g.posedit.pos.end.base
+        offset = end
+        ref = seq[end - 1]
+        alt = ref + var_g.posedit.edit.ref
+    elif var_type == 'del':
+        seq = hdp.get_seq(var_g.ac)
+        offset = offset - 1
+        ref = var_g.posedit.edit.ref
+        ref = seq[offset - 1] + ref
+        alt = seq[offset - 1]
+    elif var_type == 'sub' or var_type == 'delins':
+        ref = var_g.posedit.edit.ref
         alt = var_g.posedit.edit.alt
-    except AttributeError:
-        if "dup" in str(var_g):
-            alt = ref + ref
-        elif "del" in str(var_g):
-            alt = "."
-        else:
-            alt = "."
+    else:
+        ref = var_g.posedit.edit.ref
+        alt = var_g.posedit.edit.alt
+        print(var_type)
     return chrom, offset, ref, alt
 
 
@@ -251,14 +266,15 @@ class Case:
             try:
                 chrom, offset, ref, alt = parsevariant(v, hdp)
                 data.append((chrom, offset, '.', ref, alt, '.', '.',
-                             'HGVS=' + str(v), 'GT', v.ac, genotype))
+                             'HGVS=' + str(v), 'GT', genotype))
             except hgvs.exceptions.HGVSError as e:
                 errors.append(e)
         vcf = pandas.DataFrame(data, columns=[
-            '#CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT', 'NM', self.case_id])
+            '#CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER', 'INFO', 'FORMAT', self.case_id])
         vcf = vcf.sort_values(by=['#CHROM', "POS"])
         vcf = vcf.reset_index(drop=True)
         vcf = vcf.fillna(value='0/0')
+        vcf.replace({'#CHROM':{23:"X",24:"Y"}})
         if vcf.empty:
             return errors
         return vcf
@@ -268,9 +284,33 @@ class Case:
         '''
         if type(self.vcf) != list:
             outputpath = path + self.case_id + '.vcf'
+            #add header to vcf
             with open(outputpath, 'a') as outfile:
-                outfile.write(
-                    '##fileformat=VCFv4.1\n##INFO=<ID=HGVS,Number=1,Type=String,Description="HGVS-Code">\n##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
+                 outfile.write('##fileformat=VCFv4.1\n##INFO=<ID=HGVS,Number=1,Type=String,Description="HGVS-Code">\n##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
+                 outfile.write('##contig=<ID=1,assembly=b37,length=249250621>\n')
+                 outfile.write('##contig=<ID=2,assembly=b37,length=243199373>\n')
+                 outfile.write('##contig=<ID=3,assembly=b37,length=198022430>\n')
+                 outfile.write('##contig=<ID=4,assembly=b37,length=191154276>\n')
+                 outfile.write('##contig=<ID=5,assembly=b37,length=180915260>\n')
+                 outfile.write('##contig=<ID=6,assembly=b37,length=171115067>\n')
+                 outfile.write('##contig=<ID=7,assembly=b37,length=159138663>\n')
+                 outfile.write('##contig=<ID=8,assembly=b37,length=146364022>\n')
+                 outfile.write('##contig=<ID=9,assembly=b37,length=141213431>\n')
+                 outfile.write('##contig=<ID=10,assembly=b37,length=135534747>\n')
+                 outfile.write('##contig=<ID=11,assembly=b37,length=135006516>\n')
+                 outfile.write('##contig=<ID=12,assembly=b37,length=133851895>\n')
+                 outfile.write('##contig=<ID=13,assembly=b37,length=115169878>\n')
+                 outfile.write('##contig=<ID=14,assembly=b37,length=107349540>\n')
+                 outfile.write('##contig=<ID=15,assembly=b37,length=102531392>\n')
+                 outfile.write('##contig=<ID=16,assembly=b37,length=90354753>\n')
+                 outfile.write('##contig=<ID=17,assembly=b37,length=81195210>\n')
+                 outfile.write('##contig=<ID=18,assembly=b37,length=78077248>\n')
+                 outfile.write('##contig=<ID=19,assembly=b37,length=59128983>\n')
+                 outfile.write('##contig=<ID=20,assembly=b37,length=63025520>\n')
+                 outfile.write('##contig=<ID=21,assembly=b37,length=48129895>\n')
+                 outfile.write('##contig=<ID=22,assembly=b37,length=51304566>\n')
+                 outfile.write('##contig=<ID=X,assembly=b37,length=155270560>\n')
+                 outfile.write('##contig=<ID=Y,assembly=b37,length=59373566>\n')
 
             self.vcf.to_csv(outputpath, mode='a', sep='\t', index=False,
                             header=True, quoting=csv.QUOTE_NONE)
