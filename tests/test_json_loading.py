@@ -19,7 +19,7 @@ class JsonLoadingTest(unittest.TestCase):
     '''
 
     def setUp(self):
-        input_file = os.path.join(INPUT_PATH, "cases", "51702.json")
+        input_file = os.path.join(INPUT_PATH, "cases", "normal.json")
         self.loaded_correct = json.NewJson.from_file(input_file)
 
     def test_check(self):
@@ -30,14 +30,14 @@ class JsonLoadingTest(unittest.TestCase):
         )
 
     def test_get_case_id(self):
-        true_id = "51702"
+        true_id = "1"
         loaded_id = self.loaded_correct.get_case_id()
         self.assertEqual(loaded_id, true_id,
                          "Case ID {} is not equal to expected {}".format(
                              loaded_id, true_id))
 
     def test_algo_version(self):
-        true_algo = "17.5.9"
+        true_algo = "1.0.1"
         loaded_algo = self.loaded_correct.get_algo_version()
         self.assertEqual(loaded_algo, true_algo,
                          "Algo version {} is not equal to expected {}".format(
