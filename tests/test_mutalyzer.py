@@ -15,12 +15,12 @@ class MutalyzerTest(unittest.TestCase):
 
     def setUp(self):
         self.mutalyzer = mutalyzer.Mutalyzer()
-        input_file = os.path.join(INPUT_PATH, "cases", "51702.json")
+        input_file = os.path.join(INPUT_PATH, "cases", "normal.json")
         loaded_correct = json.NewJson.from_file(input_file)
         self.cases = [case.Case(loaded_correct)]
 
     def test_correct_reference_transcripts(self):
-        true = ['NM_004992.3:c.473C>T']
+        true = ['NM_004380.2:c.7302G>A', 'NM_004380.2:c.7302G>A']
         mutalyzer.correct_reference_transcripts(self.cases)
         processed_vars = [str(v) for c in self.cases for v in c.variants]
         self.assertListEqual(

@@ -15,7 +15,7 @@ class CaseTest(unittest.TestCase):
     '''Case method tests.'''
 
     def setUp(self):
-        input_file = os.path.join(INPUT_PATH, "cases", "51702.json")
+        input_file = os.path.join(INPUT_PATH, "cases", "normal.json")
         loaded_correct = json.NewJson.from_file(input_file)
         self.case = case.Case(loaded_correct)
 
