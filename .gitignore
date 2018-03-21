@@ -1,4 +1,3 @@
-*.json
 *.vcf
 *.vcf.gz
 *.vcf.gz.tbi
@@ -12,8 +11,12 @@ __pycache__
 # configuration files - might contain SENSITIVE data !!!!!
 config.ini
 
+# api files
+mim2gene.txt
+morbidmap.txt
+
 # static data, such as genomic data for exome simulation
-data
+/data/
 # dynamic data, such as json files
 process
 
