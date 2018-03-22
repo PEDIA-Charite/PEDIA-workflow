@@ -168,7 +168,7 @@ class HGVSModel:
         # get information necessary for hgvs assembly
         # this step can be skipped if we already have an override
         if self.entry_id in self.error_fixer:
-            variants = self.error_fixer.error[self.entry_id]
+            variants = self.error_fixer[self.entry_id]
             variants = [HGVS_PARSER.parse_hgvs_variant(v) for v in variants]
             return variants
 
