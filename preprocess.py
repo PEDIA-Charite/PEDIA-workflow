@@ -33,7 +33,6 @@ def main():
     config_data = config.ConfigManager()
 
     # Load configuration and initialize API bindings
-    # f2g = Face2Gene(config=config)
     phen = phenomizer.PhenomizerService(config=config_data)
     error_fixer = errorfixer.ErrorFixer(config=config_data)
 
