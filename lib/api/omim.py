@@ -12,6 +12,8 @@ import logging
 import pandas
 import requests
 
+from lib.utils import get_file_hash
+
 RE_OMIM_PHEN = re.compile('.* (\d{6}) \((\d)\)')
 
 LOGGER = logging.getLogger(__name__)
@@ -47,20 +49,28 @@ class Omim:
             Data stucture with mim2gene and morbidmap
         '''
         # use config object to get parameters
+        self._use_cached = use_cached
+        self._api_key = api_key
+        self._mimdir = mimdir
+        mim2gene_hash = ''
+        morbidmap_hash = ''
         if config:
             self._use_cached = config.omim['use_cached']
             self._api_key = config.omim['api_key']
             self._mimdir = config.omim['mimdir']
-        else:
-            self._use_cached = use_cached
-            self._api_key = api_key
-            self._mimdir = mimdir
+            mim2gene_hash = config.omim['mim2gene_hash']
+            morbidmap_hash = config.omim['morbidmap_hash']
 
         # create directory if it doesnt exist
         os.makedirs(mimdir, exist_ok=True)
 
+        mim2gene_path = os.path.join(mimdir, 'mim2gene.txt')
+        # ensure using revision specified in config
+        if mim2gene_hash:
+            assert get_file_hash(mim2gene_path) == mim2gene_hash
+
         mim2gene = self._retrieve_file(
-            os.path.join(mimdir, 'mim2gene.txt'),
+            mim2gene_path,
             'https://omim.org/static/omim/data/mim2gene.txt',
             ['mim_number', 'mim_entry_type', 'entrez_id', 'gene_symbol',
              'ensembl'])
@@ -71,8 +81,14 @@ class Omim:
 
         morbidmap_url = \
             'https://data.omim.org/downloads/{}/morbidmap.txt'.format(api_key)
+
+        morbidmap_path = os.path.join(mimdir, 'morbidmap.txt')
+        # ensure using revision specified in config
+        if morbidmap_hash:
+            assert get_file_hash(morbidmap_path) == morbidmap_hash
+
         morbidmap = self._retrieve_file(
-            os.path.join(mimdir, 'morbidmap.txt'), morbidmap_url,
+            morbidmap_path, morbidmap_url,
             ['phenotype', 'gene_symbol', 'mim_number', 'cyto_location'])
         morbidmap['phen_mim_number'] = \
             morbidmap['phenotype'].apply(self._extract_omim)
