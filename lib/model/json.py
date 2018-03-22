@@ -20,8 +20,11 @@ import pandas
 
 from lib.utils import explode_df_column
 # from lib.utils import optional_descent
-from lib.model.hgvs import HGVSModel
+from lib.model.hgvs_parser import HGVSModel
 from lib.constants import CHROMOSOMAL_TESTS, POSITIVE_RESULTS
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def reduce_omim(syndrome_dict: dict, f2g: 'Face2Gene') -> dict:
@@ -92,6 +95,8 @@ class JsonFile:
         # create the parent class
         json_obj = cls(data=json_data, path=path, base_path=basedir,
                        override=corrected_location)
+
+        LOGGER.debug("Loading json %s", filename)
         return json_obj
 
     def save_json(self):
@@ -194,8 +199,8 @@ class JsonFile:
         if not os.path.exists(entries_path):
             raise OSError("File {} not found".format(entry_id))
         with open(entries_path, "r") as entry_file:
-            js = json.load(entry_file)
-        return js
+            json_data = json.load(entry_file)
+        return json_data
 
     def load_linked(self, directive:
                     {'str': Callable[[str], Union[dict, list]]}):
@@ -234,8 +239,8 @@ class JsonFile:
                 return [cls._linked(v, load_directive[0]) for v in data]
         else:
             if not hasattr(load_directive, '__call__'):
-                logging.error(data)
-                logging.error(load_directive)
+                LOGGER.error(data)
+                LOGGER.error(load_directive)
                 raise TypeError("Not a loader function.")
             return load_directive(data)
 
@@ -402,10 +407,11 @@ class NewJson(JsonFile):
     def get_js(self):
         return self._js
 
-    def get_variants(self) -> ['hgvs']:
+    def get_variants(self, error_fixer: "ErrorFixer") -> ['hgvs']:
         '''Get a list of hgvs objects for variants.
         '''
-        models = [HGVSModel(entry) for entry in self._js['genomic_entries']]
+        models = [HGVSModel(entry, error_fixer)
+                  for entry in self._js['genomic_entries']]
         variants = [v for m in models if m.variants for v in m.variants]
         return variants, models
 

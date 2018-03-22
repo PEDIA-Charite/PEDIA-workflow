@@ -3,7 +3,8 @@ Test loading of jsons from new-style json files.
 '''
 import os
 import unittest
-from lib.model import json
+from lib import errorfixer
+from lib.model import json, config
 
 INPUT_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)),
@@ -20,7 +21,14 @@ class JsonLoadingTest(unittest.TestCase):
 
     def setUp(self):
         input_file = os.path.join(INPUT_PATH, "cases", "normal.json")
+        error_file = os.path.join(INPUT_PATH, "cases", "error_hgvs.json")
+        config_file = os.path.join(INPUT_PATH, "config.ini")
+
+        conf = config.ConfigManager(config_file)
+
         self.loaded_correct = json.NewJson.from_file(input_file)
+        self.loaded_error = json.NewJson.from_file(error_file)
+        self.error_fixer = errorfixer.ErrorFixer(config=conf)
 
     def test_check(self):
         '''Test whether the file check is passing.'''
@@ -63,8 +71,15 @@ class JsonLoadingTest(unittest.TestCase):
     # def test_get_features(self):
     #     self.loaded_correct.get_features()
 
-    # def test_get_variants(self):
-    #     self.loaded_correct.get_variants()
+    def test_get_variants(self):
+        variants, _ = self.loaded_correct.get_variants(self.error_fixer)
+        variants = [str(v) for v in variants]
+        var_correct = ['NM_004380.2:c.7302G>A', 'NM_004380.2:c.7302G>A']
+        self.assertListEqual(variants, var_correct)
+
+    def test_get_variants_error(self):
+        variants, _ = self.loaded_error.get_variants(self.error_fixer)
+        self.assertListEqual(variants, [])
 
     # def test_get_syndrome_suggestions_diagnosis(self):
     #     self.loaded_correct.get_syndrome_suggestions_and_diagnosis()

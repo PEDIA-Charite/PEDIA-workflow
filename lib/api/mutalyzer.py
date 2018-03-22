@@ -2,6 +2,7 @@
 Bindings for Mutalyzer. A service which can be used to look up RS numbers and
 check the validity of hgvs strings.
 '''
+import logging
 import time
 import io
 import re
@@ -11,10 +12,10 @@ import zeep
 import hgvs.parser
 # import pandas
 
+LOGGER = logging.getLogger(__name__)
+
 # alternative hgvs transcript
 RE_VERSION_ALTERNATIVE = re.compile('We found these versions: ([\w.]+)')
-
-HGVS_PARSER = hgvs.parser.Parser()
 
 
 def correct_reference_transcripts(case_objs: List['Case']) -> List['Case']:
@@ -23,7 +24,7 @@ def correct_reference_transcripts(case_objs: List['Case']) -> List['Case']:
     '''
     case_dict = {v.case_id: v.variants for v in case_objs}
     mutalyzer = Mutalyzer()
-    case_dict = mutalyzer.correctTranscripts(case_dict)
+    case_dict = mutalyzer.correct_transcripts(case_dict)
 
 
 def check_errors(errordata) -> Union[str, None]:
@@ -46,7 +47,7 @@ class Mutalyzer(zeep.Client):
     def __init__(self):
         super().__init__(self.wsdl_url)
 
-    def batchPositionConvert(self, data: str):
+    def batch_position_convert(self, data: str):
         '''Submit a batch job to the mutalyzer, monitor it and return the
         output data.
         '''
@@ -62,12 +63,14 @@ class Mutalyzer(zeep.Client):
             data=data, process=method, argument=argument)
 
         # wait for the batch job to finish
+        LOGGER.info("Submitting batch job to mutalyzer.")
         while True:
             remaining_jobs = self.service.monitorBatchJob(batch_id)
-            print('Remaining', remaining_jobs)
+            LOGGER.info('Remaining %d', remaining_jobs)
             if remaining_jobs == 0:
                 break
             time.sleep(1)
+        LOGGER.info("Finished batch job.")
         # get the batch job results
         batch_result = self.service.getBatchJob(batch_id)
         result_string = batch_result.decode('utf-8')
@@ -83,25 +86,25 @@ class Mutalyzer(zeep.Client):
 
         return transcript_alt.to_dict()
 
-    def correctTranscripts(self, transcripts: dict) -> dict:
+    def correct_transcripts(self, transcripts: dict) -> dict:
         '''Get a dictionary with assignments for each transcript we have sent
         to the batch job, whether the given transcript is correct.
         '''
         # create transcript input data
         data = "\n".join([str(v) for l in transcripts.values() for v in l])
-        response = self.batchPositionConvert(data=data)
-        for entry_id, hgvs_variants in transcripts.items():
+        response = self.batch_position_convert(data=data)
+        for hgvs_variants in transcripts.values():
             for var in hgvs_variants:
                 key = str(var)
                 if key in response:
                     alt_transcript = response[key]
                     if alt_transcript:
-                        print('Replace {} with {}'.format(
-                            var.ac, alt_transcript))
+                        LOGGER.info('Replace %s with %s',
+                                    var.ac, alt_transcript)
                         var.ac = alt_transcript
         return transcripts
 
-    def getdbSNPDescriptions(self, rs_id: str) -> [str]:
+    def get_db_snp_descriptions(self, rs_id: str) -> [str]:
         '''Return a list of possible RS numbers for the given RS code.
         '''
         tries = 0
@@ -114,38 +117,8 @@ class Mutalyzer(zeep.Client):
                 tries += 1
         return variants
 
-    def checkSyntax(self, hgvs_string: str) -> dict:
+    def check_syntax(self, hgvs_string: str) -> dict:
         '''Check the syntax of an hgvs variant and return the validity and list
         of possible errors.
         '''
         return self.service.checkSyntax(hgvs_string)
-
-
-def main():
-    '''Only for testing purposes.
-    '''
-    mut = Mutalyzer()
-    print('Convert RS number to hgvs variant')
-    hgvs_list = mut.getdbSNPDescriptions("rs386834107")
-    print(hgvs_list)
-    print('Check HGVS syntax. This does not check transcript versions')
-    check = mut.checkSyntax('NM_001127178.2:c.2005C>T')
-    print(check)
-
-    print('Regenerate missing transcript version number')
-    hgvs_strings = {
-        'yolo': 'NM_003002.3:c.274G>T',
-        'foker': 'LRG_9t1:c.274G>T',
-        'poker': 'chr11:g.111959693G>T',
-        'condor': 'NC_000011.9:g.111959693G>T',
-        'missing_version': 'NM_001127178:c.2005C>T'
-    }
-
-    hgvs_strings = {k: [HGVS_PARSER.parse_hgvs_variant(v)]
-                    for k, v in hgvs_strings.items()}
-    mut.correctTranscripts(hgvs_strings)
-    print(hgvs_strings)
-
-
-if __name__ == '__main__':
-    main()

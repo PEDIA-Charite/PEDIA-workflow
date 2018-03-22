@@ -11,12 +11,14 @@ returned by phenomization and boqa can be different.
 '''
 import io
 import re
+import logging
 
 import requests
 import pandas
 
 
 RE_SYMBOL = re.compile('(\w+) \(\d+\)')
+LOGGER = logging.getLogger(__name__)
 
 
 def match_symbol(descriptor: str) -> str:

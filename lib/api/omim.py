@@ -14,6 +14,8 @@ import requests
 
 RE_OMIM_PHEN = re.compile('.* (\d{6}) \((\d)\)')
 
+LOGGER = logging.getLogger(__name__)
+
 
 class Omim:
     '''
@@ -130,7 +132,7 @@ class Omim:
         # unpack the dataframe to get the single cell of interest
         # tell us if our requests are returning multiple entries
         if entry.shape[0] > 1:
-            logging.warning("%s is ambiguous", str(needle))
+            LOGGER.warning("%s is ambiguous", str(needle))
         return entry[target]
 
     def mim_gene_to_entrez_id(self, mim_gene):
