@@ -43,7 +43,8 @@ class ErrorFixer:
         if self._error['version'] < latest_error_version:
             raise TypeError("HGVS errordict version {} is older than {}.")
 
-        self._new = self.load(self._new_error_path)
+        # always only capture errors in the newest iteration
+        self._new = {}
 
     def get_filepath(self):
         '''Get path of the error file.'''
@@ -72,10 +73,10 @@ class ErrorFixer:
 
     def __getitem__(self, key: ENTRY_ID) -> dict:
         key = str(key)
-        return self._error[key]['cleaned']
+        return self._error['data'][key]['cleaned']
 
     def __contains__(self, key: ENTRY_ID) -> bool:
-        return str(key) in self._error
+        return str(key) in self._error['data']
 
     def __setitem__(self, key: ENTRY_ID, value: ERROR_ENTRY) -> bool:
         '''Add a faulty genomic entry and optionally wrong automatically
@@ -97,6 +98,9 @@ class ErrorFixer:
         if os.path.exists(path):
             with open(path, "r") as hgvs_file:
                 j = json.load(hgvs_file)
+            # explicitly fail if error dict has no version
+            if 'version' not in j:
+                raise TypeError("HGVS error dict has no version field.")
         else:
             j = {"version": 0, "data": {}}
         return j
