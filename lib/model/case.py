@@ -73,14 +73,8 @@ class Case:
     vcf - list of vcf filenames
     '''
 
-    def __init__(self, json_object: Union[OldJson, NewJson],
+    def __init__(self, data: Union[OldJson, NewJson],
                  error_fixer: "ErrorFixer"):
-        self._from_json_object(json_object, error_fixer)
-
-    def _from_json_object(self, data: Union[OldJson, NewJson],
-                          error_fixer: "ErrorFixer"):
-        '''Load case information from json object.
-        '''
         self.algo_version = data.get_algo_version()
         self.case_id = data.get_case_id()
         # get both the list of hgvs variants and the hgvs models used in the
@@ -90,7 +84,7 @@ class Case:
         self.features = data.get_features()
         self.submitter = data.get_submitter()
         self.vcf = data.get_vcf()
-
+        self.gene_scores = None
         LOGGER.info("Creating case %s", self.case_id)
 
     def phenomize(self, pheno: 'PhenomizerService') -> bool:
@@ -120,9 +114,8 @@ class Case:
             filter_entrez_id: Only include genes with existing entrez gene ids.
         '''
         # return existing gene list, if it already exists
-        if hasattr(self, 'gene_scores') and not recreate:
-            if self.gene_scores:
-                return self.gene_scores
+        if self.gene_scores is not None and not recreate:
+            return self.gene_scores
 
         gene_table = self.syndromes.apply(
             lambda x: create_gene_table(x, omim), axis=1)
