@@ -1,3 +1,4 @@
+*.p
 *.vcf
 *.vcf.gz
 *.vcf.gz.tbi

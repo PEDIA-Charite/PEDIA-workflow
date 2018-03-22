@@ -1,13 +1,16 @@
 '''
 Case model created from json files.
 '''
-from functools import reduce
+import logging
 from typing import Union, Dict
 
 import pandas
 
 from lib.model.json import OldJson, NewJson
 from lib.utils import explode_df_column
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def genes_to_single_cols(rowdata: pandas.Series) -> pandas.Series:
@@ -70,21 +73,25 @@ class Case:
     vcf - list of vcf filenames
     '''
 
-    def __init__(self, json_object: Union[OldJson, NewJson]):
-        self._from_json_object(json_object)
+    def __init__(self, json_object: Union[OldJson, NewJson],
+                 error_fixer: "ErrorFixer"):
+        self._from_json_object(json_object, error_fixer)
 
-    def _from_json_object(self, data: Union[OldJson, NewJson]):
+    def _from_json_object(self, data: Union[OldJson, NewJson],
+                          error_fixer: "ErrorFixer"):
         '''Load case information from json object.
         '''
         self.algo_version = data.get_algo_version()
         self.case_id = data.get_case_id()
         # get both the list of hgvs variants and the hgvs models used in the
         # parsing
-        self.variants, self.hgvs_models = data.get_variants()
+        self.variants, self.hgvs_models = data.get_variants(error_fixer)
         self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
         self.features = data.get_features()
         self.submitter = data.get_submitter()
         self.vcf = data.get_vcf()
+
+        LOGGER.info("Creating case %s", self.case_id)
 
     def phenomize(self, pheno: 'PhenomizerService') -> bool:
         '''Add phenomization information to genes from boqa and phenomizer.
