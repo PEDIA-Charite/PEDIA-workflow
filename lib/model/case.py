@@ -13,45 +13,6 @@ import tempfile
 from lib.model.json import OldJson, NewJson
 from lib.utils import explode_df_column
 
-# creation of hgvs objects from hgvs strings
-HGVS_PARSER = hgvs.parser.Parser()
-
-
-def parsevariant(variant: "hgvs.sequencevariant.SequenceVariant", hdp: "hgvs.dataproviders.uta.UTA_postgresql") -> tuple:
-    '''Parses variant object to genomic variant
-    and returns data for vcf generation'''
-    vm = hgvs.assemblymapper.AssemblyMapper(
-        hdp, assembly_name='GRCh37', alt_aln_method='splign')
-    var_g = vm.c_to_g(variant)
-    chrom = int(var_g.ac.split(".")[0][-2:])
-    offset = int(var_g.posedit.pos.start.base)
-    var_type = var_g.posedit.edit.type
-    if var_type == 'ins':
-        seq = ""
-        seq = hdp.get_seq(var_g.ac)
-        ref = seq[offset - 1]
-        alt = ref + var_g.posedit.edit.alt
-    elif var_type == 'dup':
-        seq = hdp.get_seq(var_g.ac)
-        end = var_g.posedit.pos.end.base
-        offset = end
-        ref = seq[end - 1]
-        alt = ref + var_g.posedit.edit.ref
-    elif var_type == 'del':
-        seq = hdp.get_seq(var_g.ac)
-        offset = offset - 1
-        ref = var_g.posedit.edit.ref
-        ref = seq[offset - 1] + ref
-        alt = seq[offset - 1]
-    elif var_type == 'sub' or var_type == 'delins':
-        ref = var_g.posedit.edit.ref
-        alt = var_g.posedit.edit.alt
-    else:
-        ref = var_g.posedit.edit.ref
-        alt = var_g.posedit.edit.alt
-        print(var_type)
-    return chrom, offset, ref, alt
-
 
 LOGGER = logging.getLogger(__name__)
 
