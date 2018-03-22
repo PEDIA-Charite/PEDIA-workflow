@@ -28,6 +28,8 @@ password =
 api_key = 
 use_cached = yes
 mimdir = data
+mim2gene_hash = 
+morbidmap_hash = 
 
 [phenomizer]
 ; addition of phenomization scores based on HPO terms

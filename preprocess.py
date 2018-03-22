@@ -33,6 +33,7 @@ def main():
     config_data = config.ConfigManager()
 
     # Load configuration and initialize API bindings
+    omim_obj = omim.Omim(config=config_data)
     phen = phenomizer.PhenomizerService(config=config_data)
     error_fixer = errorfixer.ErrorFixer(config=config_data)
 
