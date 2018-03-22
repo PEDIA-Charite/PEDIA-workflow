@@ -102,12 +102,15 @@ class Omim:
         If it doesnt exists or cached is false, save from remote url to the
         local path and thereafter read from local filesystem.
         '''
-        if not os.path.exists(path) or not self._use_cached:
-            resp = requests.get(url, headers=self.headers)
-            # save the downloaded file to a disk file
-            with open(path, 'wb') as savedfile:
-                for data in resp.iter_content():
-                    savedfile.write(data)
+        # if not os.path.exists(path) or not self._use_cached:
+        #     resp = requests.get(url, headers=self.headers)
+        #     # save the downloaded file to a disk file
+        #     with open(path, 'wb') as savedfile:
+        #         for data in resp.iter_content():
+        #             savedfile.write(data)
+        if not os.path.exists(path):
+            raise RuntimeError(
+                "{} does not exist. Add them to the location manually.")
         return pandas.read_table(
             path, delimiter='\t', comment='#', names=names, dtype=str)
 
