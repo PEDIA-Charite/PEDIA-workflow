@@ -17,8 +17,10 @@ from functools import reduce
 import os
 
 import pandas
+import filetype
 
 from lib.utils import explode_df_column
+from lib.vcf_operations import move_vcf
 # from lib.utils import optional_descent
 from lib.model.hgvs_parser import HGVSModel
 from lib.constants import CHROMOSOMAL_TESTS, POSITIVE_RESULTS
@@ -469,20 +471,46 @@ class NewJson(JsonFile):
         '''Return a dictionary containing the submitter name, team and email.
         '''
         submitter = {
-                'name': self._js['submitter']['user_name'],
-                'team': self._js['submitter']['user_team'],
-                'email': self._js['submitter']['user_email']
-                }
+            'name': self._js['submitter']['user_name'],
+            'team': self._js['submitter']['user_team'],
+            'email': self._js['submitter']['user_email']
+        }
         return submitter
 
-    def get_vcf(self) -> [str]:
+    def get_vcf(self, processed_dir: str = "data/PEDIA/vcfs/original") \
+            -> [str]:
         '''Get a list of vcf files.
         '''
         # vcfs are saved inside documents and marked by is_vcf
         vcfs = [d['document_name']
                 for d in self._js['documents']
                 if d and d['is_vcf']]
-        return vcfs
+        # return empty if no vcfs present
+        if not vcfs:
+            return []
+        vcf_dir = os.path.join(self._base_dir, "vcfs")
+        raw_vcfs = list(os.listdir(vcf_dir))
+
+        # convert and save vcfs to specified location if not already present
+        processed_vcfs = [f.strip(".vcf.gz")
+                          for f in os.listdir(processed_dir)]
+        case_id = self.get_case_id()
+        destination_vcf = os.path.join(processed_dir, case_id + ".vcf.gz")
+
+        if case_id not in processed_vcfs:
+            case_vcfs = [v for v in raw_vcfs if case_id in v]
+            if not case_vcfs:
+                LOGGER.warn("Case %s, VCF file %s could not be found.",
+                            case_id, vcfs[0])
+                return []
+            vcf = case_vcfs[0]
+            vcf_path = os.path.join(vcf_dir, vcf)
+            kind = filetype.guess(vcf_path)
+            # get mimetype
+            mime = kind.mime if kind is not None else "text"
+            move_vcf(vcf_path, destination_vcf, mime)
+
+        return [destination_vcf]
 
     def get_detected_syndromes(self) -> [dict]:
         '''Unaltered list of detected syndromes.
