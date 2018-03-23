@@ -113,7 +113,7 @@ class HGVSModel:
         '''
         self._js = entry_dict
         self.entry_id = entry_dict['entry_id']
-        LOGGER.info('Processing genomic entry %s', self.entry_id)
+        LOGGER.debug('Processing genomic entry %s', self.entry_id)
 
         gene_top = 'gene' in entry_dict and entry_dict['gene'] or {}
         gene_variant = 'gene' in entry_dict['variants'] \

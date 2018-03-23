@@ -273,6 +273,8 @@ class OldJson(JsonFile):
         '''Create an old json object from a case entity. This is an alternative
         constructor.
         '''
+
+        LOGGER.debug("Creating OldJson from Case for %s.", case.case_id)
         genomic_data = []
         for model in case.hgvs_models:
             data = {
@@ -303,8 +305,10 @@ class OldJson(JsonFile):
             },
             'vcf': case.vcf,
             'features': case.features,
-            'ranks': case.syndromes.to_dict('records'),
+            # maybe disable
+            # 'ranks': case.syndromes.to_dict('records'),
             'geneList': case.get_gene_list(omim),
+            'detected_syndromes': case.data.get_detected_syndromes(),
             'genomicData': genomic_data
         }
         path = os.path.join(path, '{}.json'.format(case.case_id))
@@ -423,8 +427,7 @@ class NewJson(JsonFile):
         # create a dataframe from the list of detected syndromes
         syndromes_df = pandas.DataFrame.from_dict(
             self._js['detected_syndromes'])
-        # remove unneeded columns
-        syndromes_df = syndromes_df.drop(['has_mask'], axis=1)
+
         # force omim_id to always be a list, required for exploding the df
         syndromes_df['omim_id'] = syndromes_df['omim_id'].apply(
             lambda x: not isinstance(x, list) and [x] or x)
@@ -436,7 +439,7 @@ class NewJson(JsonFile):
         # dataframe
         selected = pandas.DataFrame.from_dict(
             self._js['selected_syndromes'])
-        selected = selected.drop(['has_mask'], axis=1)
+
         selected['omim_id'] = selected['omim_id'].apply(
             lambda x: not isinstance(x, list) and [x] or x)
         selected = explode_df_column(selected, 'omim_id')
@@ -480,3 +483,8 @@ class NewJson(JsonFile):
                 for d in self._js['documents']
                 if d and d['is_vcf']]
         return vcfs
+
+    def get_detected_syndromes(self) -> [dict]:
+        '''Unaltered list of detected syndromes.
+        '''
+        return self._js['detected_syndromes']
