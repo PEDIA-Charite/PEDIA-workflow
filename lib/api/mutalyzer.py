@@ -12,6 +12,8 @@ import zeep
 import hgvs.parser
 # import pandas
 
+from lib import visual
+
 LOGGER = logging.getLogger(__name__)
 
 # alternative hgvs transcript
@@ -24,7 +26,7 @@ def correct_reference_transcripts(case_objs: List['Case']) -> List['Case']:
     '''
     case_dict = {v.case_id: v.variants for v in case_objs}
     mutalyzer = Mutalyzer()
-    case_dict = mutalyzer.correct_transcripts(case_dict)
+    mutalyzer.correct_transcripts(case_dict)
 
 
 def check_errors(errordata) -> Union[str, None]:
@@ -63,14 +65,21 @@ class Mutalyzer(zeep.Client):
             data=data, process=method, argument=argument)
 
         # wait for the batch job to finish
-        LOGGER.info("Submitting batch job to mutalyzer.")
+        LOGGER.debug("Submitting batch job to mutalyzer.")
+        max_obj = 0
+        cur_obj = 0
         while True:
             remaining_jobs = self.service.monitorBatchJob(batch_id)
-            LOGGER.info('Remaining %d', remaining_jobs)
+            max_obj = max(remaining_jobs, max_obj)
+            cur_obj = max_obj - remaining_jobs
+            LOGGER.debug('Remaining %d', remaining_jobs)
+            visual.print_status("Mutalyzer", width=20,
+                                cur=cur_obj, size=max_obj)
             if remaining_jobs == 0:
+                print("")
                 break
             time.sleep(1)
-        LOGGER.info("Finished batch job.")
+        LOGGER.debug("Finished batch job.")
         # get the batch job results
         batch_result = self.service.getBatchJob(batch_id)
         result_string = batch_result.decode('utf-8')
@@ -92,6 +101,9 @@ class Mutalyzer(zeep.Client):
         '''
         # create transcript input data
         data = "\n".join([str(v) for l in transcripts.values() for v in l])
+        if not data:
+            LOGGER.warning("Data empty. No batch process created.")
+            return []
         response = self.batch_position_convert(data=data)
         for hgvs_variants in transcripts.values():
             for var in hgvs_variants:
@@ -99,7 +111,7 @@ class Mutalyzer(zeep.Client):
                 if key in response:
                     alt_transcript = response[key]
                     if alt_transcript:
-                        LOGGER.info('Replace %s with %s',
+                        LOGGER.debug('Replace %s with %s',
                                     var.ac, alt_transcript)
                         var.ac = alt_transcript
         return transcripts
