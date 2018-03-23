@@ -107,20 +107,14 @@ def main():
     json_files, corrected, destination = ([args.single], "", args.output) \
         if args.single else json_from_directory(config_data)
     new_json_objs = yield_jsons(json_files, corrected)
-    # [json.NewJson.from_file(f, corrected) for f in json_files]
-    # for js in new_json_objs:
-    #     print(js.get_case_id())
-    #     print(js.get_vcf())
-    # return
 
     print('Unfiltered', len(new_json_objs))
 
     filtered_new = [j for j in new_json_objs if j.check()[0]]
-
     print('Filtered rough criteria', len(filtered_new))
 
     case_objs = yield_cases(filtered_new, error_fixer)
-    # [case.Case(j, error_fixer=error_fixer) for j in filtered_new]
+
     case_objs = [c for c in case_objs if c.variants]
     print('Cases with created hgvs objects', len(case_objs))
 
@@ -130,19 +124,12 @@ def main():
         pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
 
     yield_phenomized(case_objs, phen)
-    # for case_obj in case_objs:
-    #     case_obj.phenomize(phen)
 
     if config_data.general['dump_intermediate']:
         pickle.dump(case_objs, open('case_phenomized.p', 'wb'))
 
     omim_obj = omim.Omim(config=config_data)
     yield_old_json(case_objs, destination, omim_obj)
-    # for case_obj in case_objs:
-    #     print('Converting to old json', case_obj.case_id)
-    #     old_js = json.OldJson.from_case_object(case_obj, destination,
-    #                                            omim_obj)
-    #     old_js.save_json()
 
 
 if __name__ == '__main__':
