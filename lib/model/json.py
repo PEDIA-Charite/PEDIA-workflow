@@ -10,17 +10,23 @@ Class overview:
     NewJson - Current json format
 '''
 
+import logging
 import json
 from typing import Union, Callable
 from functools import reduce
 import os
 
 import pandas
+import filetype
 
 from lib.utils import explode_df_column
+from lib.vcf_operations import move_vcf
 # from lib.utils import optional_descent
-from lib.model.hgvs import HGVSModel
+from lib.model.hgvs_parser import HGVSModel
 from lib.constants import CHROMOSOMAL_TESTS, POSITIVE_RESULTS
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def reduce_omim(syndrome_dict: dict, f2g: 'Face2Gene') -> dict:
@@ -86,10 +92,13 @@ class JsonFile:
             override = os.path.join(corrected_location, jsondir, filename)
             path = os.path.exists(override) and override or path
 
-        json_data = json.load(open(path, 'r'))
+        with open(path, "r") as js_file:
+            json_data = json.load(js_file)
         # create the parent class
         json_obj = cls(data=json_data, path=path, base_path=basedir,
                        override=corrected_location)
+
+        LOGGER.debug("Loading json %s", filename)
         return json_obj
 
     def save_json(self):
@@ -191,7 +200,9 @@ class JsonFile:
                 entries_path = corrected_path
         if not os.path.exists(entries_path):
             raise OSError("File {} not found".format(entry_id))
-        return json.load(open(entries_path, 'r'))
+        with open(entries_path, "r") as entry_file:
+            json_data = json.load(entry_file)
+        return json_data
 
     def load_linked(self, directive:
                     {'str': Callable[[str], Union[dict, list]]}):
@@ -230,6 +241,8 @@ class JsonFile:
                 return [cls._linked(v, load_directive[0]) for v in data]
         else:
             if not hasattr(load_directive, '__call__'):
+                LOGGER.error(data)
+                LOGGER.error(load_directive)
                 raise TypeError("Not a loader function.")
             return load_directive(data)
 
@@ -262,6 +275,8 @@ class OldJson(JsonFile):
         '''Create an old json object from a case entity. This is an alternative
         constructor.
         '''
+
+        LOGGER.debug("Creating OldJson from Case for %s.", case.case_id)
         genomic_data = []
         for model in case.hgvs_models:
             data = {
@@ -292,8 +307,10 @@ class OldJson(JsonFile):
             },
             'vcf': case.vcf,
             'features': case.features,
-            'ranks': case.syndromes.to_dict('records'),
+            # maybe disable
+            # 'ranks': case.syndromes.to_dict('records'),
             'geneList': case.get_gene_list(omim),
+            'detected_syndromes': case.data.get_detected_syndromes(),
             'genomicData': genomic_data
         }
         path = os.path.join(path, '{}.json'.format(case.case_id))
@@ -393,10 +410,14 @@ class NewJson(JsonFile):
     def get_algo_version(self) -> str:
         return str(self._js['algo_deploy_version'])
 
-    def get_variants(self) -> ['hgvs']:
+    def get_js(self):
+        return self._js
+
+    def get_variants(self, error_fixer: "ErrorFixer") -> ['hgvs']:
         '''Get a list of hgvs objects for variants.
         '''
-        models = [HGVSModel(entry) for entry in self._js['genomic_entries']]
+        models = [HGVSModel(entry, error_fixer)
+                  for entry in self._js['genomic_entries']]
         variants = [v for m in models if m.variants for v in m.variants]
         return variants, models
 
@@ -408,8 +429,7 @@ class NewJson(JsonFile):
         # create a dataframe from the list of detected syndromes
         syndromes_df = pandas.DataFrame.from_dict(
             self._js['detected_syndromes'])
-        # remove unneeded columns
-        syndromes_df = syndromes_df.drop(['has_mask'], axis=1)
+
         # force omim_id to always be a list, required for exploding the df
         syndromes_df['omim_id'] = syndromes_df['omim_id'].apply(
             lambda x: not isinstance(x, list) and [x] or x)
@@ -421,7 +441,7 @@ class NewJson(JsonFile):
         # dataframe
         selected = pandas.DataFrame.from_dict(
             self._js['selected_syndromes'])
-        selected = selected.drop(['has_mask'], axis=1)
+
         selected['omim_id'] = selected['omim_id'].apply(
             lambda x: not isinstance(x, list) and [x] or x)
         selected = explode_df_column(selected, 'omim_id')
@@ -451,17 +471,48 @@ class NewJson(JsonFile):
         '''Return a dictionary containing the submitter name, team and email.
         '''
         submitter = {
-                'name': self._js['submitter']['user_name'],
-                'team': self._js['submitter']['user_team'],
-                'email': self._js['submitter']['user_email']
-                }
+            'name': self._js['submitter']['user_name'],
+            'team': self._js['submitter']['user_team'],
+            'email': self._js['submitter']['user_email']
+        }
         return submitter
 
-    def get_vcf(self) -> [str]:
+    def get_vcf(self, processed_dir: str = "data/PEDIA/vcfs/original") \
+            -> [str]:
         '''Get a list of vcf files.
         '''
         # vcfs are saved inside documents and marked by is_vcf
         vcfs = [d['document_name']
                 for d in self._js['documents']
                 if d and d['is_vcf']]
-        return vcfs
+        # return empty if no vcfs present
+        if not vcfs:
+            return []
+        vcf_dir = os.path.join(self._base_dir, "vcfs")
+        raw_vcfs = list(os.listdir(vcf_dir))
+
+        # convert and save vcfs to specified location if not already present
+        processed_vcfs = [f.strip(".vcf.gz")
+                          for f in os.listdir(processed_dir)]
+        case_id = self.get_case_id()
+        destination_vcf = os.path.join(processed_dir, case_id + ".vcf.gz")
+
+        if case_id not in processed_vcfs:
+            case_vcfs = [v for v in raw_vcfs if case_id in v]
+            if not case_vcfs:
+                LOGGER.warn("Case %s, VCF file %s could not be found.",
+                            case_id, vcfs[0])
+                return []
+            vcf = case_vcfs[0]
+            vcf_path = os.path.join(vcf_dir, vcf)
+            kind = filetype.guess(vcf_path)
+            # get mimetype
+            mime = kind.mime if kind is not None else "text"
+            move_vcf(vcf_path, destination_vcf, mime)
+
+        return [destination_vcf]
+
+    def get_detected_syndromes(self) -> [dict]:
+        '''Unaltered list of detected syndromes.
+        '''
+        return self._js['detected_syndromes']

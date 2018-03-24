@@ -5,6 +5,8 @@ Constants used in other scripts. These are mostly interpretations of fields
 provided in the Face2Gene jsons.
 '''
 
+HGVS_ERRORDICT_VERSION = 1
+
 # Bucket name, from where Face2Gene vcf and json files will be downloaded
 AWS_BUCKET_NAME = "fdna-pedia-dump"
 

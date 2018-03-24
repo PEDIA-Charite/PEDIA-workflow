@@ -1,15 +1,44 @@
+; General workflow configuration
 [general]
 logfile = preprocess.log
+; download files from aws
+download = false
+; create pickle archives of case list
+; mainly useful for skipping time-consuming steps in debugging
+dump_intermediate = true
 
 [preprocess]
-aws_access_key = <AWS KEY>
-aws_secret_key = <AWS Secret>
+; location for possible raw json file overrides
+corrected_location = process/corrected
+
+; General API Settings
+[aws]
+; necessary for download of data from remote location
+access_key = 
+secret_key = 
 download_location = process/aws_dir
 
-[phenomization]
-OMIM_Key = <OMIM Key>
-OMIM_Cached = yes
-OMIM_Dir = data
-Phenomizer_Url = <Phenomizer Url>
-Phenomizer_User = <User>
-Phenomizer_Password = <Password>
+[face2gene]
+; possible usage for library lookup of syndromes
+user = 
+password = 
+
+[omim]
+; necessary for download of morbidmap
+api_key = 
+use_cached = yes
+mimdir = data
+mim2gene_hash = 
+morbidmap_hash = 
+
+[phenomizer]
+; addition of phenomization scores based on HPO terms
+url = 
+user = 
+password = 
+
+; Specific QC configuration
+[errorfixer]
+; override genomic entry information with manually corrected information
+error_path = hgvs_errors.json
+new_error_path = hgvs_new_errors.json

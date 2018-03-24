@@ -1,7 +1,11 @@
+import os
+import sys
 import pickle
+sys.path.append(os.getcwd())
 from lib.model.config import ConfigManager
 from lib.api.phenomizer import PhenomizerService
 from lib.api.omim import Omim
+
 
 cm = ConfigManager()
 
