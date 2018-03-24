@@ -3,16 +3,17 @@ Utility functions for JSON Parsing
 and
 some pandas dataframe utilities implementing more exotic functions
 '''
-
 import re
+import hashlib
 from typing import Union
 
 import pandas
 
-RE_HGVS = re.compile('[gcmnrpGCMNRP]\.')
+
+RE_HGVS = re.compile(r'[gcmnrpGCMNRP]\.')
 
 
-def optional_descent(data: dict, key_trail: [str], default: str='') \
+def optional_descent(data: dict, key_trail: [str], default: str = '') \
         -> Union[dict, list, str]:
     '''Follow a iterable object of key names in a nested dict.'''
     if data == '':
@@ -67,3 +68,16 @@ def explode_df_column(dataframe: pandas.DataFrame, column: str) \
     dataframe = dataframe.drop(
         [column], axis=1).join(exploded).dropna(subset=[column])
     return dataframe
+
+
+def get_file_hash(filepath: str) -> str:
+    '''Get MD5 Hash of file.'''
+    md5hash = hashlib.md5()
+    with open(filepath, "rb") as fileobj:
+        while True:
+            bytestr = fileobj.read(128)
+            if not bytestr:
+                break
+            md5hash.update(bytestr)
+    md5 = md5hash.hexdigest()
+    return md5

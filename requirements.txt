@@ -5,3 +5,4 @@ hgvs
 biopython
 ratelimit
 zeep
+filetype

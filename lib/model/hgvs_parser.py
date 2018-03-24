@@ -2,6 +2,8 @@
 Parser class to process HGVS Information with diverse content.
 '''
 import re
+import logging
+from typing import Union
 
 import hgvs
 import hgvs.parser
@@ -13,6 +15,9 @@ from lib.api.mutalyzer import Mutalyzer
 from lib.constants import HGVS_OPS, HGVS_PREFIX
 
 
+LOGGER = logging.getLogger("lib")
+
+
 # external API for hgvs string checking and RS number resolution
 MUTALYZER = Mutalyzer()
 # creation of hgvs objects from hgvs strings
@@ -20,16 +25,15 @@ HGVS_PARSER = hgvs.parser.Parser()
 # validation of created hgvs objects
 HGVS_VALIDATOR = hgvs.validator.IntrinsicValidator()
 
-ERROR_FIXER = ErrorFixer()
-
 # REGEX matching proteins denoted by 'X (Triplet code)'
-RE_PROTEIN = re.compile('\w \((\w+)\)')
+RE_PROTEIN = re.compile(r'\w \((\w+)\)')
 # rough matching of hgvs strings
-RE_HGVS = re.compile('[gcmnrp]\.\d+', re.IGNORECASE)
+RE_HGVS = re.compile(r'[gcmnrp]\.\d+', re.IGNORECASE)
 # matching of double bracket expressions, such as:
 # xyz(abc):xyz(abc) - this was used by some people to denoted protein and dna
 # sequences
-RE_DOUBLE_BRACKETS = re.compile('([\w_.]+)\([\w_.]+\):([\w_.><]+)\([\w_.>]+\)')
+RE_DOUBLE_BRACKETS = re.compile(
+    r'([\w_.]+)\([\w_.]+\):([\w_.><]+)\([\w_.>]+\)')
 
 
 def extract_amino(protein_code: str) -> str:
@@ -82,13 +86,18 @@ def get_multi_field(data: dict, candidate_ids: [str]) -> str:
 class HGVSModel:
     '''Class to model mutation information received from Face2Gene.'''
 
-    def __init__(self, entry_dict: dict, entry_type: str='new'):
+    def __init__(self, entry_dict: dict, error_fixer: Union[ErrorFixer, None],
+                 entry_type: str = 'new'):
+        self.error_fixer = error_fixer
         if entry_type == 'new':
             self._parse_new(entry_dict)
         else:
             raise TypeError(
                 'Only parsing of new genomic entry format has been implemented'
             )
+
+    def get_json(self):
+        return self._js
 
     def _parse_new(self, entry_dict: dict):
         '''New gene entry format contains:
@@ -104,7 +113,7 @@ class HGVSModel:
         '''
         self._js = entry_dict
         self.entry_id = entry_dict['entry_id']
-        print('Processing genomic entry', self.entry_id)
+        LOGGER.debug('Processing genomic entry %s', self.entry_id)
 
         gene_top = 'gene' in entry_dict and entry_dict['gene'] or {}
         gene_variant = 'gene' in entry_dict['variants'] \
@@ -119,17 +128,18 @@ class HGVSModel:
         variants = self._parse_variants(entry_dict['variants'])
         failed = []
         for var in variants:
-            checked = MUTALYZER.checkSyntax(var)
+            checked = MUTALYZER.check_syntax(var)
             if not checked['valid']:
                 message = ["{}:{}".format(v['errorcode'], v['message']) for v
                            in checked['messages']['SoapMessage']]
                 failed.append(str(var))
                 variants.remove(var)
         if failed:
-            info = dict(self._js,
-                        message=message)
+            info = [dict(self._js, message=message)]
             valid_variants = [str(v) for v in variants]
-            ERROR_FIXER.error[self.entry_id] = (info, failed, valid_variants)
+            self.error_fixer[self.entry_id] = (
+                info, valid_variants, failed)
+
         self.variants = variants
 
     def _parse_variants(self, variant_dict: dict) -> list:
@@ -157,8 +167,8 @@ class HGVSModel:
 
         # get information necessary for hgvs assembly
         # this step can be skipped if we already have an override
-        if self.entry_id in ERROR_FIXER.error:
-            variants = ERROR_FIXER.error[self.entry_id]
+        if self.entry_id in self.error_fixer:
+            variants = self.error_fixer[self.entry_id]
             variants = [HGVS_PARSER.parse_hgvs_variant(v) for v in variants]
             return variants
 
@@ -199,11 +209,9 @@ class HGVSModel:
                     failures += 1
                     failed.append(cleaned_hgvs)
         # add failed and partial failues to error dictionaries
-        if not variants:
-            ERROR_FIXER.error[self.entry_id] = (self._js, hgvs_candidates, [])
-        elif failures > 0:
+        if failures > 0:
             success = [str(v) for v in variants]
-            ERROR_FIXER.partial[self.entry_id] = (success, failed)
+            self.error_fixer[self.entry_id] = ([self._js], success, failed)
         return variants
 
     def _get_mutations(self, data: dict) -> [dict]:
@@ -239,7 +247,7 @@ class HGVSModel:
 
         rs_number = 'rs_number' in mutation and mutation['rs_number'] or ''
         if rs_number:
-            j = MUTALYZER.getdbSNPDescriptions(rs_number)
+            j = MUTALYZER.get_db_snp_descriptions(rs_number)
             # add the first entry, since we will have a much too large number
             # of entries
             if j:

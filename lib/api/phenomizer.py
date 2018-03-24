@@ -11,12 +11,14 @@ returned by phenomization and boqa can be different.
 '''
 import io
 import re
+import logging
 
 import requests
 import pandas
 
 
 RE_SYMBOL = re.compile('(\w+) \(\d+\)')
+LOGGER = logging.getLogger(__name__)
 
 
 def match_symbol(descriptor: str) -> str:
@@ -105,7 +107,17 @@ class PhenomizerService(requests.Session):
         joined on the syndrome omim id will be returned.
         '''
         if not hpo_ids:
-            return pandas.DataFrame()
+            scaffold = {
+                'disease-id_pheno': "int",
+                'disease-id_boqa': "int",
+                'value_pheno': "float",
+                'value_boqa': "float",
+                'gene-id': "object",
+                'gene-symbol': "object"
+            }
+            empty = pandas.DataFrame(columns=scaffold.keys())
+            empty = empty.astype(dtype=scaffold)
+            return empty
         # this process might need to be retried, but it is currently reliable
         # enough to run directly
         hpo_df = self._request_phenomize(
@@ -117,19 +129,14 @@ class PhenomizerService(requests.Session):
         hpo_df['value'] = 1 - hpo_df['value']
         # remove id tags
         hpo_df['disease-id'] = hpo_df['disease-id'].apply(
-            lambda x: x.split(':')[-1])
+            lambda x: x.split(':')[-1]).astype(str)
         hpo_df = hpo_df.set_index('disease-id')
         boqa_df['disease-id'] = boqa_df['disease-id'].apply(
-            lambda x: x.split(':')[-1])
+            lambda x: x.split(':')[-1]).astype(str)
         boqa_df = boqa_df.set_index('disease-id')
         # join dataframes on disease id
         scores_df = hpo_df.join(
             boqa_df, how='outer', lsuffix='_pheno', rsuffix='_boqa')
-        scores_df = scores_df.fillna(
-                {'value_pheno': 0.0, 'value_boqa': 0.0,
-                    'gene-symbol': '', 'gene-id': '',
-                    'disease-name_boqa': '', 'disease-name_pheno': ''}
-                )
         return scores_df
 
     def _request_phenomize(self, hpo_ids: [str], prefilter: {str: str}={}) \
