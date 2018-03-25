@@ -69,7 +69,8 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
         "feature_score": feature_score,
         "combined_score": combined_score,
         "pheno_score": pheno_score,
-        "boqa_score": boqa_score})
+        "boqa_score": boqa_score
+        })
     return resp
 
 
@@ -342,10 +343,6 @@ class Case:
         '''
         return not self.realvcf
 
-    def get_vcf(self) -> pandas.DataFrame:
-        '''Returns vcf data'''
-        return realvcf
-
     def create_vcf(self) -> pandas.DataFrame:
         with tempfile.NamedTemporaryFile(mode="w+", dir="VCF") as hgvsfile:
             for v in self.variants:
@@ -356,7 +353,7 @@ class Case:
                     subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli/target/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
                                     'data/jannovar/jannovar-cli/target/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/jannovar-cli/target/data/hg19/hg19.fa"], check=True)
                 except subprocess.CalledProcessError as e:
-                    return False
+                    return str(e)
                 columns = ['#CHROM', 'POS', 'ID', 'REF', 'ALT',
                            'QUAL', 'FILTER', 'INFO', 'FORMAT', self.case_id]
                 df = pandas.read_table(
@@ -365,12 +362,13 @@ class Case:
                     genotype = '1'
                 elif self.hgvs_models[0].zygosity.lower() == 'homozygous':
                     genotype = '1/1'
-                elif self.hgvs_models[0].zygosity.lower() == 'heterozygous' or self.hgvs_models[0] == 'compound heterozygous':
+                elif self.hgvs_models[0].zygosity.lower() == 'heterozygous' or self.hgvs_models[0].zygosity.lower() == 'compound heterozygous':
                     genotype = '0/1'
                 else:
-                    genotype = './1'
+                    genotype = '0/1'
                 df[self.case_id] = genotype
                 df['FORMAT'] = 'GT'
+                df['INFO'] = ['HGVS="'+str(v)+'"' for v in self.variants]
                 return df
 
     def dump_vcf(self, path: str):
