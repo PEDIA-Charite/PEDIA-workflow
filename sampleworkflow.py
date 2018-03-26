@@ -42,44 +42,26 @@ def main():
     # that should differ from the original only in content, not in overall
     # structure.  this should make resolving some exotic errors a lot easier
     corrected = config.preprocess['corrected_location']
-
     new_json_objs = [NewJson.from_file(f, corrected) for f in json_files]
 
-    #check for format violations
+    print('Unfiltered', len(new_json_objs))
+
     filtered_new = [j for j in new_json_objs if j.check()[0]]
 
-    #intilize dataprovider for variant mapping
-    hdp = hgvs.dataproviders.uta.connect()
+    print('Filtered rough criteria', len(filtered_new))
 
-    #create case objects
-    case_objs = [Case(j,hdp) for j in filtered_new]
+    case_objs = [Case(j) for j in filtered_new]
+    case_objs = [c for c in case_objs if c.variants]
+    print('Cases with created hgvs objects', len(case_objs))
 
-    #number of cases that contain variants
-    #case_objs = [c for c in case_objs if c.variants]
-    #print(len(case_objs))
+    # batch call mutalyzer
+    correct_reference_transcripts(case_objs)
+    pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
 
-    #pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
-    #case_objs = pickle.load(open('case_corrected.p', 'rb'))
-
-    #get cases without vcf
-    failed_case_objs = [c for c in case_objs if type(c.vcf)==list]
-    #try to correct the transcripts using mutalyzer
-    correct_reference_transcripts(failed_case_objs)
-    #try again to create vcfs
-    for c in failed_case_objs:
-        c.vcf=c.create_vcf(hdp)
-
-    #pickle.dump(case_objs, open('case_corrected.p', 'wb'))
-    #dump vcfs to path VCF
+    #dump vcfs
+    #case_objs = pickle.load(open('case_cleaned.p', 'rb'))
     for c in case_objs:
-        c.dump_vcf("./VCF/")
-
-    #dump information about failed HGVS codes to an output file
-    #with open("failedhgvs.txt","w+") as output:
-    #    output.write("Case\tHGVS Codes\tErrors\n")
-    #    for c in case_objs:
-    #        if type(c.vcf)==list:
-    #            output.write(c.case_id+"\t"+",".join(map(str,c.variants))+"\t"+",".join(map(str,c.vcf))+"\n")
+        c.dump_vcf("data/PEDIA/mutations/")
 
 
 if __name__ == '__main__':

@@ -93,7 +93,6 @@ class Case:
     diagnosis - list of syndromes selected as diagnosis
     submitter - submitter information containing fields for email, name, team
     realvcf - list of vcf filenames
-    vcf - dataframe containing variant information in vcf format
     '''
 
     def __init__(self, data: Union[OldJson, NewJson],
@@ -343,12 +342,14 @@ class Case:
         '''
         return not self.realvcf
 
-    def create_vcf(self) -> pandas.DataFrame:
-        with tempfile.NamedTemporaryFile(mode="w+", dir="VCF") as hgvsfile:
+    def create_vcf(self,path:str) -> pandas.DataFrame:
+        '''Generates vcf dataframe.
+        '''
+        with tempfile.NamedTemporaryFile(mode="w+", dir=path) as hgvsfile:
             for v in self.variants:
                 hgvsfile.write(str(v) + "\n")
             hgvsfile.seek(0)
-            with tempfile.NamedTemporaryFile(mode="w+", dir="VCF", suffix=".vcf") as vcffile:
+            with tempfile.NamedTemporaryFile(mode="w+", dir=path, suffix=".vcf") as vcffile:
                 try:
                     subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli/target/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
                                     'data/jannovar/jannovar-cli/target/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/jannovar-cli/target/data/hg19/hg19.fa"], check=True)
@@ -369,64 +370,74 @@ class Case:
                 df[self.case_id] = genotype
                 df['FORMAT'] = 'GT'
                 df['INFO'] = ['HGVS="'+str(v)+'"' for v in self.variants]
+                df = df.sort_values(by=['#CHROM', "POS"])
                 return df
 
-    def dump_vcf(self, path: str):
-        '''Dumps vcf file to given path
+    def dump_vcf(self, path: str, recreate: bool = False) -> None:
+        '''Dumps vcf file to given path. Initializes vcf generation if none has yet been created.
+        Created vcf is saved to self.vcf.
         '''
-        if type(self.vcf) != list:
-            outputpath = path + self.case_id + '.vcf'
-            # add header to vcf
-            with open(outputpath, 'a') as outfile:
-                outfile.write(
-                    '##fileformat=VCFv4.1\n##INFO=<ID=HGVS,Number=1,Type=String,Description="HGVS-Code">\n##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
-                outfile.write(
-                    '##contig=<ID=1,assembly=b37,length=249250621>\n')
-                outfile.write(
-                    '##contig=<ID=2,assembly=b37,length=243199373>\n')
-                outfile.write(
-                    '##contig=<ID=3,assembly=b37,length=198022430>\n')
-                outfile.write(
-                    '##contig=<ID=4,assembly=b37,length=191154276>\n')
-                outfile.write(
-                    '##contig=<ID=5,assembly=b37,length=180915260>\n')
-                outfile.write(
-                    '##contig=<ID=6,assembly=b37,length=171115067>\n')
-                outfile.write(
-                    '##contig=<ID=7,assembly=b37,length=159138663>\n')
-                outfile.write(
-                    '##contig=<ID=8,assembly=b37,length=146364022>\n')
-                outfile.write(
-                    '##contig=<ID=9,assembly=b37,length=141213431>\n')
-                outfile.write(
-                    '##contig=<ID=10,assembly=b37,length=135534747>\n')
-                outfile.write(
-                    '##contig=<ID=11,assembly=b37,length=135006516>\n')
-                outfile.write(
-                    '##contig=<ID=12,assembly=b37,length=133851895>\n')
-                outfile.write(
-                    '##contig=<ID=13,assembly=b37,length=115169878>\n')
-                outfile.write(
-                    '##contig=<ID=14,assembly=b37,length=107349540>\n')
-                outfile.write(
-                    '##contig=<ID=15,assembly=b37,length=102531392>\n')
-                outfile.write(
-                    '##contig=<ID=16,assembly=b37,length=90354753>\n')
-                outfile.write(
-                    '##contig=<ID=17,assembly=b37,length=81195210>\n')
-                outfile.write(
-                    '##contig=<ID=18,assembly=b37,length=78077248>\n')
-                outfile.write(
-                    '##contig=<ID=19,assembly=b37,length=59128983>\n')
-                outfile.write(
-                    '##contig=<ID=20,assembly=b37,length=63025520>\n')
-                outfile.write(
-                    '##contig=<ID=21,assembly=b37,length=48129895>\n')
-                outfile.write(
-                    '##contig=<ID=22,assembly=b37,length=51304566>\n')
-                outfile.write(
-                    '##contig=<ID=X,assembly=b37,length=155270560>\n')
-                outfile.write('##contig=<ID=Y,assembly=b37,length=59373566>\n')
+        if hasattr(self,'vcf') and not recreate:
+            if isinstance(self.vcf,str):
+                print(self.case_id,'Jannovar stopped while generating VCF')
+            elif any(self.vcf.ALT=='<ERROR>'):
+                print(self.case_id,'Jannovar parse error')
+            else:
+                outputpath = path + self.case_id + '.vcf'
+                # add header to vcf
+                with open(outputpath, 'a') as outfile:
+                    outfile.write(
+                        '##fileformat=VCFv4.1\n##INFO=<ID=HGVS,Number=1,Type=String,Description="HGVS-Code">\n##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
+                    outfile.write(
+                        '##contig=<ID=1,assembly=b37,length=249250621>\n')
+                    outfile.write(
+                        '##contig=<ID=2,assembly=b37,length=243199373>\n')
+                    outfile.write(
+                        '##contig=<ID=3,assembly=b37,length=198022430>\n')
+                    outfile.write(
+                        '##contig=<ID=4,assembly=b37,length=191154276>\n')
+                    outfile.write(
+                        '##contig=<ID=5,assembly=b37,length=180915260>\n')
+                    outfile.write(
+                        '##contig=<ID=6,assembly=b37,length=171115067>\n')
+                    outfile.write(
+                        '##contig=<ID=7,assembly=b37,length=159138663>\n')
+                    outfile.write(
+                        '##contig=<ID=8,assembly=b37,length=146364022>\n')
+                    outfile.write(
+                        '##contig=<ID=9,assembly=b37,length=141213431>\n')
+                    outfile.write(
+                        '##contig=<ID=10,assembly=b37,length=135534747>\n')
+                    outfile.write(
+                        '##contig=<ID=11,assembly=b37,length=135006516>\n')
+                    outfile.write(
+                        '##contig=<ID=12,assembly=b37,length=133851895>\n')
+                    outfile.write(
+                        '##contig=<ID=13,assembly=b37,length=115169878>\n')
+                    outfile.write(
+                        '##contig=<ID=14,assembly=b37,length=107349540>\n')
+                    outfile.write(
+                        '##contig=<ID=15,assembly=b37,length=102531392>\n')
+                    outfile.write(
+                        '##contig=<ID=16,assembly=b37,length=90354753>\n')
+                    outfile.write(
+                        '##contig=<ID=17,assembly=b37,length=81195210>\n')
+                    outfile.write(
+                        '##contig=<ID=18,assembly=b37,length=78077248>\n')
+                    outfile.write(
+                        '##contig=<ID=19,assembly=b37,length=59128983>\n')
+                    outfile.write(
+                        '##contig=<ID=20,assembly=b37,length=63025520>\n')
+                    outfile.write(
+                        '##contig=<ID=21,assembly=b37,length=48129895>\n')
+                    outfile.write(
+                        '##contig=<ID=22,assembly=b37,length=51304566>\n')
+                    outfile.write(
+                        '##contig=<ID=X,assembly=b37,length=155270560>\n')
+                    outfile.write('##contig=<ID=Y,assembly=b37,length=59373566>\n')
 
-            self.vcf.to_csv(outputpath, mode='a', sep='\t', index=False,
-                            header=True, quoting=csv.QUOTE_NONE)
+                self.vcf.to_csv(outputpath, mode='a', sep='\t', index=False,
+                                header=True, quoting=csv.QUOTE_NONE)
+        else:
+            self.vcf=self.create_vcf(path)
+            self.dump_vcf(path)
