@@ -305,7 +305,7 @@ class OldJson(JsonFile):
                 'user_team': case.submitter['team'],
                 'user_name': case.submitter['name']
             },
-            'vcf': case.vcf,
+            'vcf': case.realvcf,
             'features': case.features,
             # maybe disable
             # 'ranks': case.syndromes.to_dict('records'),
