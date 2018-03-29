@@ -4,7 +4,8 @@ from functools import wraps
 def print_status(label, width, cur, size):
     '''Print a statusbar.'''
     len_size = str(len(str(size)))
-    prog = round(cur/size * width)
+    # prevent division by zero by defaulting to 100% progress
+    prog = round(cur/size * width) if size > 0 else 1
     print(
         ("\r{label}: \t[{prog: <"
          + str(width)
