@@ -15,6 +15,7 @@ python3 -m venv <dir of choice, eg env>
 ./<env>/bin/activate (command can vary depending on used shell)
 ```
 * Install dependencies
+  * Python 3.6 is currently the only tested version
 
 ```
 pip install -r requirements.txt
