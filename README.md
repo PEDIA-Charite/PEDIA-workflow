@@ -39,3 +39,28 @@ the lib package containing the actual program code.
 
 Keep in mind that the virtual environment needs to be enabled for script
 execution.
+
+The **preprocess.py** script contains most information necessary for running a
+conversion of new json files into the old format necessary for conversion.
+
+```
+# do not forget to activate the previously created virtual environment
+
+# get a list of usable options
+./preprocess.py -h
+
+# run complete process with AWS synchronization
+./preprocess.py
+
+# run for a single file (specifying output folder is beneficial)
+./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER
+```
+
+### Configuration
+
+Most configuration options are in a `config.ini` file, with options commented.
+A `config.ini.SAMPLE` in the project directory can be used as reference for
+creating an own configuration.
+
+Since some steps depend on the existence of API keys, running the preprocess.py
+script without a configuration file will **not work**.
