@@ -9,6 +9,8 @@
 * Running the simulation
 * Complete packaging for distribution
 
+## Setup
+
 * Create a python virtualenv preferably using the venv module
 ```
 python3 -m venv <dir of choice, eg env>
@@ -38,6 +40,29 @@ Files inside `scripts/` can be used for inspiration for own usecases. All
 scripts should be run from the project base directory to automatically include
 the lib package containing the actual program code.
 
+### Configuration
+
+Most configuration options are in a `config.ini` file, with options commented.
+A `config.ini.SAMPLE` in the project directory can be used as reference for
+creating an own configuration.
+
+### HGVS Error dict
+
+HGVS variant overrides are specified in `hgvs_errors.json`. Which is per-default
+searched for in the project root.
+
+The hgvs version is specified in `lib/constants.py` and will cause an error if
+an hgvs errors file of not at least the specified version is found.
+
+The number can be lowered manually to accept older hgvs error files.
+
+A version of 0 will accept no hgvs_errors file.
+
+### Running
+
+Since some steps depend on the existence of API keys, running the preprocess.py
+script without a configuration file will **not work**.
+
 Keep in mind that the virtual environment needs to be enabled for script
 execution.
 
@@ -57,11 +82,3 @@ conversion of new json files into the old format necessary for conversion.
 ./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER
 ```
 
-### Configuration
-
-Most configuration options are in a `config.ini` file, with options commented.
-A `config.ini.SAMPLE` in the project directory can be used as reference for
-creating an own configuration.
-
-Since some steps depend on the existence of API keys, running the preprocess.py
-script without a configuration file will **not work**.
