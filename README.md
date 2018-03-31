@@ -34,6 +34,13 @@ pip install -r requirements.txt
         python3 -m unittest discover
         ```
 
+* Obtain additional data files - put them into the specified locations
+  * `data/mim2gene.txt` - publicly available on omim.org
+    * [https://omim.org/downloads/][OMIM download page]
+  * `data/morbidmap.txt` - requires API-key access to download
+  * note that if new versions of the files are obtained MD5 checksums might have
+    to be regenerated
+
 ## Usage instructions
 
 Files inside `scripts/` can be used for inspiration for own usecases. All
