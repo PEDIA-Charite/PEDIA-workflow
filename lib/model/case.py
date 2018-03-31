@@ -9,8 +9,10 @@ import pandas
 import csv
 import subprocess
 import tempfile
+import os
 
 from lib.model.json import OldJson, NewJson
+from lib.vcf_operations import move_vcf
 from lib.utils import explode_df_column
 
 
@@ -55,7 +57,7 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
         "combined_score": combined_score,
         "pheno_score": pheno_score,
         "boqa_score": boqa_score
-        })
+    })
     return resp
 
 
@@ -199,8 +201,8 @@ class Case:
         '''
         return not self.realvcf
 
-    def create_vcf(self,path:str) -> pandas.DataFrame:
-        '''Generates vcf dataframe.
+    def create_vcf(self, path: str) -> pandas.DataFrame:
+        '''Generates vcf dataframe. If an error occurs the error message is returned.
         '''
         with tempfile.NamedTemporaryFile(mode="w+", dir=path) as hgvsfile:
             for v in self.variants:
@@ -208,14 +210,16 @@ class Case:
             hgvsfile.seek(0)
             with tempfile.NamedTemporaryFile(mode="w+", dir=path, suffix=".vcf") as vcffile:
                 try:
-                    subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli/target/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
-                                    'data/jannovar/jannovar-cli/target/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/jannovar-cli/target/data/hg19/hg19.fa"], check=True)
+                    process=subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli/target/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
+                                                  'data/jannovar/jannovar-cli/target/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/jannovar-cli/target/data/hg19/hg19.fa"], check=True, universal_newlines=True, stderr=subprocess.PIPE)
                 except subprocess.CalledProcessError as e:
                     return str(e)
                 columns = ['#CHROM', 'POS', 'ID', 'REF', 'ALT',
                            'QUAL', 'FILTER', 'INFO', 'FORMAT', self.case_id]
                 df = pandas.read_table(
                     vcffile.name, sep='\t', comment='#', names=columns)
+                if any(df.ALT == '<ERROR>'):
+                    return(process.stderr)
                 if self.hgvs_models[0].zygosity.lower() == 'hemizygous':
                     genotype = '1'
                 elif self.hgvs_models[0].zygosity.lower() == 'homozygous':
@@ -226,7 +230,7 @@ class Case:
                     genotype = '0/1'
                 df[self.case_id] = genotype
                 df['FORMAT'] = 'GT'
-                df['INFO'] = ['HGVS="'+str(v)+'"' for v in self.variants]
+                df['INFO'] = ['HGVS="' + str(v) + '"' for v in self.variants]
                 df = df.sort_values(by=['#CHROM', "POS"])
                 return df
 
@@ -234,15 +238,13 @@ class Case:
         '''Dumps vcf file to given path. Initializes vcf generation if none has yet been created.
         Created vcf is saved to self.vcf.
         '''
-        if hasattr(self,'vcf') and not recreate:
-            if isinstance(self.vcf,str):
-                print(self.case_id,'Jannovar stopped while generating VCF')
-            elif any(self.vcf.ALT=='<ERROR>'):
-                print(self.case_id,'Jannovar parse error')
+        if hasattr(self, 'vcf') and not recreate:
+            if isinstance(self.vcf, str):
+                LOGGER.error("VCF generation for case %s failed. Error message:%s",self.case_id,self.vcf)
             else:
-                outputpath = path + self.case_id + '.vcf'
+                outputpath = os.path.join(path, self.case_id + '.vcf')
                 # add header to vcf
-                with open(outputpath, 'a') as outfile:
+                with open(outputpath, 'w') as outfile:
                     outfile.write(
                         '##fileformat=VCFv4.1\n##INFO=<ID=HGVS,Number=1,Type=String,Description="HGVS-Code">\n##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
                     outfile.write(
@@ -291,10 +293,14 @@ class Case:
                         '##contig=<ID=22,assembly=b37,length=51304566>\n')
                     outfile.write(
                         '##contig=<ID=X,assembly=b37,length=155270560>\n')
-                    outfile.write('##contig=<ID=Y,assembly=b37,length=59373566>\n')
+                    outfile.write(
+                        '##contig=<ID=Y,assembly=b37,length=59373566>\n')
 
                 self.vcf.to_csv(outputpath, mode='a', sep='\t', index=False,
                                 header=True, quoting=csv.QUOTE_NONE)
+                move_vcf(outputpath, outputpath + '.gz', 'text')
+                os.remove(outputpath)
         else:
-            self.vcf=self.create_vcf(path)
+            LOGGER.debug("Generating VCF for case %s", self.case_id)
+            self.vcf = self.create_vcf(path)
             self.dump_vcf(path)
