@@ -19,14 +19,26 @@ from lib.model import json, case, config
 from lib.api import phenomizer, omim, mutalyzer
 
 
-def configure_logging(logger_name):
+def configure_logging(logger_name, logger_file: str = "preprocess.log"):
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
+    # visible screen printing
     stdout_channel = logging.StreamHandler()
     stdout_channel.setLevel(logging.INFO)
+    # file output logging
+    file_channel = logging.FileHandler(logger_file, mode="w")
+    file_channel.setLevel(logging.DEBUG)
+
     formatter = logging.Formatter("%(message)s")
     stdout_channel.setFormatter(formatter)
+
+    file_formatter = logging.Formatter(
+        "%(asctime)s L%(lineno)d <%(module)s|%(funcName)s> %(message)s"
+    )
+    file_channel.setFormatter(file_formatter)
+
     logger.addHandler(stdout_channel)
+    logger.addHandler(file_channel)
 
 
 def parse_arguments():
