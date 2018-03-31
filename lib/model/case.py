@@ -8,6 +8,7 @@ import pandas
 
 from lib.model.json import OldJson, NewJson
 from lib.utils import explode_df_column
+from lib import constants
 
 
 LOGGER = logging.getLogger(__name__)
@@ -67,12 +68,14 @@ class Case:
     '''
 
     def __init__(self, data: Union[OldJson, NewJson],
-                 error_fixer: "ErrorFixer"):
+                 error_fixer: "ErrorFixer",
+                 exclude_benign_variants: bool = True):
         self.algo_version = data.get_algo_version()
         self.case_id = data.get_case_id()
+
         # get both the list of hgvs variants and the hgvs models used in the
         # parsing
-        self.variants, self.hgvs_models = data.get_variants(error_fixer)
+        self.hgvs_models = data.get_variants(error_fixer)
         self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
         self.features = data.get_features()
         self.submitter = data.get_submitter()
@@ -83,6 +86,9 @@ class Case:
         self.data = data
         LOGGER.debug("Creating case %s", self.case_id)
 
+        # query settings
+        self.exclude_benign_variants = exclude_benign_variants
+
     def phenomize(self, pheno: 'PhenomizerService') -> bool:
         '''Add phenomization information to genes from boqa and phenomizer.
         Args:
@@ -90,7 +96,7 @@ class Case:
             pheno: PhenomizerService to handle API calls for phenomizer and
                    boqa.
         '''
-        pheno_boqa = pheno.disease_boqa_phenomize(self.features)
+        pheno_boqa = pheno.disease_boqa_phenomize(self.get_features())
 
         pheno_boqa.index = pheno_boqa.index.astype(int)
         # merge pheno and boqa scores dataframe with our current syndromes
@@ -170,24 +176,66 @@ class Case:
         # check maximum gestalt score
         max_gestalt_score = max(self.syndromes['gestalt_score'])
         if max_gestalt_score <= 0:
-            issues.append('Maximum gestalt score is 0. \
-                          Probably no image has been provided.')
+            issues.append(('Maximum gestalt score is 0. '
+                           'Probably no image has been provided.'))
             valid = False
 
         # check that only one syndrome has been selected
         diagnosis = self.syndromes.loc[self.syndromes['confirmed']]
         if len(diagnosis) != 1:
             issues.append(
-                '{} syndromes have been selected. Only 1 syndrome should be \
-                selected for PEDIA inclusion.'.format(len(diagnosis)))
+                ('{} syndromes have been selected. Only 1 syndrome should be '
+                 'selected for PEDIA inclusion.').format(len(diagnosis)))
             valid = False
 
-        # check that molecular information is available at all
-        if len(self.variants) == 0:
+        if not self.get_variants():
             issues.append('No valid genomic entries available.')
             valid = False
 
+        # check for benign exclusion
+        issues.append("{} variants have been excluded by benign flag".format(
+            len(self.get_variants(exclusion=False)) -
+            len(self.get_variants(exclusion=True))
+        ))
+
         return valid, issues
+
+    def get_variants(
+            self,
+            exclusion: Union[bool, None] = None
+    ) -> ["hgvs"]:
+        '''Get list of variants from all hgvs models.
+        Params:
+            exclusion - Genomic entries marked explicitly as
+            normal are excluded from the returned list.
+        '''
+        variants = [
+            v for m in self.get_hgvs_models(exclusion=exclusion)
+            for v in m.variants
+        ]
+        return variants
+
+    def get_hgvs_models(
+            self,
+            exclusion: Union[bool, None] = None
+    ) -> ["HGVSModel"]:
+        '''Get list of hgvs models, containing all processed information
+        on hgvs variants.'''
+        exclusion = exclusion if exclusion is not None \
+            else self.exclude_benign_variants
+        return [
+            m for m in self.hgvs_models
+            if not exclusion or m.result not in constants.NEGATIVE_RESULTS
+        ]
+
+    def get_features(self):
+        '''
+        Get list of features. Exclude illegal HPO terms for the phenomizer.
+        '''
+        return [
+            h for h in self.features
+            if h not in constants.ILLEGAL_HPO
+        ]
 
     def eligible_training(self) -> bool:
         '''Eligibility of case for training.

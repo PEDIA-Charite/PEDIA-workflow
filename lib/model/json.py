@@ -278,7 +278,7 @@ class OldJson(JsonFile):
 
         LOGGER.debug("Creating OldJson from Case for %s.", case.case_id)
         genomic_data = []
-        for model in case.hgvs_models:
+        for model in case.get_hgvs_models():
             data = {
                 'Test Information': {
                     'Molecular Test': model.test_type,
@@ -292,7 +292,8 @@ class OldJson(JsonFile):
                     'Build': 'GRCh37',
                     'result': model.result,
                     'Inheritance Mode': '',
-                    'HGVS-code': ", ".join([str(v) for v in model.variants])
+                    'HGVS-code': ", ".join(
+                        [str(v) for v in model.variants])
                 }
             }
             genomic_data.append(data)
@@ -306,7 +307,7 @@ class OldJson(JsonFile):
                 'user_name': case.submitter['name']
             },
             'vcf': case.vcf,
-            'features': case.features,
+            'features': case.get_features(),
             # maybe disable
             # 'ranks': case.syndromes.to_dict('records'),
             'geneList': case.get_gene_list(omim),
@@ -379,20 +380,22 @@ class NewJson(JsonFile):
             lambda x, y: max(x, y['gestalt_score']),
             self._js['detected_syndromes'], 0.0)
         if max_gestalt_score <= 0:
-            issues.append('Maximum gestalt score is 0. Probably no image has \
-                          been provided.')
+            issues.append(
+                ('Maximum gestalt score is 0. Probably no image has '
+                 'been provided.')
+            )
             valid = False
 
         # check that only one syndrome has been selected
         if len(self._js['selected_syndromes']) != 1:
             issues.append(
-                '{} syndromes have been selected. Only 1 syndrome should be \
-                selected for PEDIA inclusion.'.format(
+                ('{} syndromes have been selected. Only 1 syndrome should be '
+                 'selected for PEDIA inclusion.').format(
                     len(self._js['selected_syndromes'])))
             valid = False
 
         # check that molecular information is available at all
-        if len(self._js['genomic_entries']) == 0:
+        if not self._js['genomic_entries']:
             issues.append('No genomic entries available.')
             valid = False
 
@@ -401,8 +404,8 @@ class NewJson(JsonFile):
             if entry['test_type'] in CHROMOSOMAL_TESTS:
                 if entry['result'] in POSITIVE_RESULTS:
                     issues.append(
-                        'Chromosomal abnormality detected in {} with result \
-                        {}'.format(entry['test_type'], entry['result']))
+                        ('Chromosomal abnormality detected in {} with result '
+                         '{}').format(entry['test_type'], entry['result']))
                     valid = False
 
         return valid, issues
@@ -416,13 +419,12 @@ class NewJson(JsonFile):
     def get_js(self):
         return self._js
 
-    def get_variants(self, error_fixer: "ErrorFixer") -> ['hgvs']:
+    def get_variants(self, error_fixer: "ErrorFixer") -> ['HGVSModel']:
         '''Get a list of hgvs objects for variants.
         '''
         models = [HGVSModel(entry, error_fixer)
                   for entry in self._js['genomic_entries']]
-        variants = [v for m in models if m.variants for v in m.variants]
-        return variants, models
+        return models
 
     def get_syndrome_suggestions_and_diagnosis(self) -> pandas.DataFrame:
         '''Return a pandas dataframe containing all suggested syndromes and the

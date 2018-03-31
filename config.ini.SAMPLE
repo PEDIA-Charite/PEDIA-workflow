@@ -10,6 +10,8 @@ dump_intermediate = true
 [preprocess]
 ; location for possible raw json file overrides
 corrected_location = process/corrected
+; exclude variant results if they are benign
+exclude_normal_variants = true
 
 ; General API Settings
 [aws]
