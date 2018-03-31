@@ -312,7 +312,9 @@ class OldJson(JsonFile):
             'geneList': case.get_gene_list(omim),
             'detected_syndromes': case.data.get_detected_syndromes(),
             'genomicData': genomic_data,
-            'genomic_entries': case.data.get_js()['genomic_entries']
+            # directly passing structures from new json for debugging
+            'genomic_entries': case.data.get_js()['genomic_entries'],
+            'selected_syndromes': case.data.get_js()['selected_syndromes']
         }
         path = os.path.join(path, '{}.json'.format(case.case_id))
         obj = cls(data, path)
