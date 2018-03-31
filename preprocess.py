@@ -69,9 +69,13 @@ def yield_jsons(json_files, corrected):
 
 
 @progress_bar("Create cases")
-def yield_cases(json_files, error_fixer):
+def yield_cases(json_files, error_fixer, exclusion):
     for json_file in json_files:
-        yield case.Case(json_file, error_fixer=error_fixer)
+        yield case.Case(
+            json_file,
+            error_fixer=error_fixer,
+            exclude_benign_variants=exclusion
+        )
 
 
 @progress_bar("Phenomization")
@@ -110,12 +114,17 @@ def main():
 
     print('Unfiltered', len(new_json_objs))
 
+    for j in new_json_objs:
+        print(j.check())
     filtered_new = [j for j in new_json_objs if j.check()[0]]
     print('Filtered rough criteria', len(filtered_new))
 
-    case_objs = yield_cases(filtered_new, error_fixer)
+    case_objs = yield_cases(
+        filtered_new,
+        error_fixer,
+        config_data.preprocess["exclude_normal_variants"])
 
-    case_objs = [c for c in case_objs if c.variants]
+    case_objs = [c for c in case_objs if c.check()[0]]
     print('Cases with created hgvs objects', len(case_objs))
 
     mutalyzer.correct_reference_transcripts(case_objs)
