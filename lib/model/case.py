@@ -29,6 +29,7 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
     This includes: all scores, gene_symbol, gene_id, gene_omim_id, syndrome_id
     '''
     disease_id = rowdata['omim_id']
+    phenotypic_series = rowdata["phenotypic_series"]
 
     syndrome_name = rowdata["syndrome_name"] \
         or rowdata["disease-name_pheno"] \
@@ -45,6 +46,7 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
 
     resp = pandas.Series({
         "disease_id": disease_id,
+        "phenotypic_series": phenotypic_series,
         "syndrome_name": syndrome_name,
         "genes": genes,
         "gestalt_score": gestalt_score,
@@ -53,6 +55,15 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
         "pheno_score": pheno_score,
         "boqa_score": boqa_score})
     return resp
+
+
+def filter_phenotypic_series(ps_group: "DataFrame") -> "DataFrame":
+    '''Filter phenotypic series group to return maximum values in group.'''
+    if ps_group["phenotypic_series"].iloc[0] == "":
+        return ps_group
+
+    ps_reduced = pandas.DataFrame([ps_group.max()])
+    return ps_reduced
 
 
 class Case:
@@ -101,6 +112,7 @@ class Case:
         pheno_boqa.index = pheno_boqa.index.astype(int)
         # merge pheno and boqa scores dataframe with our current syndromes
         # dataframe which contains face2gene scores
+        self.syndromes["omim_id"] = self.syndromes["omim_id"].astype(int)
         self.syndromes = self.syndromes.merge(
             pheno_boqa, left_on='omim_id', how='outer', right_index=True)
         self.syndromes.reset_index(drop=True, inplace=True)
@@ -115,7 +127,7 @@ class Case:
                 'value_boqa': 0.0,
                 'syndrome_name': '',
                 'confirmed': False,
-                'has_mask': 0,
+                'has_mask': False,
                 'gene-symbol': '',
                 'gene-id': '',
                 'disease-name_boqa': '',
@@ -144,7 +156,17 @@ class Case:
 
         LOGGER.debug("Generating geneList for case %s", self.case_id)
 
-        gene_table = self.syndromes.apply(
+        # add or update phenotypic series information to syndromes table
+        self.syndromes["phenotypic_series"] = \
+            self.syndromes["omim_id"].astype(str).apply(
+                omim.omim_id_to_phenotypic_series
+            )
+
+        # group by phenotypic series and return highest unless empty
+        syndrome_series = self.syndromes.groupby("phenotypic_series").apply(
+            filter_phenotypic_series)
+
+        gene_table = syndrome_series.apply(
             lambda x: create_gene_table(x, omim), axis=1)
         # explode the gene table on genes to separate the genetic entries
         gene_table = explode_df_column(gene_table, 'genes')
@@ -223,10 +245,20 @@ class Case:
         on hgvs variants.'''
         exclusion = exclusion if exclusion is not None \
             else self.exclude_benign_variants
-        return [
-            m for m in self.hgvs_models
-            if not exclusion or m.result not in constants.NEGATIVE_RESULTS
-        ]
+        # return all models if no exclusion parameter
+        if not exclusion:
+            return self.hgvs_models
+
+        models = []
+        for model in self.hgvs_models:
+            if model.result in constants.NEGATIVE_RESULTS:
+                LOGGER.debug(
+                    ("NEGATIVE_RESULT Case %s Genomic entry %s marked as "
+                     "normal and will be ignored"),
+                    self.case_id, model.entry_id)
+            else:
+                models.append(model)
+        return models
 
     def get_features(self):
         '''
