@@ -277,9 +277,9 @@ class Omim:
         ps_label = ""
         # take the first phenotypic series entry or if empty leave the
         # empty string
-        if omim_id in self.phen_to_mim:
-            ps_label = self.phen_to_mim[omim_id][0] \
-                if self.phen_to_mim[omim_id] else ps_label
+        if omim_id in self.mim_to_ps:
+            ps_label = self.mim_to_ps[omim_id][0] \
+                if self.mim_to_ps[omim_id] else ps_label
         return ps_label
 
 

@@ -387,17 +387,19 @@ class NewJson(JsonFile):
             valid = False
 
         # check that only one syndrome has been selected
-        if len(self._js['selected_syndromes']) != 1:
-            issues.append(
-                ('{} syndromes have been selected. Only 1 syndrome should be '
-                 'selected for PEDIA inclusion.').format(
-                    len(self._js['selected_syndromes'])))
-            valid = False
+        # FIXME check will be moved to case level
+        # if len(self._js['selected_syndromes']) != 1:
+        #     issues.append(
+        #         ('{} syndromes have been selected. Only 1 syndrome should '
+        #          'be selected for PEDIA inclusion.').format(
+        #             len(self._js['selected_syndromes'])))
+        #     valid = False
 
         # check that molecular information is available at all
-        if not self._js['genomic_entries']:
-            issues.append('No genomic entries available.')
-            valid = False
+        # FIXME also include ones without genetic info
+        # if not self._js['genomic_entries']:
+        #     issues.append('No genomic entries available.')
+        #     valid = False
 
         # check that no structural abnormalities have been detected
         for entry in self._js['genomic_entries']:
@@ -444,26 +446,37 @@ class NewJson(JsonFile):
 
         # preprare the confirmed diagnosis for joining with the main syndrome
         # dataframe
-        selected = pandas.DataFrame.from_dict(
-            self._js['selected_syndromes'])
+        if self._js['selected_syndromes']:
+            selected = pandas.DataFrame.from_dict(
+                self._js['selected_syndromes'])
 
-        selected['omim_id'] = selected['omim_id'].apply(
-            lambda x: not isinstance(x, list) and [x] or x)
-        selected = explode_df_column(selected, 'omim_id')
-        # add a confirmed diagnosis column
-        selected['confirmed'] = True
+            selected['omim_id'] = selected['omim_id'].apply(
+                lambda x: not isinstance(x, list) and [x] or x)
+            selected = explode_df_column(selected, 'omim_id')
+            # add a confirmed diagnosis column
+            selected['confirmed'] = True
 
-        # outer join of the syndrome and the confirmed diagnosis
-        # pandas.merge has to be used instead of join, because the latter only
-        # joins on indices
-        syndromes_df = syndromes_df.merge(
-            selected, on=['omim_id', 'syndrome_name'], how='outer')
-        # set all entries not present in the selected syndromes to not
-        # confirmed
-        syndromes_df = syndromes_df.fillna({'confirmed': False})
-        # reset index for continous indexing after the join and explode
-        # operations
-        syndromes_df = syndromes_df.reset_index(drop=True)
+            # outer join of the syndrome and the confirmed diagnosis
+            # pandas.merge has to be used instead of join, because the latter
+            # only joins on indices
+            syndromes_df = syndromes_df.merge(
+                selected, on=['omim_id', 'syndrome_name'], how='outer')
+            # set all entries not present in the selected syndromes to not
+            # confirmed
+            syndromes_df = syndromes_df.fillna({'confirmed': False})
+            # merge has_mask
+            syndromes_df["has_mask"] = \
+                syndromes_df["has_mask_x"].astype(bool) \
+                | syndromes_df["has_mask_y"].astype(bool)
+            syndromes_df.drop(
+                ["has_mask_x", "has_mask_y"], inplace=True, axis=1
+            )
+            # reset index for continous indexing after the join and explode
+            # operations
+            syndromes_df = syndromes_df.reset_index(drop=True)
+        else:
+            # if no syndromes selected, everything is false
+            syndromes_df["confirmed"] = False
         return syndromes_df
 
     def get_features(self) -> [str]:

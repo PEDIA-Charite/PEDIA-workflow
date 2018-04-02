@@ -13,6 +13,11 @@ corrected_location = process/corrected
 ; exclude variant results if they are benign
 exclude_normal_variants = true
 
+; setting for old jSON conversion
+[conversion]
+; output path for converted jsons
+output_path = process/convert
+
 ; General API Settings
 [aws]
 ; necessary for download of data from remote location
