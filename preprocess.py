@@ -61,6 +61,18 @@ def json_from_directory(config_data: config.ConfigManager) \
 
     return json_files, corrected, "process/convert"
 
+def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "data/PEDIA/vcfs/original") -> None:
+    '''Creates config.yml file based on the VCF files'''
+    vcffiles = [file.split(".")[0] for file in os.listdir(vcffolder)]
+    singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder) if file.split(".") not in vcffiles]
+    print(len(vcffiles), len(singlefiles))
+    with open("config.yml","w") as configfile:
+        configfile.write('SINGLE_SAMPLES: \n')
+        for file in singlefiles:
+            configfile.write("-" + file + "\n")
+        configfile.write('VCF_SAMPLES: \n')
+        for file in vcffiles:
+            configfile.write("-" + file + "\n")
 
 @progress_bar("Process jsons")
 def yield_jsons(json_files, corrected):
@@ -88,6 +100,12 @@ def yield_old_json(case_objs, destination, omim_obj):
         old.save_json()
         yield
 
+@progress_bar("Generate VCFs")
+def yield_vcf(case_objs, destination):
+    for case_obj in case_objs:
+        case_obj.dump_vcf(destination)
+        yield
+
 
 def main():
     '''
@@ -97,15 +115,15 @@ def main():
     configure_logging("lib")
     config_data = config.ConfigManager()
 
-    # Load configuration and initialize API bindings
+    # # Load configuration and initialize API bindings
     phen = phenomizer.PhenomizerService(config=config_data)
     error_fixer = errorfixer.ErrorFixer(config=config_data)
 
     args = parse_arguments()
 
-    # get either from single file or from directory
+    # # get either from single file or from directory
     json_files, corrected, destination = ([args.single], "", args.output) \
-        if args.single else json_from_directory(config_data)
+         if args.single else json_from_directory(config_data)
     new_json_objs = yield_jsons(json_files, corrected)
 
     print('Unfiltered', len(new_json_objs))
@@ -121,15 +139,23 @@ def main():
     mutalyzer.correct_reference_transcripts(case_objs)
 
     if config_data.general['dump_intermediate']:
-        pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
+         pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
 
     yield_phenomized(case_objs, phen)
 
     if config_data.general['dump_intermediate']:
-        pickle.dump(case_objs, open('case_phenomized.p', 'wb'))
+         pickle.dump(case_objs, open('case_phenomized.p', 'wb'))
 
     omim_obj = omim.Omim(config=config_data)
-    yield_old_json(case_objs, destination, omim_obj)
+    yield_old_json(case_objs, 'convert', omim_obj)
+
+    yield_vcf(case_objs,'data/PEDIA/mutations')
+
+    if config_data.general['dump_intermediate']:
+        pickle.dump(case_objs, open('case_with_simulated_vcf.p','wb'))
+
+    #create config.yml
+    create_config()
 
 
 if __name__ == '__main__':
