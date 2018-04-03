@@ -86,20 +86,11 @@ def get_multi_field(data: dict, candidate_ids: [str]) -> str:
 class HGVSModel:
     '''Class to model mutation information received from Face2Gene.'''
 
-    def __init__(self, entry_dict: dict, error_fixer: Union[ErrorFixer, None],
-                 entry_type: str = 'new'):
-        self.error_fixer = error_fixer
-        if entry_type == 'new':
-            self._parse_new(entry_dict)
-        else:
-            raise TypeError(
-                'Only parsing of new genomic entry format has been implemented'
-            )
-
-    def get_json(self):
-        return self._js
-
-    def _parse_new(self, entry_dict: dict):
+    def __init__(
+            self,
+            entry_dict: dict,
+            error_fixer: Union[ErrorFixer, None]
+    ):
         '''New gene entry format contains:
         entry_id - entry id of gene entry json file
         test_type
@@ -107,21 +98,23 @@ class HGVSModel:
         result
         variant_type
         variants
-
         See doc/genomic_entry.md for reference on the format of genomic
         entries.
         '''
+        self.error_fixer = error_fixer
+
         self._js = entry_dict
         self.entry_id = entry_dict['entry_id']
         LOGGER.debug('Processing genomic entry %s', self.entry_id)
+
+        self.result = 'result' in entry_dict and entry_dict['result'] or \
+            'UNKNOWN'
 
         gene_top = 'gene' in entry_dict and entry_dict['gene'] or {}
         gene_variant = 'gene' in entry_dict['variants'] \
             and entry_dict['variants']['gene'] or {}
         self.gene = gene_top or gene_variant \
             or {'gene_id': '', 'gene_symbol': '', 'gene_omim_id': ''}
-        self.result = 'result' in entry_dict and entry_dict['result'] or \
-            'UNKNOWN'
         self.test_type = entry_dict['test_type'] or 'UNKNOWN'
         self.variant_type = entry_dict['variant_type'] or 'UNKNOWN'
 
@@ -141,6 +134,9 @@ class HGVSModel:
                 info, valid_variants, failed)
 
         self.variants = variants
+
+    def get_json(self):
+        return self._js
 
     def _parse_variants(self, variant_dict: dict) -> list:
         '''Create variant information from entries in the form of hgvs codes.
