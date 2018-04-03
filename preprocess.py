@@ -88,6 +88,19 @@ def json_from_directory(config_data: config.ConfigManager) \
 
     return json_files, corrected
 
+def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "data/PEDIA/vcfs/original") -> None:
+    '''Creates config.yml file based on the VCF files'''
+    vcffiles = [file.split(".")[0] for file in os.listdir(vcffolder)]
+    singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder) if file.split(".") not in vcffiles]
+    print(len(vcffiles), len(singlefiles))
+    with open("config.yml","w") as configfile:
+        configfile.write('SINGLE_SAMPLES: \n')
+        for file in singlefiles:
+            configfile.write("-" + file + "\n")
+        configfile.write('VCF_SAMPLES: \n')
+        for file in vcffiles:
+            configfile.write("-" + file + "\n")
+
 
 @progress_bar("Process jsons")
 def yield_jsons(json_files, corrected):
@@ -124,6 +137,13 @@ def yield_old_json(case_objs, destination, omim_obj):
         yield
 
 
+@progress_bar("Generate VCFs")
+def yield_vcf(case_objs, destination):
+    for case_obj in case_objs:
+        case_obj.dump_vcf(destination)
+        yield
+
+
 def create_jsons(args, config_data):
     print("== Process new json files ==")
     # get either from single file or from directory
@@ -154,7 +174,7 @@ def create_cases(args, config_data, jsons):
     mutalyzer.correct_reference_transcripts(case_objs)
 
     if config_data.general['dump_intermediate']:
-        pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
+         pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
 
     return case_objs
 
@@ -230,6 +250,14 @@ def main():
     convert_to_old_format(args, config_data, cases)
 
     quality_check_cases(args, config_data, cases)
+
+    yield_vcf(cases, 'data/PEDIA/mutations')
+
+    if config_data.general['dump_intermediate']:
+        pickle.dump(cases, open('case_with_simulated_vcf.p', 'wb'))
+
+    # create config.yml
+    create_config()
 
 
 if __name__ == '__main__':
