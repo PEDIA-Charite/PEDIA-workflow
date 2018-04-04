@@ -7,6 +7,7 @@ In the future specific usage of the OMIM API might be implemented.
 '''
 import re
 import os
+import json
 import logging
 
 import pandas
@@ -25,11 +26,7 @@ class Omim:
     if they already exist
     '''
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) \
-        AppleWebKit/537.36 (KHTML, like Gecko) \
-        Chrome/39.0.2171.95 Safari/537.36'
-    }
+    url = "https://api.omim.org/api/"
 
     def __init__(self, api_key: str='', mimdir: str='data',
                  use_cached: bool=True, config: 'ConfigManager'=None):
@@ -52,8 +49,10 @@ class Omim:
         self._use_cached = use_cached
         self._api_key = api_key
         self._mimdir = mimdir
+
         mim2gene_hash = ''
         morbidmap_hash = ''
+
         if config:
             self._use_cached = config.omim['use_cached']
             self._api_key = config.omim['api_key']
@@ -61,8 +60,17 @@ class Omim:
             mim2gene_hash = config.omim['mim2gene_hash']
             morbidmap_hash = config.omim['morbidmap_hash']
 
+        # save hashes to object for usage as stamp
+        self.mim2gene_has = mim2gene_hash
+        self.morbidmap_hash = morbidmap_hash
+
         # create directory if it doesnt exist
         os.makedirs(mimdir, exist_ok=True)
+
+        # add api key to http header
+        self.headers = {
+            "ApiKey": self._api_key
+        }
 
         mim2gene_path = os.path.join(mimdir, 'mim2gene.txt')
         # ensure using revision specified in config
@@ -95,6 +103,21 @@ class Omim:
         self.morbidmap = morbidmap
 
         self.phen_to_mim = self._create_phen_to_mim()
+
+        # load mim_to_ps json file
+        self.mim_to_ps = {}
+        filepath = os.path.join(self._mimdir, "mim_to_ps.json")
+        if os.path.exists(filepath):
+            with open(filepath, "r") as jsfile:
+                jsdata = json.load(jsfile)
+            # check checksum of the mapping file
+            if jsdata["morbidmap_hash"] == self.morbidmap_hash:
+                self.mim_to_ps = jsdata["mapping"]
+            else:
+                LOGGER.warning(
+                    ("mim_to_ps.json MD5 hash for morbidmap does "
+                     "not match current morbidmap checksum.")
+                )
 
     def _create_phen_to_mim(self):
         '''Create dictionary mapping phenotypic omim ids to list of gene ids.
@@ -191,6 +214,73 @@ class Omim:
             return gene_entry
         else:
             return {}
+
+    def api_query_entry(self, mim_pheno: str):
+        '''Get entry information for a phenotypic omim id.'''
+        params = {
+            'format': 'json',
+            'include': 'existFlags,geneMap',
+            'mimNumber': mim_pheno
+        }
+        url = self.url + "entry"
+        resp = requests.get(url, params=params, headers=self.headers)
+        js_data = [
+            e["entry"]
+            for e in resp.json()["omim"]["entryList"]
+        ]
+        return js_data
+
+    def api_query_phenotype_mapping(self, mim_pheno: str):
+        '''Map phenotype to phenotypic series number.'''
+        entry_list = self.api_query_entry(mim_pheno)
+        phenotypic_numbers = [
+            v['phenotypeMap']['phenotypicSeriesNumber']
+            for e in entry_list
+            if 'phenotypeMapList' in e
+            for v in e['phenotypeMapList']
+            if 'phenotypicSeriesExists' in e and e['phenotypicSeriesExists']
+        ]
+        return phenotypic_numbers
+
+    def construct_phenotypic_series_mapping(self):
+        '''Construct a dict with mapping of phenotypic omim ids to
+        phenotypic series ids.'''
+
+        output_path = os.path.join(self._mimdir, "mim_to_ps.json")
+        if os.path.exists(output_path):
+            with open(output_path, "r") as old_json:
+                old = json.load(old_json)
+                if old['morbidmap_hash'] == self.morbidmap_hash:
+                    LOGGER.warning(
+                        ("Phenotypic series mapping with same base "
+                         "morbidmap has already been constructed.")
+                    )
+                    return
+        mim_numbers = self.morbidmap[
+            "phen_mim_number"].dropna().drop_duplicates()
+
+        mim_ps_mapping = {
+            num: self.api_query_phenotype_mapping(num)
+            for num in mim_numbers
+        }
+        mim_ps_data = {
+            'morbidmap_hash': self.morbidmap_hash,
+            'mapping': mim_ps_mapping
+        }
+        with open(output_path, "w") as new_json:
+            json.dump(mim_ps_data, new_json)
+        return mim_ps_data
+
+    def omim_id_to_phenotypic_series(self, omim_id: str) -> str:
+        '''Translate omim id to phenotypic series id, or if it does
+        not exist to the empty string.'''
+        ps_label = ""
+        # take the first phenotypic series entry or if empty leave the
+        # empty string
+        if omim_id in self.mim_to_ps:
+            ps_label = self.mim_to_ps[omim_id][0] \
+                if self.mim_to_ps[omim_id] else ps_label
+        return ps_label
 
 
 def main():

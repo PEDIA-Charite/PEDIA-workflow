@@ -14,6 +14,7 @@ import os
 from lib.model.json import OldJson, NewJson
 from lib.vcf_operations import move_vcf
 from lib.utils import explode_df_column
+from lib import constants
 
 
 LOGGER = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
     This includes: all scores, gene_symbol, gene_id, gene_omim_id, syndrome_id
     '''
     disease_id = rowdata['omim_id']
+    phenotypic_series = rowdata["phenotypic_series"]
 
     syndrome_name = rowdata["syndrome_name"] \
         or rowdata["disease-name_pheno"] \
@@ -50,6 +52,7 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
 
     resp = pandas.Series({
         "disease_id": disease_id,
+        "phenotypic_series": phenotypic_series,
         "syndrome_name": syndrome_name,
         "genes": genes,
         "gestalt_score": gestalt_score,
@@ -59,6 +62,15 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
         "boqa_score": boqa_score
     })
     return resp
+
+
+def filter_phenotypic_series(ps_group: "DataFrame") -> "DataFrame":
+    '''Filter phenotypic series group to return maximum values in group.'''
+    if ps_group["phenotypic_series"].iloc[0] == "":
+        return ps_group
+
+    ps_reduced = pandas.DataFrame([ps_group.max()])
+    return ps_reduced
 
 
 class Case:
@@ -74,12 +86,14 @@ class Case:
     '''
 
     def __init__(self, data: Union[OldJson, NewJson],
-                 error_fixer: "ErrorFixer"):
+                 error_fixer: "ErrorFixer",
+                 exclude_benign_variants: bool = True):
         self.algo_version = data.get_algo_version()
         self.case_id = data.get_case_id()
+
         # get both the list of hgvs variants and the hgvs models used in the
         # parsing
-        self.variants, self.hgvs_models = data.get_variants(error_fixer)
+        self.hgvs_models = data.get_variants(error_fixer)
         self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
         self.features = data.get_features()
         self.submitter = data.get_submitter()
@@ -90,6 +104,9 @@ class Case:
         self.data = data
         LOGGER.debug("Creating case %s", self.case_id)
 
+        # query settings
+        self.exclude_benign_variants = exclude_benign_variants
+
     def phenomize(self, pheno: 'PhenomizerService') -> bool:
         '''Add phenomization information to genes from boqa and phenomizer.
         Args:
@@ -97,11 +114,12 @@ class Case:
             pheno: PhenomizerService to handle API calls for phenomizer and
                    boqa.
         '''
-        pheno_boqa = pheno.disease_boqa_phenomize(self.features)
+        pheno_boqa = pheno.disease_boqa_phenomize(self.get_features())
 
         pheno_boqa.index = pheno_boqa.index.astype(int)
         # merge pheno and boqa scores dataframe with our current syndromes
         # dataframe which contains face2gene scores
+        self.syndromes["omim_id"] = self.syndromes["omim_id"].astype(int)
         self.syndromes = self.syndromes.merge(
             pheno_boqa, left_on='omim_id', how='outer', right_index=True)
         self.syndromes.reset_index(drop=True, inplace=True)
@@ -116,7 +134,7 @@ class Case:
                 'value_boqa': 0.0,
                 'syndrome_name': '',
                 'confirmed': False,
-                'has_mask': 0,
+                'has_mask': False,
                 'gene-symbol': '',
                 'gene-id': '',
                 'disease-name_boqa': '',
@@ -144,7 +162,17 @@ class Case:
             return self.gene_scores
 
         LOGGER.debug("Generating geneList for case %s", self.case_id)
-        gene_table = self.syndromes.apply(
+        # add or update phenotypic series information to syndromes table
+        self.syndromes["phenotypic_series"] = \
+            self.syndromes["omim_id"].astype(str).apply(
+                omim.omim_id_to_phenotypic_series
+        )
+
+        # group by phenotypic series and return highest unless empty
+        syndrome_series = self.syndromes.groupby("phenotypic_series").apply(
+            filter_phenotypic_series)
+
+        gene_table = syndrome_series.apply(
             lambda x: create_gene_table(x, omim), axis=1)
         # explode the gene table on genes to separate the genetic entries
         gene_table = explode_df_column(gene_table, 'genes')
@@ -175,24 +203,76 @@ class Case:
         # check maximum gestalt score
         max_gestalt_score = max(self.syndromes['gestalt_score'])
         if max_gestalt_score <= 0:
-            issues.append('Maximum gestalt score is 0. \
-                          Probably no image has been provided.')
+            issues.append(('Maximum gestalt score is 0. '
+                           'Probably no image has been provided.'))
             valid = False
 
         # check that only one syndrome has been selected
         diagnosis = self.syndromes.loc[self.syndromes['confirmed']]
         if len(diagnosis) != 1:
             issues.append(
-                '{} syndromes have been selected. Only 1 syndrome should be \
-                selected for PEDIA inclusion.'.format(len(diagnosis)))
+                ('{} syndromes have been selected. Only 1 syndrome should be '
+                 'selected for PEDIA inclusion.').format(len(diagnosis)))
             valid = False
 
-        # check that molecular information is available at all
-        if len(self.variants) == 0:
+        if not self.get_variants():
             issues.append('No valid genomic entries available.')
             valid = False
 
+        # check for benign exclusion
+        issues.append("{} variants have been excluded by benign flag".format(
+            len(self.get_variants(exclusion=False)) -
+            len(self.get_variants(exclusion=True))
+        ))
+
         return valid, issues
+
+    def get_variants(
+            self,
+            exclusion: Union[bool, None] = None
+    ) -> ["hgvs"]:
+        '''Get list of variants from all hgvs models.
+        Params:
+            exclusion - Genomic entries marked explicitly as
+            normal are excluded from the returned list.
+        '''
+        variants = [
+            v for m in self.get_hgvs_models(exclusion=exclusion)
+            for v in m.variants
+        ]
+        return variants
+
+    def get_hgvs_models(
+            self,
+            exclusion: Union[bool, None] = None
+    ) -> ["HGVSModel"]:
+        '''Get list of hgvs models, containing all processed information
+        on hgvs variants.'''
+        exclusion = exclusion if exclusion is not None \
+            else self.exclude_benign_variants
+        # return all models if no exclusion parameter
+        if not exclusion:
+            return self.hgvs_models
+
+        models = []
+        for model in self.hgvs_models:
+            if model.result in constants.NEGATIVE_RESULTS:
+                LOGGER.debug(
+                    ("NEGATIVE_RESULT Case %s Genomic entry %s marked as "
+                     "normal and will be ignored"),
+                    self.case_id, model.entry_id)
+            else:
+                models.append(model)
+        return models
+
+    def get_features(self):
+        '''
+        Get list of features. Exclude illegal HPO terms for the phenomizer.
+        '''
+        return [
+            h for h in self.features
+            if h not in constants.ILLEGAL_HPO
+        ]
 
     def eligible_training(self) -> bool:
         '''Eligibility of case for training.
@@ -205,13 +285,13 @@ class Case:
         '''Generates vcf dataframe. If an error occurs the error message is returned.
         '''
         with tempfile.NamedTemporaryFile(mode="w+", dir=path) as hgvsfile:
-            for v in self.variants:
+            for v in self.get_variants():
                 hgvsfile.write(str(v) + "\n")
             hgvsfile.seek(0)
             with tempfile.NamedTemporaryFile(mode="w+", dir=path, suffix=".vcf") as vcffile:
                 try:
-                    process=subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
-                                                  'data/jannovar/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/data/hg19/hg19.fa"], check=True, universal_newlines=True, stderr=subprocess.PIPE)
+                    process = subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
+                                              'data/jannovar/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/data/hg19/hg19.fa"], check=True, universal_newlines=True, stderr=subprocess.PIPE)
                 except subprocess.CalledProcessError as e:
                     return str(e)
                 columns = ['#CHROM', 'POS', 'ID', 'REF', 'ALT',
@@ -230,7 +310,7 @@ class Case:
                     genotype = '0/1'
                 df[self.case_id] = genotype
                 df['FORMAT'] = 'GT'
-                df['INFO'] = ['HGVS="' + str(v) + '"' for v in self.variants]
+                df['INFO'] = ['HGVS="' + str(v) + '"' for v in self.get_variants()]
                 df = df.sort_values(by=['#CHROM', "POS"])
                 return df
 
@@ -240,7 +320,8 @@ class Case:
         '''
         if hasattr(self, 'vcf') and not recreate:
             if isinstance(self.vcf, str):
-                LOGGER.error("VCF generation for case %s failed. Error message:%s",self.case_id,self.vcf)
+                LOGGER.debug(
+                    "VCF generation for case %s failed. Error message:%s", self.case_id, self.vcf)
             else:
                 outputpath = os.path.join(path, self.case_id + '.vcf')
                 # add header to vcf
@@ -300,6 +381,9 @@ class Case:
                                 header=True, quoting=csv.QUOTE_NONE)
                 move_vcf(outputpath, outputpath + '.gz', 'text')
                 os.remove(outputpath)
+        #catches cases without genomic entries
+        elif not self.hgvs_models or not self.get_variants:
+            LOGGER.debug('VCF generation for case %s not possible, Error message: No variants',self.case_id)
         else:
             LOGGER.debug("Generating VCF for case %s", self.case_id)
             self.vcf = self.create_vcf(path)

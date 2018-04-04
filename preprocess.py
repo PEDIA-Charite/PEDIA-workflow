@@ -19,14 +19,26 @@ from lib.model import json, case, config
 from lib.api import phenomizer, omim, mutalyzer
 
 
-def configure_logging(logger_name):
+def configure_logging(logger_name, logger_file: str = "preprocess.log"):
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
+    # visible screen printing
     stdout_channel = logging.StreamHandler()
     stdout_channel.setLevel(logging.INFO)
+    # file output logging
+    file_channel = logging.FileHandler(logger_file, mode="w")
+    file_channel.setLevel(logging.DEBUG)
+
     formatter = logging.Formatter("%(message)s")
     stdout_channel.setFormatter(formatter)
+
+    file_formatter = logging.Formatter(
+        "%(asctime)s L%(lineno)d <%(module)s|%(funcName)s> %(message)s"
+    )
+    file_channel.setFormatter(file_formatter)
+
     logger.addHandler(stdout_channel)
+    logger.addHandler(file_channel)
 
 
 def parse_arguments():
@@ -34,9 +46,23 @@ def parse_arguments():
         "Process f2g provided jsons into a format processable by "
         "classification."))
     parser.add_argument("-s", "--single", help="Process a single json file.")
-    parser.add_argument("-o", "--output",
-                        help="Destination of created old json.",
-                        default="")
+    parser.add_argument(
+        "-o", "--output",
+        help="Destination of created old json.",
+        default=""
+    )
+    parser.add_argument(
+        "-p", "--pickle",
+        help="Start with pickled cases after phenomization."
+    )
+    parser.add_argument(
+        "-e", "--entry",
+        help=("Start entrypoint for pickled results. "
+              "Default: pheno - start at phenomization"
+              "Used in conjunction with --pickle"),
+        default="pheno"
+    )
+
     return parser.parse_args()
 
 
@@ -59,13 +85,12 @@ def json_from_directory(config_data: config.ConfigManager) \
     # this should make resolving some exotic errors a lot easier
     corrected = config_data.preprocess['corrected_location']
 
-    return json_files, corrected, "process/convert"
+    return json_files, corrected
 
-def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "data/PEDIA/vcfs/original") -> None:
+def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "data/PEDIA/vcfs/original"):
     '''Creates config.yml file based on the VCF files'''
     vcffiles = [file.split(".")[0] for file in os.listdir(vcffolder)]
     singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder) if file.split(".") not in vcffiles]
-    print(len(vcffiles), len(singlefiles))
     with open("config.yml","w") as configfile:
         configfile.write('SINGLE_SAMPLES: \n')
         for file in singlefiles:
@@ -81,9 +106,13 @@ def yield_jsons(json_files, corrected):
 
 
 @progress_bar("Create cases")
-def yield_cases(json_files, error_fixer):
+def yield_cases(json_files, error_fixer, exclusion):
     for json_file in json_files:
-        yield case.Case(json_file, error_fixer=error_fixer)
+        yield case.Case(
+            json_file,
+            error_fixer=error_fixer,
+            exclude_benign_variants=exclusion
+        )
 
 
 @progress_bar("Phenomization")
@@ -106,6 +135,60 @@ def yield_vcf(case_objs, destination):
         case_obj.dump_vcf(destination)
         yield
 
+def create_jsons(args, config_data):
+    # get either from single file or from directory
+    json_files, corrected = ([args.single], "") \
+        if args.single else json_from_directory(config_data)
+    new_json_objs = yield_jsons(json_files, corrected)
+
+    print('Unfiltered', len(new_json_objs))
+
+    filtered_new = [j for j in new_json_objs if j.check()[0]]
+    print('Filtered rough criteria', len(filtered_new))
+    return filtered_new
+
+
+def create_cases(args, config_data, jsons):
+    error_fixer = errorfixer.ErrorFixer(config=config_data)
+    case_objs = yield_cases(
+        jsons,
+        error_fixer,
+        config_data.preprocess["exclude_normal_variants"]
+    )
+
+    # FIXME include all cases regardless of quality
+    # case_objs = [c for c in case_objs if c.check()[0]]
+    # print('Cases with created hgvs objects', len(case_objs))
+
+    mutalyzer.correct_reference_transcripts(case_objs)
+
+    if config_data.general['dump_intermediate']:
+         pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
+
+    return case_objs
+
+
+def phenomize(config_data, cases):
+    phen = phenomizer.PhenomizerService(config=config_data)
+    yield_phenomized(cases, phen)
+
+    if config_data.general['dump_intermediate']:
+        pickle.dump(cases, open('case_phenomized.p', 'wb'))
+    return cases
+
+
+def convert_to_old_format(args, config_data, cases):
+    destination = args.output or config_data.conversion["output_path"]
+
+    omim_obj = omim.Omim(config=config_data)
+    yield_old_json(cases, destination, omim_obj)
+
+def save_vcfs(cases, config_data):
+    yield_vcf(cases,'data/PEDIA/mutations')
+    cases = [case for case in cases if hasattr(case,'vcf')]
+    if config_data.general['dump_intermediate']:
+        pickle.dump(cases, open('case_with_simulated_vcf.p','wb'))
+    return cases
 
 def main():
     '''
@@ -115,46 +198,21 @@ def main():
     configure_logging("lib")
     config_data = config.ConfigManager()
 
-    # # Load configuration and initialize API bindings
-    phen = phenomizer.PhenomizerService(config=config_data)
-    error_fixer = errorfixer.ErrorFixer(config=config_data)
-
+    #Load configuration and initialize API bindings
     args = parse_arguments()
+    if not args.pickle:
+        jsons = create_jsons(args, config_data)
+        cases = create_cases(args, config_data, jsons)
+    else:
+        with open(args.pickle, "rb") as pickled_file:
+            cases = pickle.load(pickled_file)
 
-    # # get either from single file or from directory
-    json_files, corrected, destination = ([args.single], "", args.output) \
-         if args.single else json_from_directory(config_data)
-    new_json_objs = yield_jsons(json_files, corrected)
+    #cases = [case for case in cases if case.check()[0]]
+    if args.entry == "pheno":
+        cases = phenomize(config_data, cases)
 
-    print('Unfiltered', len(new_json_objs))
-
-    filtered_new = [j for j in new_json_objs if j.check()[0]]
-    print('Filtered rough criteria', len(filtered_new))
-
-    case_objs = yield_cases(filtered_new, error_fixer)
-
-    case_objs = [c for c in case_objs if c.variants]
-    print('Cases with created hgvs objects', len(case_objs))
-
-    mutalyzer.correct_reference_transcripts(case_objs)
-
-    if config_data.general['dump_intermediate']:
-         pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
-
-    yield_phenomized(case_objs, phen)
-
-    if config_data.general['dump_intermediate']:
-         pickle.dump(case_objs, open('case_phenomized.p', 'wb'))
-
-    omim_obj = omim.Omim(config=config_data)
-    yield_old_json(case_objs, 'convert', omim_obj)
-
-    yield_vcf(case_objs,'data/PEDIA/mutations')
-
-    if config_data.general['dump_intermediate']:
-        pickle.dump(case_objs, open('case_with_simulated_vcf.p','wb'))
-
-    #create config.yml
+    convert_to_old_format(args, config_data, cases)
+    cases=save_vcfs(cases, config_data)
     create_config()
 
 
