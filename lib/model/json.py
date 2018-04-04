@@ -278,7 +278,7 @@ class OldJson(JsonFile):
 
         LOGGER.debug("Creating OldJson from Case for %s.", case.case_id)
         genomic_data = []
-        for model in case.hgvs_models:
+        for model in case.get_hgvs_models():
             data = {
                 'Test Information': {
                     'Molecular Test': model.test_type,
@@ -292,7 +292,8 @@ class OldJson(JsonFile):
                     'Build': 'GRCh37',
                     'result': model.result,
                     'Inheritance Mode': '',
-                    'HGVS-code': ", ".join([str(v) for v in model.variants])
+                    'HGVS-code': ", ".join(
+                        [str(v) for v in model.variants])
                 }
             }
             genomic_data.append(data)
@@ -306,12 +307,15 @@ class OldJson(JsonFile):
                 'user_name': case.submitter['name']
             },
             'vcf': case.realvcf,
-            'features': case.features,
+            'features': case.get_features(),
             # maybe disable
             # 'ranks': case.syndromes.to_dict('records'),
             'geneList': case.get_gene_list(omim),
             'detected_syndromes': case.data.get_detected_syndromes(),
-            'genomicData': genomic_data
+            'genomicData': genomic_data,
+            # directly passing structures from new json for debugging
+            'genomic_entries': case.data.get_js()['genomic_entries'],
+            'selected_syndromes': case.data.get_js()['selected_syndromes']
         }
         path = os.path.join(path, '{}.json'.format(case.case_id))
         obj = cls(data, path)
@@ -376,30 +380,34 @@ class NewJson(JsonFile):
             lambda x, y: max(x, y['gestalt_score']),
             self._js['detected_syndromes'], 0.0)
         if max_gestalt_score <= 0:
-            issues.append('Maximum gestalt score is 0. Probably no image has \
-                          been provided.')
+            issues.append(
+                ('Maximum gestalt score is 0. Probably no image has '
+                 'been provided.')
+            )
             valid = False
 
         # check that only one syndrome has been selected
-        if len(self._js['selected_syndromes']) != 1:
-            issues.append(
-                '{} syndromes have been selected. Only 1 syndrome should be \
-                selected for PEDIA inclusion.'.format(
-                    len(self._js['selected_syndromes'])))
-            valid = False
+        # FIXME check will be moved to case level
+        # if len(self._js['selected_syndromes']) != 1:
+        #     issues.append(
+        #         ('{} syndromes have been selected. Only 1 syndrome should '
+        #          'be selected for PEDIA inclusion.').format(
+        #             len(self._js['selected_syndromes'])))
+        #     valid = False
 
         # check that molecular information is available at all
-        if len(self._js['genomic_entries']) == 0:
-            issues.append('No genomic entries available.')
-            valid = False
+        # FIXME also include ones without genetic info
+        # if not self._js['genomic_entries']:
+        #     issues.append('No genomic entries available.')
+        #     valid = False
 
         # check that no structural abnormalities have been detected
         for entry in self._js['genomic_entries']:
             if entry['test_type'] in CHROMOSOMAL_TESTS:
                 if entry['result'] in POSITIVE_RESULTS:
                     issues.append(
-                        'Chromosomal abnormality detected in {} with result \
-                        {}'.format(entry['test_type'], entry['result']))
+                        ('Chromosomal abnormality detected in {} with result '
+                         '{}').format(entry['test_type'], entry['result']))
                     valid = False
 
         return valid, issues
@@ -413,13 +421,12 @@ class NewJson(JsonFile):
     def get_js(self):
         return self._js
 
-    def get_variants(self, error_fixer: "ErrorFixer") -> ['hgvs']:
+    def get_variants(self, error_fixer: "ErrorFixer") -> ['HGVSModel']:
         '''Get a list of hgvs objects for variants.
         '''
         models = [HGVSModel(entry, error_fixer)
                   for entry in self._js['genomic_entries']]
-        variants = [v for m in models if m.variants for v in m.variants]
-        return variants, models
+        return models
 
     def get_syndrome_suggestions_and_diagnosis(self) -> pandas.DataFrame:
         '''Return a pandas dataframe containing all suggested syndromes and the
@@ -439,26 +446,37 @@ class NewJson(JsonFile):
 
         # preprare the confirmed diagnosis for joining with the main syndrome
         # dataframe
-        selected = pandas.DataFrame.from_dict(
-            self._js['selected_syndromes'])
+        if self._js['selected_syndromes']:
+            selected = pandas.DataFrame.from_dict(
+                self._js['selected_syndromes'])
 
-        selected['omim_id'] = selected['omim_id'].apply(
-            lambda x: not isinstance(x, list) and [x] or x)
-        selected = explode_df_column(selected, 'omim_id')
-        # add a confirmed diagnosis column
-        selected['confirmed'] = True
+            selected['omim_id'] = selected['omim_id'].apply(
+                lambda x: not isinstance(x, list) and [x] or x)
+            selected = explode_df_column(selected, 'omim_id')
+            # add a confirmed diagnosis column
+            selected['confirmed'] = True
 
-        # outer join of the syndrome and the confirmed diagnosis
-        # pandas.merge has to be used instead of join, because the latter only
-        # joins on indices
-        syndromes_df = syndromes_df.merge(
-            selected, on=['omim_id', 'syndrome_name'], how='outer')
-        # set all entries not present in the selected syndromes to not
-        # confirmed
-        syndromes_df = syndromes_df.fillna({'confirmed': False})
-        # reset index for continous indexing after the join and explode
-        # operations
-        syndromes_df = syndromes_df.reset_index(drop=True)
+            # outer join of the syndrome and the confirmed diagnosis
+            # pandas.merge has to be used instead of join, because the latter
+            # only joins on indices
+            syndromes_df = syndromes_df.merge(
+                selected, on=['omim_id', 'syndrome_name'], how='outer')
+            # set all entries not present in the selected syndromes to not
+            # confirmed
+            syndromes_df = syndromes_df.fillna({'confirmed': False})
+            # merge has_mask
+            syndromes_df["has_mask"] = \
+                syndromes_df["has_mask_x"].astype(bool) \
+                | syndromes_df["has_mask_y"].astype(bool)
+            syndromes_df.drop(
+                ["has_mask_x", "has_mask_y"], inplace=True, axis=1
+            )
+            # reset index for continous indexing after the join and explode
+            # operations
+            syndromes_df = syndromes_df.reset_index(drop=True)
+        else:
+            # if no syndromes selected, everything is false
+            syndromes_df["confirmed"] = False
         return syndromes_df
 
     def get_features(self) -> [str]:

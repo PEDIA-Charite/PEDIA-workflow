@@ -24,7 +24,7 @@ def correct_reference_transcripts(case_objs: List['Case']) -> List['Case']:
     '''Check reference transcript number via batch call to mutalyzer.
     This will edit the hgvs objects in-place.
     '''
-    case_dict = {v.case_id: v.variants for v in case_objs}
+    case_dict = {v.case_id: v.get_variants() for v in case_objs}
     mutalyzer = Mutalyzer()
     mutalyzer.correct_transcripts(case_dict)
 
