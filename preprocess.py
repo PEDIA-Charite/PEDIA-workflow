@@ -234,6 +234,36 @@ def quality_check_cases(args, config_data, cases):
         )
 
 
+def quality_check_cases(args, config_data, cases):
+    '''Output quality check summaries.'''
+    print("== Quality check ==")
+    omim_obj = omim.Omim(config=config_data)
+    qc_results = {
+        c.case_id: c.check(omim_obj)
+        for c in cases
+    }
+    passed_cases = [
+        c for c in cases if c.check(omim_obj)[0]
+    ]
+    # save qc results in detailed log if needed
+    if config_data.quality["qc_detailed"] \
+            and config_data.quality["qc_detailed_log"]:
+        with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
+            json_lib.dump(qc_results, qc_out, indent=4)
+
+    # move cases to qc directory
+    if config_data.quality["qc_output_path"]:
+        # create output directory if needed
+        os.makedirs(config_data.quality["qc_output_path"], exist_ok=True)
+
+        omim_obj = omim.Omim(config=config_data)
+        yield_old_json(
+            passed_cases,
+            config_data.quality["qc_output_path"],
+            omim_obj
+        )
+
+
 def main():
     '''
     Some program blocks are enabled and disabled via config options in general

@@ -379,8 +379,8 @@ class Case:
                 return df
 
     def dump_vcf(self, path: str, recreate: bool = False) -> None:
-        '''Dumps vcf file to given path. Initializes vcf generation if none has yet been created.
-        Created vcf is saved to self.vcf.
+        '''Dumps vcf file to given path. Initializes vcf generation if none has
+        yet been created.  Created vcf is saved to self.vcf.
         '''
         if hasattr(self, 'vcf') and not recreate:
             if isinstance(self.vcf, str):
