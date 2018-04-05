@@ -311,7 +311,8 @@ class OldJson(JsonFile):
             # maybe disable
             # 'ranks': case.syndromes.to_dict('records'),
             'geneList': case.get_gene_list(omim),
-            'detected_syndromes': case.data.get_detected_syndromes(),
+            # 'detected_syndromes': case.data.get_detected_syndromes(),
+            'detected_syndromes': case.get_syndrome_list(),
             'genomicData': genomic_data,
             # directly passing structures from new json for debugging
             'genomic_entries': case.data.get_js()['genomic_entries'],

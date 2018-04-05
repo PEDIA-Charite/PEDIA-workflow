@@ -82,10 +82,14 @@ class Omim:
             'https://omim.org/static/omim/data/mim2gene.txt',
             ['mim_number', 'mim_entry_type', 'entrez_id', 'gene_symbol',
              'ensembl'])
+
         self.mim2gene = mim2gene.dropna(
-            subset=['mim_number', 'entrez_id']).set_index('mim_number')
+            subset=['mim_number', 'entrez_id']
+        ).drop_duplicates(subset="entrez_id").set_index('mim_number')
+
         self.entrez2gene = mim2gene.dropna(
-            subset=['mim_number', 'entrez_id']).set_index('entrez_id')
+            subset=['mim_number', 'entrez_id']
+        ).drop_duplicates(subset="entrez_id").set_index('entrez_id')
 
         morbidmap_url = \
             'https://data.omim.org/downloads/{}/morbidmap.txt'.format(api_key)
@@ -177,23 +181,40 @@ class Omim:
             LOGGER.warning("%s is ambiguous", str(needle))
         return entry[target]
 
-    def mim_gene_to_entrez_id(self, mim_gene):
+    def search_table(self, table, needle, target, default=""):
         try:
-            entrez_id = self.mim2gene.at[str(mim_gene), 'entrez_id']
+            result = table.at[needle, target]
         except KeyError:
-            entrez_id = ''
-        return entrez_id
+            result = default
+        return result
+
+    def mim_gene_to_entrez_id(self, mim_gene):
+        return self.search_table(
+            self.mim2gene,
+            str(mim_gene),
+            "entrez_id"
+        )
 
     def mim_gene_to_symbol(self, mim_gene):
-        gene_symbol = self.mim2gene.at[str(mim_gene), 'gene_symbol']
-        return gene_symbol
+        return self.search_table(
+            self.mim2gene,
+            str(mim_gene),
+            "gene_symbol"
+        )
 
     def entrez_id_to_mim_gene(self, entrez_id):
-        try:
-            gene_omim_id = self.entrez2gene.at[str(entrez_id), 'mim_number']
-        except KeyError:
-            gene_omim_id = ''
-        return gene_omim_id
+        return self.search_table(
+            self.entrez2gene,
+            str(entrez_id),
+            "mim_number"
+        )
+
+    def entrez_id_to_symbol(self, entrez_id):
+        return self.search_table(
+            self.entrez2gene,
+            str(entrez_id),
+            "gene_symbol"
+        )
 
     def mim_pheno_to_mim_gene(self, mim_pheno):
         gene_omim_id = self._search_single(
