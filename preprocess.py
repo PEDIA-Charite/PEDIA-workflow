@@ -11,6 +11,7 @@ from typing import Tuple, List
 
 import pickle
 from argparse import ArgumentParser
+import json as json_lib
 
 # own libraries
 from lib import download, errorfixer
@@ -133,7 +134,11 @@ def yield_phenomized(case_objs, phen):
 @progress_bar("Convert old")
 def yield_old_json(case_objs, destination, omim_obj):
     for case_obj in case_objs:
-        old = json.OldJson.from_case_object(case_obj, destination, omim_obj)
+        old = json.OldJson.from_case_object(
+            case_obj,
+            destination,
+            omim_obj
+        )
         old.save_json()
         yield
 
@@ -144,6 +149,7 @@ def yield_vcf(case_objs, destination):
         yield
 
 def create_jsons(args, config_data):
+    print("== Process new json files ==")
     # get either from single file or from directory
     json_files, corrected = ([args.single], "") \
         if args.single else json_from_directory(config_data)
@@ -157,6 +163,7 @@ def create_jsons(args, config_data):
 
 
 def create_cases(args, config_data, jsons):
+    print("== Create cases from new json format ==")
     error_fixer = errorfixer.ErrorFixer(config=config_data)
     case_objs = yield_cases(
         jsons,
@@ -177,6 +184,7 @@ def create_cases(args, config_data, jsons):
 
 
 def phenomize(config_data, cases):
+    print("== Phenomization of cases ==")
     phen = phenomizer.PhenomizerService(config=config_data)
     yield_phenomized(cases, phen)
 
@@ -186,6 +194,7 @@ def phenomize(config_data, cases):
 
 
 def convert_to_old_format(args, config_data, cases):
+    print("== Mapping to old json format ==")
     destination = args.output or config_data.conversion["output_path"]
 
     omim_obj = omim.Omim(config=config_data)
@@ -197,6 +206,36 @@ def save_vcfs(cases, config_data):
     if config_data.general['dump_intermediate']:
         pickle.dump(cases, open('case_with_simulated_vcf.p','wb'))
     return cases
+
+def quality_check_cases(args, config_data, cases):
+    '''Output quality check summaries.'''
+    print("== Quality check ==")
+    omim_obj = omim.Omim(config=config_data)
+    qc_results = {
+        c.case_id: c.check(omim_obj)
+        for c in cases
+    }
+    passed_cases = [
+        c for c in cases if c.check(omim_obj)[0]
+    ]
+    # save qc results in detailed log if needed
+    if config_data.quality["qc_detailed"] \
+            and config_data.quality["qc_detailed_log"]:
+        with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
+            json_lib.dump(qc_results, qc_out, indent=4)
+
+    # move cases to qc directory
+    if config_data.quality["qc_output_path"]:
+        # create output directory if needed
+        os.makedirs(config_data.quality["qc_output_path"], exist_ok=True)
+
+        omim_obj = omim.Omim(config=config_data)
+        yield_old_json(
+            passed_cases,
+            config_data.quality["qc_output_path"],
+            omim_obj
+        )
+
 
 def main():
     '''
