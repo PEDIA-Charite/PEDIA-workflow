@@ -179,7 +179,7 @@ def convert_to_old_format(args, config_data, cases):
     return yield_old_json(cases, destination, omim_obj)
 
 
-def quality_check_cases(args, config_data, cases):
+def quality_check_cases(args, config_data, cases, old_jsons):
     '''Output quality check summaries.'''
     print("== Quality check ==")
     omim_obj = omim.Omim(config=config_data)
@@ -187,6 +187,9 @@ def quality_check_cases(args, config_data, cases):
         c.case_id: c.check(omim_obj)
         for c in cases
     }
+
+    qc_failed = {c: q for c, q in qc_results.items() if not q[0]}
+
     passed_cases = [
         c for c in cases if c.check(omim_obj)[0]
     ]
@@ -194,19 +197,22 @@ def quality_check_cases(args, config_data, cases):
     if config_data.quality["qc_detailed"] \
             and config_data.quality["qc_detailed_log"]:
         with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
-            json_lib.dump(qc_results, qc_out, indent=4)
+            json_lib.dump(qc_failed, qc_out, indent=4)
 
     # move cases to qc directory
-    if config_data.quality["qc_output_path"]:
+    if config_data.quality["qc_output_path"] and old_jsons:
         # create output directory if needed
         os.makedirs(config_data.quality["qc_output_path"], exist_ok=True)
 
-        omim_obj = omim.Omim(config=config_data)
-        yield_old_json(
-            passed_cases,
-            config_data.quality["qc_output_path"],
-            omim_obj
-        )
+        old_jsons = {j.get_case_id(): j for j in old_jsons}
+
+        @progress_bar("Save passing qc")
+        def save_old_to_qc():
+            for pcase in passed_cases:
+                old_js = old_jsons[pcase.get_case_id()]
+                old_js.save_json(
+                    destination=config_data.quality["qc_output_path"]
+                )
 
 
 def main():
@@ -230,12 +236,14 @@ def main():
         cases = phenomize(config_data, cases)
 
     if args.entry == "pheno" or args.entry == "convert":
-        convert_to_old_format(args, config_data, cases)
+        old_jsons = convert_to_old_format(args, config_data, cases)
+    else:
+        old_jsons = None
 
     if args.entry == "pheno" \
             or args.entry == "convert" \
             or args.entry == "qc":
-        quality_check_cases(args, config_data, cases)
+        quality_check_cases(args, config_data, cases, old_jsons)
 
 
 if __name__ == '__main__':
