@@ -18,17 +18,20 @@ exclude_normal_variants = true
 ; output path for converted jsons
 output_path = process/convert
 
+; Quality check based on inclusion criteria of the PEDIA study
+[quality]
+; destination for cases passsing qc
+qc_output_path = process/checked
+; logging of qc errors per case
+qc_detailed = true
+qc_detailed_log = quality_check.log
+
 ; General API Settings
 [aws]
 ; necessary for download of data from remote location
 access_key = 
 secret_key = 
 download_location = process/aws_dir
-
-[face2gene]
-; possible usage for library lookup of syndromes
-user = 
-password = 
 
 [omim]
 ; necessary for download of morbidmap
