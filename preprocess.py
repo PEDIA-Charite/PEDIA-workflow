@@ -59,8 +59,10 @@ def parse_arguments():
     parser.add_argument(
         "-e", "--entry",
         help=("Start entrypoint for pickled results. "
-              "Default: pheno - start at phenomization"
-              "Used in conjunction with --pickle"),
+              "Default: pheno - start at phenomization. "
+              "convert - start at old json mapping. "
+              "qc - start at case quality check. "
+              "Used in conjunction with --pickle."),
         default="pheno"
     )
 
@@ -121,7 +123,7 @@ def yield_old_json(case_objs, destination, omim_obj):
             omim_obj
         )
         old.save_json()
-        yield
+        yield old
 
 
 def create_jsons(args, config_data):
@@ -174,7 +176,7 @@ def convert_to_old_format(args, config_data, cases):
     destination = args.output or config_data.conversion["output_path"]
 
     omim_obj = omim.Omim(config=config_data)
-    yield_old_json(cases, destination, omim_obj)
+    return yield_old_json(cases, destination, omim_obj)
 
 
 def quality_check_cases(args, config_data, cases):
@@ -227,9 +229,13 @@ def main():
     if args.entry == "pheno":
         cases = phenomize(config_data, cases)
 
-    convert_to_old_format(args, config_data, cases)
+    if args.entry == "pheno" or args.entry == "convert":
+        convert_to_old_format(args, config_data, cases)
 
-    quality_check_cases(args, config_data, cases)
+    if args.entry == "pheno" \
+            or args.entry == "convert" \
+            or args.entry == "qc":
+        quality_check_cases(args, config_data, cases)
 
 
 if __name__ == '__main__':
