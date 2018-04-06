@@ -91,15 +91,22 @@ def json_from_directory(config_data: config.ConfigManager) \
 def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "data/PEDIA/vcfs/original") -> None:
     '''Creates config.yml file based on the VCF files'''
     vcffiles = [file.split(".")[0] for file in os.listdir(vcffolder)]
-    singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder) if file.split(".") not in vcffiles]
-    print(len(vcffiles), len(singlefiles))
+    singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder)]
+    testfiles = []
     with open("config.yml","w") as configfile:
         configfile.write('SINGLE_SAMPLES: \n')
         for file in singlefiles:
-            configfile.write("-" + file + "\n")
+            if file not in vcffiles:
+                configfile.write(" - " + file + "\n")
         configfile.write('VCF_SAMPLES: \n')
         for file in vcffiles:
-            configfile.write("-" + file + "\n")
+            if file in singlefiles:
+                configfile.write(" - " + file + "\n")
+            else:
+                testfiles.append(file)
+        configfile.write('TEST_SAMPLES: \n')
+        for file in testfiles:
+            configfile.write(" - " + file + "\n")
 
 
 @progress_bar("Process jsons")
@@ -256,7 +263,6 @@ def main():
     if config_data.general['dump_intermediate']:
         pickle.dump(cases, open('case_with_simulated_vcf.p', 'wb'))
 
-    # create config.yml
     create_config()
 
 
