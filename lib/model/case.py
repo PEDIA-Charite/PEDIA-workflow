@@ -42,8 +42,8 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
         genes += [
             {
                 "gene_id": eid,
-                "gene_symbol": omim.entrez_id_to_mim_gene(eid),
-                "gene_omim_id": omim.entrez_id_to_symbol(eid)
+                "gene_symbol": omim.entrez_id_to_symbol(eid),
+                "gene_omim_id": omim.entrez_id_to_mim_gene(eid)
             }
             for eid in rowdata["gene-id"].split(", ")
             if eid not in [g["gene_id"] for g in genes]
