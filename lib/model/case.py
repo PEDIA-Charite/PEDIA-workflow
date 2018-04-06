@@ -252,7 +252,7 @@ class Case:
                 omim.omim_id_to_phenotypic_series(d)
                 for d in diagnosis["omim_id"]
             ]
-            if len(set(diagnosis_series)) != 1:
+            if len(set(diagnosis_series)) > 1:
                 issues.append(
                     {
                         "type": "MULTI_DIAGNOSIS",
