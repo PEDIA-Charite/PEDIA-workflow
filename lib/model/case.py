@@ -208,11 +208,8 @@ class Case:
             valid = False
 
         # check that only one syndrome has been selected
-        diagnosis = self.syndromes.loc[self.syndromes['confirmed']]
-        if len(diagnosis) != 1:
-            issues.append(
-                ('{} syndromes have been selected. Only 1 syndrome should be '
-                 'selected for PEDIA inclusion.').format(len(diagnosis)))
+        if len(self.data._js['selected_syndromes']) != 1:
+            issues.append('%s syndromes have been selected. Only 1 syndrome should be selected for PEDIA inclusion.'% len(self.data._js['selected_syndromes']))
             valid = False
 
         if not self.get_variants():
@@ -312,6 +309,7 @@ class Case:
                 df['FORMAT'] = 'GT'
                 df['INFO'] = ['HGVS="' + str(v) + '"' for v in self.get_variants()]
                 df = df.sort_values(by=['#CHROM', "POS"])
+                df = df.drop_duplicates()
                 return df
 
     def dump_vcf(self, path: str, recreate: bool = False) -> None:
@@ -381,8 +379,8 @@ class Case:
                                 header=True, quoting=csv.QUOTE_NONE)
                 move_vcf(outputpath, outputpath + '.gz', 'text')
                 os.remove(outputpath)
-        #catches cases without genomic entries
-        elif not self.hgvs_models or not self.get_variants:
+        # catches cases without genomic entries
+        elif not self.hgvs_models or not self.get_variants():
             LOGGER.debug('VCF generation for case %s not possible, Error message: No variants',self.case_id)
         else:
             LOGGER.debug("Generating VCF for case %s", self.case_id)

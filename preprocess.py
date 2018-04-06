@@ -90,14 +90,22 @@ def json_from_directory(config_data: config.ConfigManager) \
 def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "data/PEDIA/vcfs/original"):
     '''Creates config.yml file based on the VCF files'''
     vcffiles = [file.split(".")[0] for file in os.listdir(vcffolder)]
-    singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder) if file.split(".") not in vcffiles]
+    singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder)]
+    testfiles = []
     with open("config.yml","w") as configfile:
         configfile.write('SINGLE_SAMPLES: \n')
         for file in singlefiles:
-            configfile.write("-" + file + "\n")
+            if file not in vcffiles:
+                configfile.write(" - " + file + "\n")
         configfile.write('VCF_SAMPLES: \n')
         for file in vcffiles:
-            configfile.write("-" + file + "\n")
+            if file in singlefiles:
+                configfile.write(" - " + file + "\n")
+            else:
+                testfiles.append(file)
+        configfile.write('TEST_SAMPLES: \n')
+        for file in testfiles:
+            configfile.write(" - " + file + "\n")
 
 @progress_bar("Process jsons")
 def yield_jsons(json_files, corrected):
@@ -207,14 +215,13 @@ def main():
         with open(args.pickle, "rb") as pickled_file:
             cases = pickle.load(pickled_file)
 
-    #cases = [case for case in cases if case.check()[0]]
+    cases = [case for case in cases if case.check()[0]]
+    
     if args.entry == "pheno":
         cases = phenomize(config_data, cases)
 
-    convert_to_old_format(args, config_data, cases)
     cases=save_vcfs(cases, config_data)
     create_config()
-
 
 if __name__ == '__main__':
     main()
