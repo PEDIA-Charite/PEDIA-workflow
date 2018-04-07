@@ -381,8 +381,8 @@ class Case:
             hgvsfile.seek(0)
             with tempfile.NamedTemporaryFile(mode="w+", dir=path, suffix=".vcf") as vcffile:
                 try:
-                    process = subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
-                                              'data/jannovar/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/data/hg19/hg19.fa"], check=True, universal_newlines=True, stderr=subprocess.PIPE)
+                    process = subprocess.run(["java", "-jar", 'data/jannovar/jannovar_0.25/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
+                                              'data/jannovar/jannovar_0.25/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/referenceGenome/data/human_g1k_v37.fasta"], check=True, universal_newlines=True, stderr=subprocess.PIPE)
                 except subprocess.CalledProcessError as e:
                     return str(e)
                 columns = ['#CHROM', 'POS', 'ID', 'REF', 'ALT',

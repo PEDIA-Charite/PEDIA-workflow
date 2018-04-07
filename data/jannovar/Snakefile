@@ -1,7 +1,8 @@
 # download the data!
 rule all:
 	input:
-		"data/hg19_refseq.ser"
+		"data/hg19_refseq.ser",
+		"jannovar_0.25/data/hg19_refseq.ser"
 
 rule download_jannovar_ser:
 	output:
@@ -9,5 +10,14 @@ rule download_jannovar_ser:
 	shell:
 		"""
 		java -jar jannovar-cli-0.21-SNAPSHOT.jar download -d hg19/refseq
+		"""
+
+rule download_jannovar_25_ser:
+	output:
+		file="jannovar_0.25/data/hg19_refseq.ser"
+	shell:
+		"""
+		cd jannovar_0.25
+		java -jar jannovar-cli-0.25-SNAPSHOT.jar download -d hg19/refseq
 		"""
 

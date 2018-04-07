@@ -7,7 +7,9 @@ rule all:
     input:
         "data/hg19.fa",
         "data/hg19.fa.fai",
+        "data/hg19.fa.dict",
         "data/human_g1k_v37.fasta",
+        "data/human_g1k_v37.fasta.dict",
         "data/human_g1k_v37.fasta.fai"
 
 
@@ -51,6 +53,16 @@ rule index:
         samtools faidx {input}
         """
 
+rule dict:
+    input:
+        "data/hg19.fa"
+    output:
+        "data/hg19.fa.dict"
+    shell:
+        """
+        samtools dict{input} > {output}
+        """
+
 rule download_v37:
     input:
     output:
@@ -78,4 +90,14 @@ rule index_v37:
     shell:
         """
         samtools faidx {input}
+        """
+
+rule dict_v37:
+    input:
+        "data/human_g1k_v37.fasta"
+    output:
+        "data/human_g1k_v37.fasta.dict"
+    shell:
+        """
+        samtools dict {input} > {output}
         """

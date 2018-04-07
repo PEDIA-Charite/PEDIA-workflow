@@ -17,7 +17,7 @@ mim2gene.txt
 morbidmap.txt
 
 # static data, such as genomic data for exome simulation
-/data/
+# /data/
 # dynamic data, such as json files
 process
 
@@ -34,6 +34,8 @@ data/pathogenicityScores/InDels\.tsv\.gz
 data/pathogenicityScores/InDels\.tsv\.gz\.tbi
 
 data/jannovar/data/
+
+data/jannovar/jannovar_0.25/data/
 
 1_qualityCheck/scripts/protected/
 
