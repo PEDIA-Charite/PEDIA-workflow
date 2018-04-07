@@ -320,6 +320,5 @@ def main():
         cases = save_vcfs(config_data, cases)
         create_config()
 
-
 if __name__ == '__main__':
     main()

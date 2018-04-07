@@ -29,8 +29,11 @@ rule all:
         population_workflow("UK10K_COHORT.20160215.sites.vcf.gz.tbi"),
         reference_workflow("data/hg19.fa"),
         reference_workflow("data/hg19.fa.fai"),
+        reference_workflow("data/hg19.fa.dict"),
         reference_workflow("data/human_g1k_v37.fasta"),
         reference_workflow("data/human_g1k_v37.fasta.fai"),
+        reference_workflow("data/human_g1k_v37.fasta.dict"),
         jannovar_workflow("data/hg19_refseq.ser")
+        jannovar_workflow("jannovar_0.25/data/hg19_refseq.ser")
 		
 
