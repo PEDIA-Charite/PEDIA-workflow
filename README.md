@@ -65,6 +65,11 @@ The number can be lowered manually to accept older hgvs error files.
 
 A version of 0 will accept no hgvs_errors file.
 
+### Required external files
+   * Go to data folder, and run 'snakemake all' to download all necessary files such as reference genome, population data.
+   * Copy dbsnp files to data/dbSNP/b147
+   * Copy IRAN_trio files to 3_simulation/background/data/IRAN_trio/
+
 ### Running
 
 Since some steps depend on the existence of API keys, running the preprocess.py
