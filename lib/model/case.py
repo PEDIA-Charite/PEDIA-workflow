@@ -4,9 +4,15 @@ Case model created from json files.
 import logging
 from typing import Union, Dict
 
+
 import pandas
+import csv
+import subprocess
+import tempfile
+import os
 
 from lib.model.json import OldJson, NewJson
+from lib.vcf_operations import move_vcf
 from lib.utils import explode_df_column
 from lib import constants
 
@@ -53,7 +59,8 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
         "feature_score": feature_score,
         "combined_score": combined_score,
         "pheno_score": pheno_score,
-        "boqa_score": boqa_score})
+        "boqa_score": boqa_score
+    })
     return resp
 
 
@@ -75,7 +82,7 @@ class Case:
     features - list of hpo terms
     diagnosis - list of syndromes selected as diagnosis
     submitter - submitter information containing fields for email, name, team
-    vcf - list of vcf filenames
+    realvcf - list of vcf filenames
     '''
 
     def __init__(self, data: Union[OldJson, NewJson],
@@ -90,7 +97,7 @@ class Case:
         self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
         self.features = data.get_features()
         self.submitter = data.get_submitter()
-        self.vcf = data.get_vcf()
+        self.realvcf = data.get_vcf()
         self.gene_scores = None
         # also save the json object to easier extract information from the
         # new format
@@ -155,12 +162,11 @@ class Case:
             return self.gene_scores
 
         LOGGER.debug("Generating geneList for case %s", self.case_id)
-
         # add or update phenotypic series information to syndromes table
         self.syndromes["phenotypic_series"] = \
             self.syndromes["omim_id"].astype(str).apply(
                 omim.omim_id_to_phenotypic_series
-            )
+        )
 
         # group by phenotypic series and return highest unless empty
         syndrome_series = self.syndromes.groupby("phenotypic_series").apply(
@@ -174,7 +180,6 @@ class Case:
         # only select entries with non-empty gene ids
         if filter_entrez_id:
             gene_table = gene_table.loc[gene_table["gene_id"] != ""]
-
         gene_scores = gene_table.to_dict('records')
         self.gene_scores = gene_scores
         return gene_scores
@@ -203,11 +208,8 @@ class Case:
             valid = False
 
         # check that only one syndrome has been selected
-        diagnosis = self.syndromes.loc[self.syndromes['confirmed']]
-        if len(diagnosis) != 1:
-            issues.append(
-                ('{} syndromes have been selected. Only 1 syndrome should be '
-                 'selected for PEDIA inclusion.').format(len(diagnosis)))
+        if len(self.data._js['selected_syndromes']) != 1:
+            issues.append('%s syndromes have been selected. Only 1 syndrome should be selected for PEDIA inclusion.'% len(self.data._js['selected_syndromes']))
             valid = False
 
         if not self.get_variants():
@@ -274,4 +276,113 @@ class Case:
         Exclusion criteria are:
             available real vcf
         '''
-        return not self.vcf
+        return not self.realvcf
+
+    def create_vcf(self, path: str) -> pandas.DataFrame:
+        '''Generates vcf dataframe. If an error occurs the error message is returned.
+        '''
+        with tempfile.NamedTemporaryFile(mode="w+", dir=path) as hgvsfile:
+            for v in self.get_variants():
+                hgvsfile.write(str(v) + "\n")
+            hgvsfile.seek(0)
+            with tempfile.NamedTemporaryFile(mode="w+", dir=path, suffix=".vcf") as vcffile:
+                try:
+                    process = subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
+                                              'data/jannovar/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/data/hg19/hg19.fa"], check=True, universal_newlines=True, stderr=subprocess.PIPE)
+                except subprocess.CalledProcessError as e:
+                    return str(e)
+                columns = ['#CHROM', 'POS', 'ID', 'REF', 'ALT',
+                           'QUAL', 'FILTER', 'INFO', 'FORMAT', self.case_id]
+                df = pandas.read_table(
+                    vcffile.name, sep='\t', comment='#', names=columns)
+                if any(df.ALT == '<ERROR>'):
+                    return(process.stderr)
+                if self.hgvs_models[0].zygosity.lower() == 'hemizygous':
+                    genotype = '1'
+                elif self.hgvs_models[0].zygosity.lower() == 'homozygous':
+                    genotype = '1/1'
+                elif self.hgvs_models[0].zygosity.lower() == 'heterozygous' or self.hgvs_models[0].zygosity.lower() == 'compound heterozygous':
+                    genotype = '0/1'
+                else:
+                    genotype = '0/1'
+                df[self.case_id] = genotype
+                df['FORMAT'] = 'GT'
+                df['INFO'] = ['HGVS="' + str(v) + '"' for v in self.get_variants()]
+                df = df.sort_values(by=['#CHROM', "POS"])
+                df = df.drop_duplicates()
+                return df
+
+    def dump_vcf(self, path: str, recreate: bool = False) -> None:
+        '''Dumps vcf file to given path. Initializes vcf generation if none has yet been created.
+        Created vcf is saved to self.vcf.
+        '''
+        if hasattr(self, 'vcf') and not recreate:
+            if isinstance(self.vcf, str):
+                LOGGER.debug(
+                    "VCF generation for case %s failed. Error message:%s", self.case_id, self.vcf)
+            else:
+                outputpath = os.path.join(path, self.case_id + '.vcf')
+                # add header to vcf
+                with open(outputpath, 'w') as outfile:
+                    outfile.write(
+                        '##fileformat=VCFv4.1\n##INFO=<ID=HGVS,Number=1,Type=String,Description="HGVS-Code">\n##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
+                    outfile.write(
+                        '##contig=<ID=1,assembly=b37,length=249250621>\n')
+                    outfile.write(
+                        '##contig=<ID=2,assembly=b37,length=243199373>\n')
+                    outfile.write(
+                        '##contig=<ID=3,assembly=b37,length=198022430>\n')
+                    outfile.write(
+                        '##contig=<ID=4,assembly=b37,length=191154276>\n')
+                    outfile.write(
+                        '##contig=<ID=5,assembly=b37,length=180915260>\n')
+                    outfile.write(
+                        '##contig=<ID=6,assembly=b37,length=171115067>\n')
+                    outfile.write(
+                        '##contig=<ID=7,assembly=b37,length=159138663>\n')
+                    outfile.write(
+                        '##contig=<ID=8,assembly=b37,length=146364022>\n')
+                    outfile.write(
+                        '##contig=<ID=9,assembly=b37,length=141213431>\n')
+                    outfile.write(
+                        '##contig=<ID=10,assembly=b37,length=135534747>\n')
+                    outfile.write(
+                        '##contig=<ID=11,assembly=b37,length=135006516>\n')
+                    outfile.write(
+                        '##contig=<ID=12,assembly=b37,length=133851895>\n')
+                    outfile.write(
+                        '##contig=<ID=13,assembly=b37,length=115169878>\n')
+                    outfile.write(
+                        '##contig=<ID=14,assembly=b37,length=107349540>\n')
+                    outfile.write(
+                        '##contig=<ID=15,assembly=b37,length=102531392>\n')
+                    outfile.write(
+                        '##contig=<ID=16,assembly=b37,length=90354753>\n')
+                    outfile.write(
+                        '##contig=<ID=17,assembly=b37,length=81195210>\n')
+                    outfile.write(
+                        '##contig=<ID=18,assembly=b37,length=78077248>\n')
+                    outfile.write(
+                        '##contig=<ID=19,assembly=b37,length=59128983>\n')
+                    outfile.write(
+                        '##contig=<ID=20,assembly=b37,length=63025520>\n')
+                    outfile.write(
+                        '##contig=<ID=21,assembly=b37,length=48129895>\n')
+                    outfile.write(
+                        '##contig=<ID=22,assembly=b37,length=51304566>\n')
+                    outfile.write(
+                        '##contig=<ID=X,assembly=b37,length=155270560>\n')
+                    outfile.write(
+                        '##contig=<ID=Y,assembly=b37,length=59373566>\n')
+
+                self.vcf.to_csv(outputpath, mode='a', sep='\t', index=False,
+                                header=True, quoting=csv.QUOTE_NONE)
+                move_vcf(outputpath, outputpath + '.gz', 'text')
+                os.remove(outputpath)
+        # catches cases without genomic entries
+        elif not self.hgvs_models or not self.get_variants():
+            LOGGER.debug('VCF generation for case %s not possible, Error message: No variants',self.case_id)
+        else:
+            LOGGER.debug("Generating VCF for case %s", self.case_id)
+            self.vcf = self.create_vcf(path)
+            self.dump_vcf(path)

@@ -87,6 +87,25 @@ def json_from_directory(config_data: config.ConfigManager) \
 
     return json_files, corrected
 
+def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "data/PEDIA/vcfs/original"):
+    '''Creates config.yml file based on the VCF files'''
+    vcffiles = [file.split(".")[0] for file in os.listdir(vcffolder)]
+    singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder)]
+    testfiles = []
+    with open("config.yml","w") as configfile:
+        configfile.write('SINGLE_SAMPLES: \n')
+        for file in singlefiles:
+            if file not in vcffiles:
+                configfile.write(" - " + file + "\n")
+        configfile.write('VCF_SAMPLES: \n')
+        for file in vcffiles:
+            if file in singlefiles:
+                configfile.write(" - " + file + "\n")
+            else:
+                testfiles.append(file)
+        configfile.write('TEST_SAMPLES: \n')
+        for file in testfiles:
+            configfile.write(" - " + file + "\n")
 
 @progress_bar("Process jsons")
 def yield_jsons(json_files, corrected):
@@ -118,6 +137,11 @@ def yield_old_json(case_objs, destination, omim_obj):
         old.save_json()
         yield
 
+@progress_bar("Generate VCFs")
+def yield_vcf(case_objs, destination):
+    for case_obj in case_objs:
+        case_obj.dump_vcf(destination)
+        yield
 
 def create_jsons(args, config_data):
     # get either from single file or from directory
@@ -147,7 +171,7 @@ def create_cases(args, config_data, jsons):
     mutalyzer.correct_reference_transcripts(case_objs)
 
     if config_data.general['dump_intermediate']:
-        pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
+         pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
 
     return case_objs
 
@@ -167,6 +191,12 @@ def convert_to_old_format(args, config_data, cases):
     omim_obj = omim.Omim(config=config_data)
     yield_old_json(cases, destination, omim_obj)
 
+def save_vcfs(cases, config_data):
+    yield_vcf(cases,'data/PEDIA/mutations')
+    cases = [case for case in cases if hasattr(case,'vcf')]
+    if config_data.general['dump_intermediate']:
+        pickle.dump(cases, open('case_with_simulated_vcf.p','wb'))
+    return cases
 
 def main():
     '''
@@ -176,7 +206,7 @@ def main():
     configure_logging("lib")
     config_data = config.ConfigManager()
 
-    # Load configuration and initialize API bindings
+    #Load configuration and initialize API bindings
     args = parse_arguments()
     if not args.pickle:
         jsons = create_jsons(args, config_data)
@@ -185,11 +215,13 @@ def main():
         with open(args.pickle, "rb") as pickled_file:
             cases = pickle.load(pickled_file)
 
+    cases = [case for case in cases if case.check()[0]]
+    
     if args.entry == "pheno":
         cases = phenomize(config_data, cases)
 
-    convert_to_old_format(args, config_data, cases)
-
+    cases=save_vcfs(cases, config_data)
+    create_config()
 
 if __name__ == '__main__':
     main()
