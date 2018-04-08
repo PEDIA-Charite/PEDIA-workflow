@@ -59,8 +59,10 @@ def parse_arguments():
     parser.add_argument(
         "-e", "--entry",
         help=("Start entrypoint for pickled results. "
-              "Default: pheno - start at phenomization"
-              "Used in conjunction with --pickle"),
+              "Default: pheno - start at phenomization. "
+              "convert - start at old json mapping. "
+              "qc - start at case quality check. "
+              "Used in conjunction with --pickle."),
         default="pheno"
     )
 
@@ -141,7 +143,7 @@ def yield_old_json(case_objs, destination, omim_obj):
             omim_obj
         )
         old.save_json()
-        yield
+        yield old
 
 
 @progress_bar("Generate VCFs")
@@ -197,7 +199,7 @@ def convert_to_old_format(args, config_data, cases):
     destination = args.output or config_data.conversion["output_path"]
 
     omim_obj = omim.Omim(config=config_data)
-    yield_old_json(cases, destination, omim_obj)
+    return yield_old_json(cases, destination, omim_obj)
 
 
 def save_vcfs(config_data, cases):
@@ -208,7 +210,7 @@ def save_vcfs(config_data, cases):
     return cases
 
 
-def quality_check_cases(args, config_data, cases):
+def quality_check_cases(args, config_data, cases, old_jsons):
     '''Output quality check summaries.'''
     print("== Quality check ==")
     omim_obj = omim.Omim(config=config_data)
@@ -216,6 +218,9 @@ def quality_check_cases(args, config_data, cases):
         c.case_id: c.check(omim_obj)
         for c in cases
     }
+
+    qc_failed = {c: q for c, q in qc_results.items() if not q[0]}
+
     passed_cases = [
         c for c in cases if c.check(omim_obj)[0]
     ]
@@ -223,19 +228,22 @@ def quality_check_cases(args, config_data, cases):
     if config_data.quality["qc_detailed"] \
             and config_data.quality["qc_detailed_log"]:
         with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
-            json_lib.dump(qc_results, qc_out, indent=4)
+            json_lib.dump(qc_failed, qc_out, indent=4)
 
     # move cases to qc directory
-    if config_data.quality["qc_output_path"]:
+    if config_data.quality["qc_output_path"] and old_jsons:
         # create output directory if needed
         os.makedirs(config_data.quality["qc_output_path"], exist_ok=True)
 
-        omim_obj = omim.Omim(config=config_data)
-        yield_old_json(
-            passed_cases,
-            config_data.quality["qc_output_path"],
-            omim_obj
-        )
+        old_jsons = {j.get_case_id(): j for j in old_jsons}
+
+        @progress_bar("Save passing qc")
+        def save_old_to_qc():
+            for pcase in passed_cases:
+                old_js = old_jsons[pcase.get_case_id()]
+                old_js.save_json(
+                    destination=config_data.quality["qc_output_path"]
+                )
 
 
 def main():
@@ -258,9 +266,15 @@ def main():
     if args.entry == "pheno":
         cases = phenomize(config_data, cases)
 
-    convert_to_old_format(args, config_data, cases)
+    if args.entry == "pheno" or args.entry == "convert":
+        old_jsons = convert_to_old_format(args, config_data, cases)
+    else:
+        old_jsons = None
 
-    quality_check_cases(args, config_data, cases)
+    if args.entry == "pheno" \
+            or args.entry == "convert" \
+            or args.entry == "qc":
+        quality_check_cases(args, config_data, cases, old_jsons)
 
     cases = save_vcfs(config_data, cases)
     create_config()
