@@ -174,12 +174,11 @@ class Case:
             return self.gene_scores
 
         LOGGER.debug("Generating geneList for case %s", self.case_id)
-
         # add or update phenotypic series information to syndromes table
         self.syndromes["phenotypic_series"] = \
             self.syndromes["omim_id"].astype(str).apply(
                 omim.omim_id_to_phenotypic_series
-            )
+        )
 
         # # group by phenotypic series and return highest unless empty
         # syndrome_series = self.syndromes.groupby("phenotypic_series").apply(
@@ -348,13 +347,14 @@ class Case:
         '''Generates vcf dataframe. If an error occurs the error message is returned.
         '''
         with tempfile.NamedTemporaryFile(mode="w+", dir=path) as hgvsfile:
-            for v in self.variants:
+            for v in self.get_variants():
                 hgvsfile.write(str(v) + "\n")
             hgvsfile.seek(0)
             with tempfile.NamedTemporaryFile(mode="w+", dir=path, suffix=".vcf") as vcffile:
                 try:
-                    process=subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
-                                                  'data/jannovar/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/data/hg19/hg19.fa"], check=True, universal_newlines=True, stderr=subprocess.PIPE)
+
+                    process = subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
+                                              'data/jannovar/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/data/hg19/hg19.fa"], check=True, universal_newlines=True, stderr=subprocess.PIPE)
                 except subprocess.CalledProcessError as e:
                     return str(e)
                 columns = ['#CHROM', 'POS', 'ID', 'REF', 'ALT',
@@ -373,18 +373,20 @@ class Case:
                     genotype = '0/1'
                 df[self.case_id] = genotype
                 df['FORMAT'] = 'GT'
-                df['INFO'] = ['HGVS="' + str(v) + '"' for v in self.variants]
+
+                df['INFO'] = ['HGVS="' + str(v) + '"' for v in self.get_variants()]
                 df = df.sort_values(by=['#CHROM', "POS"])
                 df = df.drop_duplicates()
                 return df
 
     def dump_vcf(self, path: str, recreate: bool = False) -> None:
-        '''Dumps vcf file to given path. Initializes vcf generation if none has
-        yet been created.  Created vcf is saved to self.vcf.
+        '''Dumps vcf file to given path. Initializes vcf generation if none has yet been created.
+        Created vcf is saved to self.vcf.
         '''
         if hasattr(self, 'vcf') and not recreate:
             if isinstance(self.vcf, str):
-                LOGGER.error("VCF generation for case %s failed. Error message:%s",self.case_id,self.vcf)
+                LOGGER.debug(
+                    "VCF generation for case %s failed. Error message:%s", self.case_id, self.vcf)
             else:
                 outputpath = os.path.join(path, self.case_id + '.vcf')
                 # add header to vcf

@@ -143,6 +143,11 @@ def yield_old_json(case_objs, destination, omim_obj):
         old.save_json()
         yield
 
+@progress_bar("Generate VCFs")
+def yield_vcf(case_objs, destination):
+    for case_obj in case_objs:
+        case_obj.dump_vcf(destination)
+        yield
 
 @progress_bar("Generate VCFs")
 def yield_vcf(case_objs, destination):
@@ -203,6 +208,12 @@ def convert_to_old_format(args, config_data, cases):
     omim_obj = omim.Omim(config=config_data)
     yield_old_json(cases, destination, omim_obj)
 
+def save_vcfs(cases, config_data):
+    yield_vcf(cases,'data/PEDIA/mutations')
+    cases = [case for case in cases if hasattr(case,'vcf')]
+    if config_data.general['dump_intermediate']:
+        pickle.dump(cases, open('case_with_simulated_vcf.p','wb'))
+    return cases
 
 def quality_check_cases(args, config_data, cases):
     '''Output quality check summaries.'''
@@ -272,7 +283,7 @@ def main():
     configure_logging("lib")
     config_data = config.ConfigManager()
 
-    # Load configuration and initialize API bindings
+    #Load configuration and initialize API bindings
     args = parse_arguments()
     if not args.pickle:
         jsons = create_jsons(args, config_data)
@@ -281,6 +292,8 @@ def main():
         with open(args.pickle, "rb") as pickled_file:
             cases = pickle.load(pickled_file)
 
+    cases = [case for case in cases if case.check()[0]]
+    
     if args.entry == "pheno":
         cases = phenomize(config_data, cases)
 
@@ -288,13 +301,9 @@ def main():
 
     quality_check_cases(args, config_data, cases)
 
-    yield_vcf(cases, 'data/PEDIA/mutations')
-
-    if config_data.general['dump_intermediate']:
-        pickle.dump(cases, open('case_with_simulated_vcf.p', 'wb'))
-
+    cases = save_vcfs(cases, config_data)
     create_config()
-
+    
 
 if __name__ == '__main__':
     main()
