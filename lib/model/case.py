@@ -43,6 +43,18 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
 
     # get dict containing gene_id, gene_symbol, gene_omim_id
     genes = list(omim.mim_pheno_to_gene(disease_id).values())
+
+    if rowdata["gene-id"]:
+        genes += [
+            {
+                "gene_id": eid,
+                "gene_symbol": omim.entrez_id_to_symbol(eid),
+                "gene_omim_id": omim.entrez_id_to_mim_gene(eid)
+            }
+            for eid in rowdata["gene-id"].split(", ")
+            if eid not in [g["gene_id"] for g in genes]
+        ]
+
     # get all three scores provided by face2gene
     gestalt_score = rowdata["gestalt_score"]
     feature_score = rowdata['feature_score']
@@ -69,8 +81,8 @@ def filter_phenotypic_series(ps_group: "DataFrame") -> "DataFrame":
     if ps_group["phenotypic_series"].iloc[0] == "":
         return ps_group
 
-    ps_reduced = pandas.DataFrame([ps_group.max()])
-    return ps_reduced
+    ps_group = ps_group.groupby("gene_id", as_index=False).max()
+    return ps_group
 
 
 class Case:
@@ -149,9 +161,12 @@ class Case:
 
         return True
 
-    def get_gene_list(self, omim: 'Omim', recreate: bool = False,
-                      filter_entrez_id: bool = True) \
-            -> Dict[str, str]:
+    def get_gene_list(
+            self,
+            omim: Union[None, 'Omim'],
+            recreate: bool = False,
+            filter_entrez_id: bool = True
+    ) -> Dict[str, str]:
         '''Get list of genes from syndromes. Save them back to self.genes
         for faster lookup afterwards.
         Args:
@@ -161,6 +176,9 @@ class Case:
         if self.gene_scores is not None and not recreate:
             return self.gene_scores
 
+        if omim is None:
+            raise TypeError("Omim cannot be none if result not cached.")
+
         LOGGER.debug("Generating geneList for case %s", self.case_id)
         # add or update phenotypic series information to syndromes table
         self.syndromes["phenotypic_series"] = \
@@ -168,23 +186,53 @@ class Case:
                 omim.omim_id_to_phenotypic_series
         )
 
-        # group by phenotypic series and return highest unless empty
-        syndrome_series = self.syndromes.groupby("phenotypic_series").apply(
-            filter_phenotypic_series)
+        # # group by phenotypic series and return highest unless empty
+        # syndrome_series = self.syndromes.groupby("phenotypic_series").apply(
+        #     filter_phenotypic_series
+        # )
+        # syndrome_series = syndrome_series.reset_index(drop=True)
 
-        gene_table = syndrome_series.apply(
-            lambda x: create_gene_table(x, omim), axis=1)
+        gene_table = self.syndromes.apply(
+            lambda x: create_gene_table(x, omim), axis=1
+        )
+
         # explode the gene table on genes to separate the genetic entries
         gene_table = explode_df_column(gene_table, 'genes')
         gene_table = gene_table.apply(genes_to_single_cols, axis=1)
+
         # only select entries with non-empty gene ids
         if filter_entrez_id:
             gene_table = gene_table.loc[gene_table["gene_id"] != ""]
+
+        # reset indexing for grouping
+        gene_table = gene_table.reset_index(drop=True)
+
+        # group by phenotypic series and return highest unless empty
+        gene_table = gene_table.groupby("phenotypic_series").apply(
+            filter_phenotypic_series
+        )
+
         gene_scores = gene_table.to_dict('records')
         self.gene_scores = gene_scores
         return gene_scores
 
-    def check(self) -> bool:
+    def pathogenic_gene_in_gene_list(
+            self,
+            omim: Union[None, "Omim"] = None
+    ) -> (bool, list):
+        '''Check whether diagnosed genetic mutation is pathogenic gene.'''
+        variant_gene_names = [
+            v.gene["gene_id"] for v in self.get_hgvs_models()
+        ]
+        gene_list = self.get_gene_list(omim=omim)
+        gene_list_ids = [g["gene_id"] for g in gene_list]
+        status = [
+            (v in gene_list_ids, v)
+            for v in variant_gene_names
+        ]
+        return status
+
+    def check(self, omim: Union[None, "Omim"] = None) -> bool:
         '''Check whether Case fulfills all provided criteria.
 
         The criteria are:
@@ -203,24 +251,56 @@ class Case:
         # check maximum gestalt score
         max_gestalt_score = max(self.syndromes['gestalt_score'])
         if max_gestalt_score <= 0:
-            issues.append(('Maximum gestalt score is 0. '
-                           'Probably no image has been provided.'))
+            issues.append(
+                {
+                    "type": "NO_GESTALT",
+                }
+            )
             valid = False
 
         # check that only one syndrome has been selected
-        if len(self.data._js['selected_syndromes']) != 1:
-            issues.append('%s syndromes have been selected. Only 1 syndrome should be selected for PEDIA inclusion.'% len(self.data._js['selected_syndromes']))
+        diagnosis = self.syndromes.loc[self.syndromes['confirmed']]
+        if len(diagnosis) < 1:
+            issues.append(
+                {
+                    "type": "NO_DIAGNOSIS",
+                }
+            )
             valid = False
+
+        # check whether multiple diagnoses are in same phenotypic series
+        if omim:
+            diagnosis_series = [
+                omim.omim_id_to_phenotypic_series(d)
+                for d in diagnosis["omim_id"]
+            ]
+            if len(set(diagnosis_series)) > 1:
+                issues.append(
+                    {
+                        "type": "MULTI_DIAGNOSIS",
+                        "data": list(diagnosis["omim_id"])
+                    }
+                )
+                valid = False
+        else:
+            LOGGER.warning("No omim object. Some checks will not run.")
 
         if not self.get_variants():
-            issues.append('No valid genomic entries available.')
+            raw_entries = self.data.get_genomic_entries()
+            if not len(raw_entries):
+                issues.append(
+                    {
+                        "type": "NO_GENOMIC",
+                    }
+                )
+            else:
+                issues.append(
+                    {
+                        "type": "MALFORMED_HGVS",
+                        "data": raw_entries
+                    }
+                )
             valid = False
-
-        # check for benign exclusion
-        issues.append("{} variants have been excluded by benign flag".format(
-            len(self.get_variants(exclusion=False)) -
-            len(self.get_variants(exclusion=True))
-        ))
 
         return valid, issues
 
@@ -238,6 +318,11 @@ class Case:
             for v in m.variants
         ]
         return variants
+
+    def get_benign_excluded(self) -> int:
+        '''Get number of variants excluded by benign filters.'''
+        return len(self.get_variants(exclusion=False)) \
+            - len(self.get_variants(exclusion=True))
 
     def get_hgvs_models(
             self,
@@ -271,12 +356,21 @@ class Case:
             if h not in constants.ILLEGAL_HPO
         ]
 
+    def get_syndrome_list(self):
+        '''Get list of syndromes from syndrome table'''
+        syndrome_list = self.syndromes.to_dict("records")
+        return syndrome_list
+
     def eligible_training(self) -> bool:
         '''Eligibility of case for training.
         Exclusion criteria are:
             available real vcf
         '''
         return not self.realvcf
+
+    def get_vcf(self) -> list:
+        '''Return vcf files. Does not include generated vcf files.'''
+        return self.realvcf
 
     def create_vcf(self, path: str) -> pandas.DataFrame:
         '''Generates vcf dataframe. If an error occurs the error message is returned.
