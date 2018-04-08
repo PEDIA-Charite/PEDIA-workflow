@@ -161,9 +161,12 @@ class Case:
 
         return True
 
-    def get_gene_list(self, omim: 'Omim', recreate: bool = False,
-                      filter_entrez_id: bool = True) \
-            -> Dict[str, str]:
+    def get_gene_list(
+            self,
+            omim: Union[None, 'Omim'],
+            recreate: bool = False,
+            filter_entrez_id: bool = True
+    ) -> Dict[str, str]:
         '''Get list of genes from syndromes. Save them back to self.genes
         for faster lookup afterwards.
         Args:
@@ -172,6 +175,9 @@ class Case:
         # return existing gene list, if it already exists
         if self.gene_scores is not None and not recreate:
             return self.gene_scores
+
+        if omim is None:
+            raise TypeError("Omim cannot be none if result not cached.")
 
         LOGGER.debug("Generating geneList for case %s", self.case_id)
         # add or update phenotypic series information to syndromes table
@@ -209,6 +215,22 @@ class Case:
         gene_scores = gene_table.to_dict('records')
         self.gene_scores = gene_scores
         return gene_scores
+
+    def pathogenic_gene_in_gene_list(
+            self,
+            omim: Union[None, "Omim"] = None
+    ) -> (bool, list):
+        '''Check whether diagnosed genetic mutation is pathogenic gene.'''
+        variant_gene_names = [
+            v.gene["gene_id"] for v in self.get_hgvs_models()
+        ]
+        gene_list = self.get_gene_list(omim=omim)
+        gene_list_ids = [g["gene_id"] for g in gene_list]
+        status = [
+            (v in gene_list_ids, v)
+            for v in variant_gene_names
+        ]
+        return status
 
     def check(self, omim: Union[None, "Omim"] = None) -> bool:
         '''Check whether Case fulfills all provided criteria.
@@ -264,23 +286,21 @@ class Case:
             LOGGER.warning("No omim object. Some checks will not run.")
 
         if not self.get_variants():
-            issues.append(
-                {
-                    "type": "NO_GENOMIC"
-                }
-            )
+            raw_entries = self.data.get_genomic_entries()
+            if not len(raw_entries):
+                issues.append(
+                    {
+                        "type": "NO_GENOMIC",
+                    }
+                )
+            else:
+                issues.append(
+                    {
+                        "type": "MALFORMED_HGVS",
+                        "data": raw_entries
+                    }
+                )
             valid = False
-
-        # check for benign exclusion
-        issues.append(
-            {
-                "type": "REMOVE_NORMAL_VARIANTS",
-                "data": {
-                    "all": len(self.get_variants(exclusion=False)),
-                    "excluded": len(self.get_variants(exclusion=True))
-                }
-            }
-        )
 
         return valid, issues
 
@@ -298,6 +318,11 @@ class Case:
             for v in m.variants
         ]
         return variants
+
+    def get_benign_excluded(self) -> int:
+        '''Get number of variants excluded by benign filters.'''
+        return len(self.get_variants(exclusion=False)) \
+            - len(self.get_variants(exclusion=True))
 
     def get_hgvs_models(
             self,

@@ -223,16 +223,44 @@ def quality_check_cases(args, config_data, cases, old_jsons):
         for c in cases
     }
 
+    # Cases failing qc altogether
     qc_failed = {c: q for c, q in qc_results.items() if not q[0]}
 
-    passed_cases = [
-        c for c in cases if c.check(omim_obj)[0]
-    ]
+    # Cases passing quality check
+    qc_passed = {
+        c.case_id: c for c in cases if c.check(omim_obj)[0]
+    }
+
+    # Cases with mutations marked as benign excluded from analysis
+    qc_benign_passed = {
+        k: v for k, v in
+        {k: v.get_benign_excluded() for k, v in qc_passed.items()}.items()
+        if v > 0
+    }
+
+    # Cases where pathogenic diagnosed mutation is not in geneList
+    qc_pathongenic_passed = {
+        k: v for k, v in
+        {
+            k: v.pathogenic_gene_in_gene_list(omim_obj)
+            for k, v in qc_passed.items()
+        }.items()
+        if not v[0]
+    }
+
+    # Compiled stats to be dumped into a json file
+    qc_output = {
+        "failed": qc_failed,
+        "benign_excluded": qc_benign_passed,
+        "pathogenic_missing": qc_pathongenic_passed,
+        "passed": list(qc_passed.keys())
+    }
+
     # save qc results in detailed log if needed
     if config_data.quality["qc_detailed"] \
             and config_data.quality["qc_detailed_log"]:
         with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
-            json_lib.dump(qc_failed, qc_out, indent=4)
+            json_lib.dump(qc_output, qc_out, indent=4)
 
     # move cases to qc directory
     if config_data.quality["qc_output_path"] and old_jsons:
@@ -243,11 +271,13 @@ def quality_check_cases(args, config_data, cases, old_jsons):
 
         @progress_bar("Save passing qc")
         def save_old_to_qc():
-            for pcase in passed_cases:
+            for pcase in qc_passed.values():
                 old_js = old_jsons[pcase.get_case_id()]
                 old_js.save_json(
                     destination=config_data.quality["qc_output_path"]
                 )
+
+    return {"pass": len(qc_passed), "fail": len(qc_failed)}
 
 
 def main():
@@ -266,7 +296,6 @@ def main():
         with open(args.pickle, "rb") as pickled_file:
             cases = pickle.load(pickled_file)
 
-    cases = [case for case in cases if case.check()[0]]
     if args.entry == "pheno":
         cases = phenomize(config_data, cases)
 
@@ -278,7 +307,11 @@ def main():
     if args.entry == "pheno" \
             or args.entry == "convert" \
             or args.entry == "qc":
-        quality_check_cases(args, config_data, cases, old_jsons)
+        stats = quality_check_cases(args, config_data, cases, old_jsons)
+        print(
+            "== QC results ==\nPassed: {pass} Failed: {fail}".format(
+                **stats)
+        )
 
     if args.entry == "pheno" \
             or args.entry == "convert" \
