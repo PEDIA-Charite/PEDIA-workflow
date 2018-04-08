@@ -90,12 +90,16 @@ def json_from_directory(config_data: config.ConfigManager) \
 
     return json_files, corrected
 
-def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "data/PEDIA/vcfs/original") -> None:
+
+def create_config(
+        simvcffolder: str = "data/PEDIA/mutations",
+        vcffolder: str = "data/PEDIA/vcfs/original"
+) -> None:
     '''Creates config.yml file based on the VCF files'''
     vcffiles = [file.split(".")[0] for file in os.listdir(vcffolder)]
     singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder)]
     testfiles = []
-    with open("config.yml","w") as configfile:
+    with open("config.yml", "w") as configfile:
         configfile.write('SINGLE_SAMPLES: \n')
         for file in singlefiles:
             if file not in vcffiles:
@@ -276,8 +280,12 @@ def main():
             or args.entry == "qc":
         quality_check_cases(args, config_data, cases, old_jsons)
 
-    cases = save_vcfs(config_data, cases)
-    create_config()
+    if args.entry == "pheno" \
+            or args.entry == "convert" \
+            or args.entry == "qc" \
+            or args.entry == "vcf":
+        cases = save_vcfs(config_data, cases)
+        create_config()
 
 
 if __name__ == '__main__':
