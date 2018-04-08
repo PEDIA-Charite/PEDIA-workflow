@@ -422,6 +422,9 @@ class NewJson(JsonFile):
     def get_js(self):
         return self._js
 
+    def get_genomic_entries(self) -> list:
+        return self._js["genomic_entries"]
+
     def get_variants(self, error_fixer: "ErrorFixer") -> ['HGVSModel']:
         '''Get a list of hgvs objects for variants.
         '''
