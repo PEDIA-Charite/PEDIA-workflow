@@ -11,6 +11,7 @@ from typing import Tuple, List
 
 import pickle
 from argparse import ArgumentParser
+import json as json_lib
 
 # own libraries
 from lib import download, errorfixer
@@ -58,8 +59,10 @@ def parse_arguments():
     parser.add_argument(
         "-e", "--entry",
         help=("Start entrypoint for pickled results. "
-              "Default: pheno - start at phenomization"
-              "Used in conjunction with --pickle"),
+              "Default: pheno - start at phenomization. "
+              "convert - start at old json mapping. "
+              "qc - start at case quality check. "
+              "Used in conjunction with --pickle."),
         default="pheno"
     )
 
@@ -87,12 +90,16 @@ def json_from_directory(config_data: config.ConfigManager) \
 
     return json_files, corrected
 
-def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "data/PEDIA/vcfs/original"):
+
+def create_config(
+        simvcffolder: str = "data/PEDIA/mutations",
+        vcffolder: str = "data/PEDIA/vcfs/original"
+) -> None:
     '''Creates config.yml file based on the VCF files'''
     vcffiles = [file.split(".")[0] for file in os.listdir(vcffolder)]
     singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder)]
     testfiles = []
-    with open("config.yml","w") as configfile:
+    with open("config.yml", "w") as configfile:
         configfile.write('SINGLE_SAMPLES: \n')
         for file in singlefiles:
             if file not in vcffiles:
@@ -106,6 +113,7 @@ def create_config(simvcffolder: str = "data/PEDIA/mutations", vcffolder: str = "
         configfile.write('TEST_SAMPLES: \n')
         for file in testfiles:
             configfile.write(" - " + file + "\n")
+
 
 @progress_bar("Process jsons")
 def yield_jsons(json_files, corrected):
@@ -133,9 +141,14 @@ def yield_phenomized(case_objs, phen):
 @progress_bar("Convert old")
 def yield_old_json(case_objs, destination, omim_obj):
     for case_obj in case_objs:
-        old = json.OldJson.from_case_object(case_obj, destination, omim_obj)
+        old = json.OldJson.from_case_object(
+            case_obj,
+            destination,
+            omim_obj
+        )
         old.save_json()
-        yield
+        yield old
+
 
 @progress_bar("Generate VCFs")
 def yield_vcf(case_objs, destination):
@@ -143,7 +156,9 @@ def yield_vcf(case_objs, destination):
         case_obj.dump_vcf(destination)
         yield
 
+
 def create_jsons(args, config_data):
+    print("== Process new json files ==")
     # get either from single file or from directory
     json_files, corrected = ([args.single], "") \
         if args.single else json_from_directory(config_data)
@@ -157,16 +172,13 @@ def create_jsons(args, config_data):
 
 
 def create_cases(args, config_data, jsons):
+    print("== Create cases from new json format ==")
     error_fixer = errorfixer.ErrorFixer(config=config_data)
     case_objs = yield_cases(
         jsons,
         error_fixer,
         config_data.preprocess["exclude_normal_variants"]
     )
-
-    # FIXME include all cases regardless of quality
-    # case_objs = [c for c in case_objs if c.check()[0]]
-    # print('Cases with created hgvs objects', len(case_objs))
 
     mutalyzer.correct_reference_transcripts(case_objs)
 
@@ -177,6 +189,7 @@ def create_cases(args, config_data, jsons):
 
 
 def phenomize(config_data, cases):
+    print("== Phenomization of cases ==")
     phen = phenomizer.PhenomizerService(config=config_data)
     yield_phenomized(cases, phen)
 
@@ -186,17 +199,56 @@ def phenomize(config_data, cases):
 
 
 def convert_to_old_format(args, config_data, cases):
+    print("== Mapping to old json format ==")
     destination = args.output or config_data.conversion["output_path"]
 
     omim_obj = omim.Omim(config=config_data)
-    yield_old_json(cases, destination, omim_obj)
+    return yield_old_json(cases, destination, omim_obj)
 
-def save_vcfs(cases, config_data):
-    yield_vcf(cases,'data/PEDIA/mutations')
-    cases = [case for case in cases if hasattr(case,'vcf')]
+
+def save_vcfs(config_data, cases):
+    yield_vcf(cases, 'data/PEDIA/mutations')
+    cases = [case for case in cases if hasattr(case, 'vcf')]
     if config_data.general['dump_intermediate']:
-        pickle.dump(cases, open('case_with_simulated_vcf.p','wb'))
+        pickle.dump(cases, open('case_with_simulated_vcf.p', 'wb'))
     return cases
+
+
+def quality_check_cases(args, config_data, cases, old_jsons):
+    '''Output quality check summaries.'''
+    print("== Quality check ==")
+    omim_obj = omim.Omim(config=config_data)
+    qc_results = {
+        c.case_id: c.check(omim_obj)
+        for c in cases
+    }
+
+    qc_failed = {c: q for c, q in qc_results.items() if not q[0]}
+
+    passed_cases = [
+        c for c in cases if c.check(omim_obj)[0]
+    ]
+    # save qc results in detailed log if needed
+    if config_data.quality["qc_detailed"] \
+            and config_data.quality["qc_detailed_log"]:
+        with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
+            json_lib.dump(qc_failed, qc_out, indent=4)
+
+    # move cases to qc directory
+    if config_data.quality["qc_output_path"] and old_jsons:
+        # create output directory if needed
+        os.makedirs(config_data.quality["qc_output_path"], exist_ok=True)
+
+        old_jsons = {j.get_case_id(): j for j in old_jsons}
+
+        @progress_bar("Save passing qc")
+        def save_old_to_qc():
+            for pcase in passed_cases:
+                old_js = old_jsons[pcase.get_case_id()]
+                old_js.save_json(
+                    destination=config_data.quality["qc_output_path"]
+                )
+
 
 def main():
     '''
@@ -206,7 +258,6 @@ def main():
     configure_logging("lib")
     config_data = config.ConfigManager()
 
-    #Load configuration and initialize API bindings
     args = parse_arguments()
     if not args.pickle:
         jsons = create_jsons(args, config_data)
@@ -216,12 +267,26 @@ def main():
             cases = pickle.load(pickled_file)
 
     cases = [case for case in cases if case.check()[0]]
-    
     if args.entry == "pheno":
         cases = phenomize(config_data, cases)
 
-    cases=save_vcfs(cases, config_data)
-    create_config()
+    if args.entry == "pheno" or args.entry == "convert":
+        old_jsons = convert_to_old_format(args, config_data, cases)
+    else:
+        old_jsons = None
+
+    if args.entry == "pheno" \
+            or args.entry == "convert" \
+            or args.entry == "qc":
+        quality_check_cases(args, config_data, cases, old_jsons)
+
+    if args.entry == "pheno" \
+            or args.entry == "convert" \
+            or args.entry == "qc" \
+            or args.entry == "vcf":
+        cases = save_vcfs(config_data, cases)
+        create_config()
+
 
 if __name__ == '__main__':
     main()

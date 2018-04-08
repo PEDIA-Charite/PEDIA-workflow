@@ -55,8 +55,15 @@ class JsonFile:
     get_diagnosis - single syndrome suggestion object
     get_submitter - dict with keys team, email, name
     '''
-    def __init__(self, data: Union[dict, list], path: str='',
-                 base_path: str='', override: str='', save_path: str=''):
+    def __init__(
+            self,
+            data: Union[dict, list],
+            path: str = '',
+            base_path: str = '',
+            override: str = '',
+            save_path: str = '',
+            file_name: str = ''
+    ):
         '''
         Args:
             data - loaded and deserialized jSON data
@@ -70,6 +77,7 @@ class JsonFile:
         self._base_dir = base_path
         self._override_dir = override
         self._save_path = save_path
+        self._filename = file_name
 
     @classmethod
     def from_file(cls, path: str, corrected_location: str= '') -> 'JsonFile':
@@ -101,11 +109,15 @@ class JsonFile:
         LOGGER.debug("Loading json %s", filename)
         return json_obj
 
-    def save_json(self):
+    def save_json(self, save_path: Union[None, str] = None):
         '''Save the json data contained in self._js
         '''
-        os.makedirs(os.path.split(self._save_path)[0], exist_ok=True)
-        with open(self._save_path, 'w') as output_json:
+        save_path = self._save_path if save_path is None else save_path
+        file_name = self._filename
+
+        os.makedirs(save_path, exist_ok=True)
+        file_path = os.path.join(save_path, file_name)
+        with open(file_path, 'w') as output_json:
             json.dump(self._js, output_json)
 
     def generate(self):
@@ -266,8 +278,8 @@ class OldJson(JsonFile):
             ]
     }
 
-    def __init__(self, data: dict, save_path: str=''):
-        super().__init__(data, save_path=save_path)
+    def __init__(self, data: dict, save_path: str, file_name: str):
+        super().__init__(data, save_path=save_path, file_name=file_name)
 
     @classmethod
     def from_case_object(cls, case: 'Case', path: str, omim: 'Omim') \
@@ -306,20 +318,24 @@ class OldJson(JsonFile):
                 'user_team': case.submitter['team'],
                 'user_name': case.submitter['name']
             },
-            'vcf': case.realvcf,
+            'vcf': case.get_vcf(),
             'features': case.get_features(),
             # maybe disable
             # 'ranks': case.syndromes.to_dict('records'),
             'geneList': case.get_gene_list(omim),
-            'detected_syndromes': case.data.get_detected_syndromes(),
+            # 'detected_syndromes': case.data.get_detected_syndromes(),
+            'detected_syndromes': case.get_syndrome_list(),
             'genomicData': genomic_data,
             # directly passing structures from new json for debugging
             'genomic_entries': case.data.get_js()['genomic_entries'],
             'selected_syndromes': case.data.get_js()['selected_syndromes']
         }
-        path = os.path.join(path, '{}.json'.format(case.case_id))
-        obj = cls(data, path)
+        obj = cls(data, path, "{}.json".format(case.case_id))
         return obj
+
+    def get_case_id(self) -> str:
+        '''Return case id of case'''
+        return str(self._js["case_id"])
 
 
 class NewJson(JsonFile):
@@ -385,21 +401,6 @@ class NewJson(JsonFile):
                  'been provided.')
             )
             valid = False
-
-        # check that only one syndrome has been selected
-        # FIXME check will be moved to case level
-        # if len(self._js['selected_syndromes']) != 1:
-        #     issues.append(
-        #         ('{} syndromes have been selected. Only 1 syndrome should '
-        #          'be selected for PEDIA inclusion.').format(
-        #             len(self._js['selected_syndromes'])))
-        #     valid = False
-
-        # check that molecular information is available at all
-        # FIXME also include ones without genetic info
-        # if not self._js['genomic_entries']:
-        #     issues.append('No genomic entries available.')
-        #     valid = False
 
         # check that no structural abnormalities have been detected
         for entry in self._js['genomic_entries']:

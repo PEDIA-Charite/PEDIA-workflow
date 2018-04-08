@@ -43,6 +43,18 @@ def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
 
     # get dict containing gene_id, gene_symbol, gene_omim_id
     genes = list(omim.mim_pheno_to_gene(disease_id).values())
+
+    if rowdata["gene-id"]:
+        genes += [
+            {
+                "gene_id": eid,
+                "gene_symbol": omim.entrez_id_to_symbol(eid),
+                "gene_omim_id": omim.entrez_id_to_mim_gene(eid)
+            }
+            for eid in rowdata["gene-id"].split(", ")
+            if eid not in [g["gene_id"] for g in genes]
+        ]
+
     # get all three scores provided by face2gene
     gestalt_score = rowdata["gestalt_score"]
     feature_score = rowdata['feature_score']
@@ -69,8 +81,8 @@ def filter_phenotypic_series(ps_group: "DataFrame") -> "DataFrame":
     if ps_group["phenotypic_series"].iloc[0] == "":
         return ps_group
 
-    ps_reduced = pandas.DataFrame([ps_group.max()])
-    return ps_reduced
+    ps_group = ps_group.groupby("gene_id", as_index=False).max()
+    return ps_group
 
 
 class Case:
@@ -168,23 +180,37 @@ class Case:
                 omim.omim_id_to_phenotypic_series
         )
 
-        # group by phenotypic series and return highest unless empty
-        syndrome_series = self.syndromes.groupby("phenotypic_series").apply(
-            filter_phenotypic_series)
+        # # group by phenotypic series and return highest unless empty
+        # syndrome_series = self.syndromes.groupby("phenotypic_series").apply(
+        #     filter_phenotypic_series
+        # )
+        # syndrome_series = syndrome_series.reset_index(drop=True)
 
-        gene_table = syndrome_series.apply(
-            lambda x: create_gene_table(x, omim), axis=1)
+        gene_table = self.syndromes.apply(
+            lambda x: create_gene_table(x, omim), axis=1
+        )
+
         # explode the gene table on genes to separate the genetic entries
         gene_table = explode_df_column(gene_table, 'genes')
         gene_table = gene_table.apply(genes_to_single_cols, axis=1)
+
         # only select entries with non-empty gene ids
         if filter_entrez_id:
             gene_table = gene_table.loc[gene_table["gene_id"] != ""]
+
+        # reset indexing for grouping
+        gene_table = gene_table.reset_index(drop=True)
+
+        # group by phenotypic series and return highest unless empty
+        gene_table = gene_table.groupby("phenotypic_series").apply(
+            filter_phenotypic_series
+        )
+
         gene_scores = gene_table.to_dict('records')
         self.gene_scores = gene_scores
         return gene_scores
 
-    def check(self) -> bool:
+    def check(self, omim: Union[None, "Omim"] = None) -> bool:
         '''Check whether Case fulfills all provided criteria.
 
         The criteria are:
@@ -203,24 +229,58 @@ class Case:
         # check maximum gestalt score
         max_gestalt_score = max(self.syndromes['gestalt_score'])
         if max_gestalt_score <= 0:
-            issues.append(('Maximum gestalt score is 0. '
-                           'Probably no image has been provided.'))
+            issues.append(
+                {
+                    "type": "NO_GESTALT",
+                }
+            )
             valid = False
 
         # check that only one syndrome has been selected
-        if len(self.data._js['selected_syndromes']) != 1:
-            issues.append('%s syndromes have been selected. Only 1 syndrome should be selected for PEDIA inclusion.'% len(self.data._js['selected_syndromes']))
+        diagnosis = self.syndromes.loc[self.syndromes['confirmed']]
+        if len(diagnosis) < 1:
+            issues.append(
+                {
+                    "type": "NO_DIAGNOSIS",
+                }
+            )
             valid = False
 
+        # check whether multiple diagnoses are in same phenotypic series
+        if omim:
+            diagnosis_series = [
+                omim.omim_id_to_phenotypic_series(d)
+                for d in diagnosis["omim_id"]
+            ]
+            if len(set(diagnosis_series)) > 1:
+                issues.append(
+                    {
+                        "type": "MULTI_DIAGNOSIS",
+                        "data": list(diagnosis["omim_id"])
+                    }
+                )
+                valid = False
+        else:
+            LOGGER.warning("No omim object. Some checks will not run.")
+
         if not self.get_variants():
-            issues.append('No valid genomic entries available.')
+            issues.append(
+                {
+                    "type": "NO_GENOMIC"
+                }
+            )
             valid = False
 
         # check for benign exclusion
-        issues.append("{} variants have been excluded by benign flag".format(
-            len(self.get_variants(exclusion=False)) -
-            len(self.get_variants(exclusion=True))
-        ))
+        issues.append(
+            {
+                "type": "REMOVE_NORMAL_VARIANTS",
+                "data": {
+                    "all": len(self.get_variants(exclusion=False)),
+                    "excluded": len(self.get_variants(exclusion=True))
+                }
+            }
+        )
 
         return valid, issues
 
@@ -271,12 +331,21 @@ class Case:
             if h not in constants.ILLEGAL_HPO
         ]
 
+    def get_syndrome_list(self):
+        '''Get list of syndromes from syndrome table'''
+        syndrome_list = self.syndromes.to_dict("records")
+        return syndrome_list
+
     def eligible_training(self) -> bool:
         '''Eligibility of case for training.
         Exclusion criteria are:
             available real vcf
         '''
         return not self.realvcf
+
+    def get_vcf(self) -> list:
+        '''Return vcf files. Does not include generated vcf files.'''
+        return self.realvcf
 
     def create_vcf(self, path: str) -> pandas.DataFrame:
         '''Generates vcf dataframe. If an error occurs the error message is returned.
@@ -287,6 +356,7 @@ class Case:
             hgvsfile.seek(0)
             with tempfile.NamedTemporaryFile(mode="w+", dir=path, suffix=".vcf") as vcffile:
                 try:
+
                     process = subprocess.run(["java", "-jar", 'data/jannovar/jannovar-cli-0.25-SNAPSHOT.jar', "hgvs-to-vcf", "-d",
                                               'data/jannovar/data/hg19_refseq.ser', "-i", hgvsfile.name, "-o", vcffile.name, "-r", "data/jannovar/data/hg19/hg19.fa"], check=True, universal_newlines=True, stderr=subprocess.PIPE)
                 except subprocess.CalledProcessError as e:
@@ -307,6 +377,7 @@ class Case:
                     genotype = '0/1'
                 df[self.case_id] = genotype
                 df['FORMAT'] = 'GT'
+
                 df['INFO'] = ['HGVS="' + str(v) + '"' for v in self.get_variants()]
                 df = df.sort_values(by=['#CHROM', "POS"])
                 df = df.drop_duplicates()
