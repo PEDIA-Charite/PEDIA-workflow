@@ -343,6 +343,10 @@ class Case:
         '''
         return not self.realvcf
 
+    def get_vcf(self) -> list:
+        '''Return vcf files. Does not include generated vcf files.'''
+        return self.realvcf
+
     def create_vcf(self, path: str) -> pandas.DataFrame:
         '''Generates vcf dataframe. If an error occurs the error message is returned.
         '''
