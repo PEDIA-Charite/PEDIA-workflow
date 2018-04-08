@@ -143,11 +143,6 @@ def yield_old_json(case_objs, destination, omim_obj):
         old.save_json()
         yield
 
-@progress_bar("Generate VCFs")
-def yield_vcf(case_objs, destination):
-    for case_obj in case_objs:
-        case_obj.dump_vcf(destination)
-        yield
 
 @progress_bar("Generate VCFs")
 def yield_vcf(case_objs, destination):
@@ -179,10 +174,6 @@ def create_cases(args, config_data, jsons):
         config_data.preprocess["exclude_normal_variants"]
     )
 
-    # FIXME include all cases regardless of quality
-    # case_objs = [c for c in case_objs if c.check()[0]]
-    # print('Cases with created hgvs objects', len(case_objs))
-
     mutalyzer.correct_reference_transcripts(case_objs)
 
     if config_data.general['dump_intermediate']:
@@ -208,41 +199,13 @@ def convert_to_old_format(args, config_data, cases):
     omim_obj = omim.Omim(config=config_data)
     yield_old_json(cases, destination, omim_obj)
 
-def save_vcfs(cases, config_data):
-    yield_vcf(cases,'data/PEDIA/mutations')
-    cases = [case for case in cases if hasattr(case,'vcf')]
+
+def save_vcfs(config_data, cases):
+    yield_vcf(cases, 'data/PEDIA/mutations')
+    cases = [case for case in cases if hasattr(case, 'vcf')]
     if config_data.general['dump_intermediate']:
-        pickle.dump(cases, open('case_with_simulated_vcf.p','wb'))
+        pickle.dump(cases, open('case_with_simulated_vcf.p', 'wb'))
     return cases
-
-def quality_check_cases(args, config_data, cases):
-    '''Output quality check summaries.'''
-    print("== Quality check ==")
-    omim_obj = omim.Omim(config=config_data)
-    qc_results = {
-        c.case_id: c.check(omim_obj)
-        for c in cases
-    }
-    passed_cases = [
-        c for c in cases if c.check(omim_obj)[0]
-    ]
-    # save qc results in detailed log if needed
-    if config_data.quality["qc_detailed"] \
-            and config_data.quality["qc_detailed_log"]:
-        with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
-            json_lib.dump(qc_results, qc_out, indent=4)
-
-    # move cases to qc directory
-    if config_data.quality["qc_output_path"]:
-        # create output directory if needed
-        os.makedirs(config_data.quality["qc_output_path"], exist_ok=True)
-
-        omim_obj = omim.Omim(config=config_data)
-        yield_old_json(
-            passed_cases,
-            config_data.quality["qc_output_path"],
-            omim_obj
-        )
 
 
 def quality_check_cases(args, config_data, cases):
@@ -283,7 +246,6 @@ def main():
     configure_logging("lib")
     config_data = config.ConfigManager()
 
-    #Load configuration and initialize API bindings
     args = parse_arguments()
     if not args.pickle:
         jsons = create_jsons(args, config_data)
@@ -293,7 +255,6 @@ def main():
             cases = pickle.load(pickled_file)
 
     cases = [case for case in cases if case.check()[0]]
-    
     if args.entry == "pheno":
         cases = phenomize(config_data, cases)
 
@@ -301,9 +262,9 @@ def main():
 
     quality_check_cases(args, config_data, cases)
 
-    cases = save_vcfs(cases, config_data)
+    cases = save_vcfs(config_data, cases)
     create_config()
-    
+
 
 if __name__ == '__main__':
     main()
