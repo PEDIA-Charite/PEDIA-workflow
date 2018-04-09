@@ -317,6 +317,7 @@ def main():
             or args.entry == "convert" \
             or args.entry == "qc" \
             or args.entry == "vcf":
+        cases = [case for case in cases if case.check()[0]]
         cases = save_vcfs(config_data, cases)
         create_config()
 
