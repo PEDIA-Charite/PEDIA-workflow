@@ -295,6 +295,8 @@ class Omim:
     def omim_id_to_phenotypic_series(self, omim_id: str) -> str:
         '''Translate omim id to phenotypic series id, or if it does
         not exist to the empty string.'''
+        assert isinstance(omim_id, str), "OMIM ID has to be string."
+
         ps_label = ""
         # take the first phenotypic series entry or if empty leave the
         # empty string
