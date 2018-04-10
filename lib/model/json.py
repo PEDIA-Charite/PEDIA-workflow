@@ -451,11 +451,20 @@ class NewJson(JsonFile):
         # preprare the confirmed diagnosis for joining with the main syndrome
         # dataframe
         if self._js['selected_syndromes']:
-            selected = pandas.DataFrame.from_dict(
-                self._js['selected_syndromes'])
+            selected_syndromes = [
+                dict(
+                    s,
+                    omim_id=[s["omim_id"]]
+                    if not isinstance(s["omim_id"], list)
+                    else s["omim_id"]
+                    or ["0"]
+                )
+                for s in self._js["selected_syndromes"]
+            ]
+            selected = pandas.DataFrame.from_dict(selected_syndromes)
 
-            selected['omim_id'] = selected['omim_id'].apply(
-                lambda x: not isinstance(x, list) and [x] or x)
+            # create multiple rows from list of omim_id entries duplicating
+            # other information
             selected = explode_df_column(selected, 'omim_id')
             # add a confirmed diagnosis column
             selected['confirmed'] = True
