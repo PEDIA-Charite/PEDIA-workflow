@@ -60,7 +60,7 @@ rule dict:
         "data/hg19.fa.dict"
     shell:
         """
-        samtools dict{input} > {output}
+        samtools dict {input} > {output}
         """
 
 rule download_v37:
