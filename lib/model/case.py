@@ -304,6 +304,23 @@ class Case:
 
         return valid, issues
 
+    def check_vcf(self):
+        issues = []
+        valid = True
+        # check simulated vcf is correct
+        if hasattr(self, "vcf"):
+            if isinstance(self.vcf, str):
+                issues.append(
+                    {
+                        "type": "VCF_ERROR",
+                        "data": self.vcf
+                    }
+                )
+                valid = False
+        else:
+            valid = False
+        return valid, issues
+
     def get_variants(
             self,
             exclusion: Union[bool, None] = None
