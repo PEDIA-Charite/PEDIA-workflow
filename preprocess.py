@@ -150,13 +150,6 @@ def yield_old_json(case_objs, destination, omim_obj):
         yield old
 
 
-@progress_bar("Generate VCFs")
-def yield_vcf(case_objs, destination):
-    for case_obj in case_objs:
-        case_obj.dump_vcf(destination)
-        yield
-
-
 def create_jsons(args, config_data):
     print("== Process new json files ==")
     # get either from single file or from directory
@@ -182,18 +175,18 @@ def create_cases(args, config_data, jsons):
 
     mutalyzer.correct_reference_transcripts(case_objs)
 
-    if config_data.general['dump_intermediate']:
+    if config_data.general['dump_intermediate'] and not args.single:
          pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
 
     return case_objs
 
 
-def phenomize(config_data, cases):
+def phenomize(args, config_data, cases):
     print("== Phenomization of cases ==")
     phen = phenomizer.PhenomizerService(config=config_data)
     yield_phenomized(cases, phen)
 
-    if config_data.general['dump_intermediate']:
+    if config_data.general['dump_intermediate'] and not args.single:
         pickle.dump(cases, open('case_phenomized.p', 'wb'))
     return cases
 
@@ -206,29 +199,56 @@ def convert_to_old_format(args, config_data, cases):
     return yield_old_json(cases, destination, omim_obj)
 
 
-def save_vcfs(config_data, cases):
-    yield_vcf(cases, 'data/PEDIA/mutations')
-    cases = [case for case in cases if hasattr(case, 'vcf')]
-    if config_data.general['dump_intermediate']:
-        pickle.dump(cases, open('case_with_simulated_vcf.p', 'wb'))
-    return cases
+def get_qc_cases(config_data, cases):
+    '''Get qc results for all cases.'''
+    omim_obj = omim.Omim(config=config_data)
+    return {c.case_id: (c.check(omim_obj), c) for c in cases}
 
 
-def quality_check_cases(args, config_data, cases, old_jsons):
+def save_vcfs(args, config_data, qc_cases):
+    @progress_bar("Generate VCFs")
+    def yield_vcf(case_objs):
+        for case_obj in case_objs:
+            case_obj.dump_vcf('data/PEDIA/mutations')
+            yield
+
+    yield_vcf([v[1] for v in qc_cases.values() if v[0][0]])
+
+    # case_vcf = [
+    #     case[1] for case in qc_cases.values() if hasattr(case[1], 'vcf')
+    # ]
+    # for c in case_vcf:
+    #     print(c.vcf)
+
+    if config_data.general['dump_intermediate'] and not args.single:
+        pickle.dump(qc_cases, open('qc_case_with_simulated_vcf.p', 'wb'))
+
+    return qc_cases
+
+
+def quality_check_cases(args, config_data, qc_cases, old_jsons):
     '''Output quality check summaries.'''
     print("== Quality check ==")
-    omim_obj = omim.Omim(config=config_data)
-    qc_results = {
-        c.case_id: c.check(omim_obj)
-        for c in cases
-    }
 
     # Cases failing qc altogether
-    qc_failed = {c: q for c, q in qc_results.items() if not q[0]}
-
+    qc_failed_msg = {
+        v[1].case_id: v[0] for v in qc_cases.values() if not v[0][0]
+    }
     # Cases passing quality check
+    qc_passed = {v[1].case_id: v[1] for v in qc_cases.values() if v[0][0]}
+
+    qc_vcf = {
+        case_id: case.check_vcf() for case_id, case in qc_passed.items()
+    }
+
+    qc_vcf_failed = {
+        case_id: result for case_id, result in qc_vcf.items() if not result[0]
+    }
+
+    # cases have to pass vcf check
     qc_passed = {
-        c.case_id: c for c in cases if c.check(omim_obj)[0]
+        case_id: case
+        for case_id, case in qc_passed.items() if qc_vcf[case_id][0]
     }
 
     # Cases with mutations marked as benign excluded from analysis
@@ -238,31 +258,36 @@ def quality_check_cases(args, config_data, cases, old_jsons):
         if v > 0
     }
 
+    omim_obj = omim.Omim(config=config_data)
+
     # Cases where pathogenic diagnosed mutation is not in geneList
-    qc_pathongenic_passed = {
-        k: v for k, v in
-        {
-            k: v.pathogenic_gene_in_gene_list(omim_obj)
-            for k, v in qc_passed.items()
-        }.items()
-        if not v[0]
-    }
+    @progress_bar("Get pathogenic genes in geneList")
+    def pathogenic_genes_process(cases):
+        for case_id, case_obj in cases.items():
+            yield case_id, case_obj.pathogenic_gene_in_gene_list(omim_obj)
+
+    qc_pathongenic_passed = dict(
+        c for c in pathogenic_genes_process(qc_passed) if not c[1][0]
+    )
 
     # Compiled stats to be dumped into a json file
     qc_output = {
-        "failed": qc_failed,
+        "failed": qc_failed_msg,
         "benign_excluded": qc_benign_passed,
         "pathogenic_missing": qc_pathongenic_passed,
+        "vcf_failed": qc_vcf_failed,
         "passed": list(qc_passed.keys())
     }
 
     # save qc results in detailed log if needed
+    print("Saving qc log")
     if config_data.quality["qc_detailed"] \
             and config_data.quality["qc_detailed_log"]:
         with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
             json_lib.dump(qc_output, qc_out, indent=4)
 
     # move cases to qc directory
+    print("Saving passing cases to new location")
     if config_data.quality["qc_output_path"] and old_jsons:
         # create output directory if needed
         os.makedirs(config_data.quality["qc_output_path"], exist_ok=True)
@@ -277,7 +302,7 @@ def quality_check_cases(args, config_data, cases, old_jsons):
                     destination=config_data.quality["qc_output_path"]
                 )
 
-    return {"pass": len(qc_passed), "fail": len(qc_failed)}
+    return {"pass": len(qc_passed), "fail": len(qc_failed_msg)}, qc_passed
 
 
 def main():
@@ -297,29 +322,32 @@ def main():
             cases = pickle.load(pickled_file)
 
     if args.entry == "pheno":
-        cases = phenomize(config_data, cases)
+        cases = phenomize(args, config_data, cases)
 
     if args.entry == "pheno" or args.entry == "convert":
         old_jsons = convert_to_old_format(args, config_data, cases)
     else:
         old_jsons = None
 
-    if args.entry == "pheno" \
-            or args.entry == "convert" \
-            or args.entry == "qc":
-        stats = quality_check_cases(args, config_data, cases, old_jsons)
-        print(
-            "== QC results ==\nPassed: {pass} Failed: {fail}".format(
-                **stats)
-        )
+    if args.entry != "qc":
+        # QC Check for only using cases passing qc
+        qc_cases = get_qc_cases(config_data, cases)
 
-    if args.entry == "pheno" \
-            or args.entry == "convert" \
-            or args.entry == "qc" \
-            or args.entry == "vcf":
-        cases = [case for case in cases if case.check()[0]]
-        cases = save_vcfs(config_data, cases)
+        # VCF Generation
+        qc_cases = save_vcfs(args, config_data, qc_cases)
         create_config()
+    else:
+        qc_cases = cases
+
+    # Quality check
+    stats, qc_cases = quality_check_cases(
+        args, config_data, qc_cases, old_jsons
+    )
+    print(
+        "== QC results ==\nPassed: {pass} Failed: {fail}".format(
+            **stats)
+    )
+
 
 if __name__ == '__main__':
     main()
