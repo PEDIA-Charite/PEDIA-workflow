@@ -13,7 +13,6 @@ import os
 
 from lib.model.json import OldJson, NewJson
 from lib.vcf_operations import move_vcf
-from lib.utils import explode_df_column
 from lib import constants
 
 
@@ -161,60 +160,71 @@ class Case:
 
         return True
 
-    def get_gene_list(
-            self,
-            omim: Union[None, 'Omim'],
-            recreate: bool = False,
-            filter_entrez_id: bool = True
-    ) -> Dict[str, str]:
-        '''Get list of genes from syndromes. Save them back to self.genes
-        for faster lookup afterwards.
-        Args:
-            filter_entrez_id: Only include genes with existing entrez gene ids.
+    def get_gene_list(self, omim: "Omim") -> [dict]:
+        '''Get a list of genes from the detected syndrome by inferring
+        gene phenotype mappings from the phenomizer and OMIM.
         '''
-        # return existing gene list, if it already exists
-        if self.gene_scores is not None and not recreate:
-            return self.gene_scores
+        syndromes = self.syndromes.to_dict("records")
 
-        if omim is None:
-            raise TypeError("Omim cannot be none if result not cached.")
+        phenotypic_series_mapping = {}
+        for syndrome in syndromes:
 
-        LOGGER.debug("Generating geneList for case %s", self.case_id)
-        # add or update phenotypic series information to syndromes table
-        self.syndromes["phenotypic_series"] = \
-            self.syndromes["omim_id"].astype(str).apply(
-                omim.omim_id_to_phenotypic_series
-        )
+            disease_id = syndrome["omim_id"]
 
-        # # group by phenotypic series and return highest unless empty
-        # syndrome_series = self.syndromes.groupby("phenotypic_series").apply(
-        #     filter_phenotypic_series
-        # )
-        # syndrome_series = syndrome_series.reset_index(drop=True)
+            phenotypic_series = omim.omim_id_to_phenotypic_series(
+                str(disease_id)
+            ) or str(disease_id)
 
-        gene_table = self.syndromes.apply(
-            lambda x: create_gene_table(x, omim), axis=1
-        )
+            syndrome_name = (
+                syndrome["syndrome_name"]
+                or syndrome["disease-name_pheno"]
+                or syndrome["disease-name_boqa"]
+            )
 
-        # explode the gene table on genes to separate the genetic entries
-        gene_table = explode_df_column(gene_table, 'genes')
-        gene_table = gene_table.apply(genes_to_single_cols, axis=1)
+            genes = list(omim.mim_pheno_to_gene(disease_id).values())
+            if syndrome["gene-id"]:
+                genes += [
+                    {
+                        "gene_id": eid,
+                        "gene_symbol": omim.entrez_id_to_symbol(eid),
+                        "gene_omim_id": omim.entrez_id_to_mim_gene(eid)
+                    }
+                    for eid in syndrome["gene-id"].split(", ")
+                    if eid not in [g["gene_id"] for g in genes]
+                ]
 
-        # only select entries with non-empty gene ids
-        if filter_entrez_id:
-            gene_table = gene_table.loc[gene_table["gene_id"] != ""]
+            for gene in genes:
+                if not gene["gene_id"]:
+                    continue
 
-        # reset indexing for grouping
-        gene_table = gene_table.reset_index(drop=True)
+                # uniqueness constraint on phenotypic series and
+                # gene_id
+                key = "{}|{}".format(phenotypic_series, gene["gene_id"])
+                update_data = dict(
+                    {
+                        "disease_id": disease_id,
+                        "phenotypic_series": phenotypic_series,
+                        "syndrome_name": syndrome_name,
+                        "gestalt_score": syndrome["gestalt_score"],
+                        "feature_score": syndrome["feature_score"],
+                        "combined_score": syndrome["combined_score"],
+                        "pheno_score": syndrome["value_pheno"],
+                        "boqa_score": syndrome["value_boqa"]
+                    },
+                    **gene
+                )
+                if key in phenotypic_series_mapping:
+                    # use the largest scores of two identical mappings
+                    phenotypic_series_mapping[key] = {
+                        k: (max(v, update_data[k])
+                            if not isinstance(v, str)
+                            else update_data[k] or v)
+                        for k, v in phenotypic_series_mapping[key].items()
+                    }
+                else:
+                    phenotypic_series_mapping[key] = update_data
 
-        # group by phenotypic series and return highest unless empty
-        gene_table = gene_table.groupby("phenotypic_series").apply(
-            filter_phenotypic_series
-        )
-
-        gene_scores = gene_table.to_dict('records')
-        self.gene_scores = gene_scores
-        return gene_scores
+        return list(phenotypic_series_mapping.values())
 
     def pathogenic_gene_in_gene_list(
             self,
