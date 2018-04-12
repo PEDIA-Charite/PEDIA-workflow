@@ -127,6 +127,10 @@ class HGVSModel:
         self.test_type = entry_dict['test_type'] or 'UNKNOWN'
         self.variant_type = entry_dict['variant_type'] or 'UNKNOWN'
 
+        # fix incorrect gene name
+        if self.entry_id in self.error_fixer:
+            self._correct_gene_name()
+
         variants = self._parse_variants(entry_dict['variants'])
         failed = []
         for var in variants:
@@ -141,11 +145,14 @@ class HGVSModel:
             valid_variants = [str(v) for v in variants]
             self.error_fixer[self.entry_id] = (
                 info, valid_variants, failed)
-
         self.variants = variants
 
     def get_json(self):
         return self._js
+
+    def _correct_gene_name(self):
+        if 'correct_gene' in self.error_fixer.get_data(self.entry_id):
+            self.gene = self.error_fixer.get_data(self.entry_id)['correct_gene']
 
     def _parse_variants(self, variant_dict: dict) -> list:
         '''Create variant information from entries in the form of hgvs codes.
@@ -173,9 +180,10 @@ class HGVSModel:
         # get information necessary for hgvs assembly
         # this step can be skipped if we already have an override
         if self.entry_id in self.error_fixer:
-            variants = self.error_fixer[self.entry_id]
-            variants = [HGVS_PARSER.parse_hgvs_variant(v) for v in variants]
-            return variants
+            if len(self.error_fixer[self.entry_id]) > 0:
+                variants = self.error_fixer[self.entry_id]
+                variants = [HGVS_PARSER.parse_hgvs_variant(v) for v in variants]
+                return variants
 
         # return empty if variants are empty
         if not variant_dict:
