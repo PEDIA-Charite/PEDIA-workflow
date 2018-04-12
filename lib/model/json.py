@@ -297,7 +297,8 @@ class OldJson(JsonFile):
                     'Notation': model.variant_info,
                     'Genotype': model.zygosity,
                     'Mutation Type': model.test_type,
-                    'Gene Name': model.gene['gene_symbol']
+                    'Gene Name': model.gene['gene_symbol'],
+                    'Gene ID': model.gene['gene_id']
                 },
                 'Mutations': {
                     'additional info': '',
