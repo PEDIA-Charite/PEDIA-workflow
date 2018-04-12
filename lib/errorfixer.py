@@ -75,6 +75,10 @@ class ErrorFixer:
         key = str(key)
         return self._error['data'][key]['cleaned']
 
+    def get_data(self, key: ENTRY_ID):
+        key = str(key)
+        return self._error['data'][key]
+
     def __contains__(self, key: ENTRY_ID) -> bool:
         return str(key) in self._error['data']
 
