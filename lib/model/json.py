@@ -309,7 +309,9 @@ class OldJson(JsonFile):
                         [str(v) for v in model.variants])
                 }
             }
-            genomic_data.append(data)
+            # Remove empty genomic entry
+            if data['Test Information']['Gene Name'] != "" or data['Mutations']['HGVS-code'] != "":
+                genomic_data.append(data)
 
         data = {
             'algo_deploy_version': case.algo_version,
