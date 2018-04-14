@@ -5,13 +5,38 @@ import os
 import unittest
 from lib import errorfixer
 from lib.model import json, config
-
-INPUT_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    "data")
+from lib.api import mutalyzer, omim, phenomizer, face2gene
 
 
-class JsonLoadingTest(unittest.TestCase):
+ERROR_VERSION = 1
+
+
+class BaseMapping(unittest.TestCase):
+    '''Base class for mapping related functions.'''
+
+    @classmethod
+    def setUpClass(self):
+        self.input_path = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "data"
+        )
+
+        config_file = os.path.join(self.input_path, "config.ini")
+
+        self.conf = config.ConfigManager(config_file)
+
+        self.error_fixer = errorfixer.ErrorFixer(
+            config=self.conf,
+            version=ERROR_VERSION
+        )
+
+        self.omim = omim.Omim(config=self.conf)
+
+    def get_case_path(self, name: str) -> str:
+        input_file = os.path.join(self.input_path, "cases", name)
+        return input_file
+
+
+class JsonLoadingTest(BaseMapping):
     '''Load different json files.
     Requirements:
         Ensure that genomic entries are correctly loaded.
@@ -20,15 +45,10 @@ class JsonLoadingTest(unittest.TestCase):
     '''
 
     def setUp(self):
-        input_file = os.path.join(INPUT_PATH, "cases", "normal.json")
-        error_file = os.path.join(INPUT_PATH, "cases", "error_hgvs.json")
-        config_file = os.path.join(INPUT_PATH, "config.ini")
-
-        conf = config.ConfigManager(config_file)
-
+        input_file = os.path.join(self.input_path, "cases", "normal.json")
+        error_file = os.path.join(self.input_path, "cases", "error_hgvs.json")
         self.loaded_correct = json.NewJson.from_file(input_file)
         self.loaded_error = json.NewJson.from_file(error_file)
-        self.error_fixer = errorfixer.ErrorFixer(config=conf)
 
     def test_check(self):
         '''Test whether the file check is passing.'''
@@ -68,18 +88,13 @@ class JsonLoadingTest(unittest.TestCase):
         loaded = self.loaded_correct.get_vcf()
         self.assertListEqual(true, loaded, "Loaded VCF Info is identical")
 
-    # def test_get_features(self):
-    #     self.loaded_correct.get_features()
-
     def test_get_variants(self):
-        variants, _ = self.loaded_correct.get_variants(self.error_fixer)
-        variants = [str(v) for v in variants]
+        models = self.loaded_correct.get_variants(self.error_fixer)
+        variants = [str(v) for m in models for v in m.variants]
         var_correct = ['NM_004380.2:c.7302G>A', 'NM_004380.2:c.7302G>A']
         self.assertListEqual(variants, var_correct)
 
     def test_get_variants_error(self):
-        variants, _ = self.loaded_error.get_variants(self.error_fixer)
+        models = self.loaded_error.get_variants(self.error_fixer)
+        variants = [str(v) for m in models for v in m.variants]
         self.assertListEqual(variants, [])
-
-    # def test_get_syndrome_suggestions_diagnosis(self):
-    #     self.loaded_correct.get_syndrome_suggestions_and_diagnosis()
