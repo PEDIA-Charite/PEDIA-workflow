@@ -41,7 +41,12 @@ class ErrorFixer:
         latest_error_version = HGVS_ERRORDICT_VERSION \
             if version is None else version
         if self._error['version'] < latest_error_version:
-            raise TypeError("HGVS errordict version {} is older than {}.")
+            raise TypeError(
+                "HGVS errordict version {} is older than {}.".format(
+                    self._error["version"],
+                    latest_error_version
+                )
+            )
 
         # always only capture errors in the newest iteration
         self._new = {}
