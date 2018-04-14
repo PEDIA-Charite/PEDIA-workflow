@@ -2,12 +2,15 @@
 Use the Face2Gene library to get syndrome information.
 
 '''
+import logging
 from typing import Union
 
 import hashlib
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+
+LOGGER = logging.getLogger(__name__)
 
 
 class Face2Gene(requests.Session):
@@ -52,6 +55,47 @@ class Face2Gene(requests.Session):
         self._cache[query] = search_results
         return search_results
 
+    def browse_library(self, field: str, key: str) -> list:
+        '''Browse entries in the face2gene library for given key,
+        returning all entries by increasing the offset.'''
+        url = self.base_url + "library/browse"
+        params = {
+            "field": field,
+            "key": key,
+            "from": 0
+        }
+        received = []
+        total = 1
+        while len(received) < total:
+            while True:
+                try:
+                    response = self.get(url, params=params)
+                    data = response.json()
+                except:
+                    LOGGER.warning("F2G error occurred %s", response.text)
+                else:
+                    break
+
+            total = data["total"]
+            received += data["data"]
+            # increase the offset by the number of received elements
+            params["from"] += len(data["data"])
+        return received
+
+    def browse_syndromes(self, key: str) -> list:
+        '''Browse syndromes.'''
+        syndromes = self.browse_library(field="syndromes", key=key)
+        return syndromes
+
+    def browse_all_syndromes(self) -> list:
+        '''Browse all syndromes from A-Z.'''
+        # crawl alphabet and get the empty key entries
+        syndrome_keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#"
+        syndromes = []
+        for letter in syndrome_keys:
+            syndromes += self.browse_syndromes(key=letter)
+        return syndromes
+
     def search_syndrome(self, query: str, omim_list: list=[],
                         return_first: bool=True) -> Union[str, list]:
         '''Search for syndromes on Face2Gene library.
@@ -81,6 +125,13 @@ class Face2Gene(requests.Session):
         '''
         payload = {
             "email": user,
-            "password": hashlib.md5(password.encode('utf-8')).hexdigest()
+            "password": hashlib.md5(password.encode('utf-8')).hexdigest(),
+            "screenHeight": 875,
+            "screenWidth": 1167,
+            "userAgent": (
+                "Mozilla/5.0 (Windows NT 6.1; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/40.0.2214.85 Safari/537.36"
+            )
         }
-        self.post('https://app.face2gene.com/access/login', data=payload)
+        r = self.post('https://app.face2gene.com/access/login', data=payload)
