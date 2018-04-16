@@ -7,29 +7,24 @@ from lib import errorfixer
 from lib.model import json, config
 from lib.api import mutalyzer, omim, phenomizer, face2gene
 
+from tests.test_config import BaseConfig
+
 
 ERROR_VERSION = 1
 
 
-class BaseMapping(unittest.TestCase):
+class BaseMapping(BaseConfig):
     '''Base class for mapping related functions.'''
 
     @classmethod
-    def setUpClass(self):
-        self.input_path = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "data"
-        )
-
-        config_file = os.path.join(self.input_path, "config.ini")
-
-        self.conf = config.ConfigManager(config_file)
-
-        self.error_fixer = errorfixer.ErrorFixer(
-            config=self.conf,
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.error_fixer = errorfixer.ErrorFixer(
+            config=cls.config,
             version=ERROR_VERSION
         )
 
-        self.omim = omim.Omim(config=self.conf)
+        cls.omim = omim.Omim(config=cls.config)
 
     def get_case_path(self, name: str) -> str:
         input_file = os.path.join(self.input_path, "cases", name)
