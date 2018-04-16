@@ -10,9 +10,6 @@ from tests.test_json_loading import BaseMapping
 class CaseTest(BaseMapping):
     '''Case method tests.'''
 
-    def setUp(self):
-        pass
-
     def load_json(self, name: str) -> dict:
         loaded = json.NewJson.from_file(
             self.get_case_path(name)
