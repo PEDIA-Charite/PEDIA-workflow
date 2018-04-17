@@ -8,8 +8,10 @@ In the future specific usage of the OMIM API might be implemented.
 import re
 import os
 import csv
+import json
 import logging
 import collections
+import typing
 
 import pandas
 
@@ -18,6 +20,42 @@ from lib.utils import get_file_hash
 RE_OMIM_PHEN = re.compile(r'.* (\d{6}) \((\d)\)')
 
 LOGGER = logging.getLogger(__name__)
+
+
+def id_to_string(val):
+    if isinstance(val, int):
+        val = str(val)
+    elif isinstance(val, float):
+        LOGGER.warning(
+            "Conversion of val from float value %f", val
+        )
+        val = str(int(val))
+    return val
+
+
+def omim_check(func):
+    '''Coerce omim ids to string type.'''
+
+    def checker(obj, omim_id, *args, **kwargs):
+        omim_id = id_to_string(omim_id)
+        if not isinstance(omim_id, str):
+            raise TypeError("ID not string", omim_id)
+        return func(obj, omim_id, *args, **kwargs)
+
+    return checker
+
+
+def omim_list(func):
+    '''Coerce list or single data to list format.'''
+
+    def checker(obj, omim_ids, *args, **kwargs):
+        omim_ids = id_to_string(omim_ids)
+        if isinstance(omim_ids, str):
+            omim_ids = [omim_ids]
+        elif omim_ids is None:
+            omim_ids = []
+        return func(obj, omim_ids, *args, **kwargs)
+    return checker
 
 
 class Omim:
@@ -50,7 +88,12 @@ class Omim:
             "colnames": [
                 "ps_number", "mim_number", "phenotype"
             ]
-        }
+        },
+        "omim_deprecated_replacement": {
+            "filename": "omim_deprecated_replacement.json",
+            "type": "json",
+            "colnames": []
+        },
     }
 
     indexes_meta = {
@@ -148,6 +191,9 @@ class Omim:
             )
         elif fileinfo["type"] == "pandas":
             data = self.load_dataframe(filepath, fileinfo["colnames"])
+        elif fileinfo["type"] == "json":
+            with open(filepath, "r") as handle:
+                data = json.load(handle)
         return data
 
     def post_ops(self, data, filename):
@@ -295,10 +341,10 @@ class Omim:
 
         return {}
 
+    @omim_check
     def omim_id_to_phenotypic_series(self, omim_id: str) -> str:
         '''Translate omim id to phenotypic series id, or if it does
         not exist to the empty string.'''
-        assert isinstance(omim_id, str), "OMIM ID has to be string."
 
         ps_label = ""
         # take the first phenotypic series entry or if empty leave the
@@ -307,3 +353,26 @@ class Omim:
         if omim_id in index and index[omim_id]:
             ps_label = index[omim_id][0]
         return ps_label
+
+    @omim_check
+    def _replace_deprecated(self, omim_id: str) -> list:
+        '''Replace omim ids that are deprecated or have been moved.'''
+
+        if omim_id in self.files["omim_deprecated_replacement"]:
+            return self.files["omim_deprecated_replacement"][omim_id]
+        return [omim_id]
+
+    @omim_list
+    def replace_deprecated_all(
+            self, omim_ids: typing.Union[str, list]
+    ) -> list:
+        '''Replace all omim ids in the list and deduplicate duplicated
+        omim ids.
+        Accepts single values and iterables.
+        '''
+        replaced_ids = [
+            str(r)
+            for o in omim_ids
+            for r in self._replace_deprecated(o)
+        ]
+        return list(set(replaced_ids))

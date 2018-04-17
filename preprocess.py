@@ -122,11 +122,12 @@ def yield_jsons(json_files, corrected):
 
 
 @progress_bar("Create cases")
-def yield_cases(json_files, error_fixer, exclusion):
+def yield_cases(json_files, error_fixer, omim_obj, exclusion):
     for json_file in json_files:
         yield case.Case(
             json_file,
             error_fixer=error_fixer,
+            omim_obj=omim_obj,
             exclude_benign_variants=exclusion
         )
 
@@ -167,9 +168,11 @@ def create_jsons(args, config_data):
 def create_cases(args, config_data, jsons):
     print("== Create cases from new json format ==")
     error_fixer = errorfixer.ErrorFixer(config=config_data)
+    omim_obj = omim.Omim(config=config_data)
     case_objs = yield_cases(
         jsons,
         error_fixer,
+        omim_obj,
         config_data.preprocess["exclude_normal_variants"]
     )
 

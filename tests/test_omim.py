@@ -69,3 +69,17 @@ class OmimTest(BaseConfig):
             with self.subTest(i=i):
                 result = self.omim.omim_id_to_phenotypic_series(test)
                 self.assertEqual(result, correct)
+
+    def test_deprecated_ids(self):
+        tests = [
+            ("106160", ["106165"]),
+            (["106200"], ["106210"]),
+            ("107253", []),
+            (["106200", "117200"], ["106210"]),
+            ("135900", ["135900"]),
+        ]
+
+        for test, correct in tests:
+            with self.subTest(i=test):
+                replaced = self.omim.replace_deprecated_all(test)
+                self.assertListEqual(replaced, correct)
