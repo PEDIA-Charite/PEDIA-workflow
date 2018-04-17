@@ -11,12 +11,12 @@ from typing import Tuple, List
 
 import pickle
 from argparse import ArgumentParser
-import json as json_lib
+import json
 
 # own libraries
 from lib import download, errorfixer
 from lib.visual import progress_bar
-from lib.model import json, case, config
+from lib.model import json_parser, case, config
 from lib.api import phenomizer, omim, mutalyzer
 
 
@@ -118,7 +118,7 @@ def create_config(
 @progress_bar("Process jsons")
 def yield_jsons(json_files, corrected):
     for json_file in json_files:
-        yield json.NewJson.from_file(json_file, corrected)
+        yield json_parser.NewJson.from_file(json_file, corrected)
 
 
 @progress_bar("Create cases")
@@ -142,7 +142,7 @@ def yield_phenomized(case_objs, phen):
 @progress_bar("Convert old")
 def yield_old_json(case_objs, destination, omim_obj):
     for case_obj in case_objs:
-        old = json.OldJson.from_case_object(
+        old = json_parser.OldJson.from_case_object(
             case_obj,
             destination,
             omim_obj
@@ -287,7 +287,7 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
     if config_data.quality["qc_detailed"] \
             and config_data.quality["qc_detailed_log"]:
         with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
-            json_lib.dump(qc_output, qc_out, indent=4)
+            json.dump(qc_output, qc_out, indent=4)
 
     # move cases to qc directory
     print("Saving passing cases to new location")
