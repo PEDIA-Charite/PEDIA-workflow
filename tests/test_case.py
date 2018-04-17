@@ -19,21 +19,28 @@ class CaseTest(BaseMapping):
     def load_case(self, name: str) -> case.Case:
         case_obj = case.Case(
             self.load_json(name),
-            error_fixer=self.error_fixer
+            error_fixer=self.error_fixer,
+            omim_obj=self.omim,
         )
         return case_obj
 
     def test_check(self):
-        tcase = self.load_case("normal.json")
-        check_status, _ = tcase.check(self.omim)
-        self.assertTrue(check_status, "Internal self-check did not pass.")
-
-    def test_multi_omim_single_syndrome(self):
-        '''Assert that single diagnosis with many omim passes check.'''
-        tcase = self.load_case("diagnosis_many_omim.json")
-        check_status, check_data = tcase.check(self.omim)
-        print(check_data)
-        self.assertTrue(
-            check_status,
-            "Single Diagnosis with multiple OMIM ids did not pass."
-        )
+        tests = [
+            (
+                "normal.json", True,
+                "Normal case did not pass."
+            ),
+            (
+                "diagnosis_many_omim.json", True,
+                "Single Syndrome multi omim did not pass."
+            ),
+            (
+                "syndrome_with_card.json", True,
+                "Syndrome with available card did not pass."
+            )
+        ]
+        for fname, valid, msg in tests:
+            with self.subTest(i=fname):
+                tcase = self.load_case(fname)
+                check_status, _ = tcase.check(self.omim)
+                self.assertEqual(check_status, valid, msg)

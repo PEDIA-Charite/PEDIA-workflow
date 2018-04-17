@@ -96,16 +96,19 @@ class Case:
     realvcf - list of vcf filenames
     '''
 
-    def __init__(self, data: Union[OldJson, NewJson],
-                 error_fixer: "ErrorFixer",
-                 exclude_benign_variants: bool = True):
+    def __init__(
+            self, data: Union[OldJson, NewJson],
+            error_fixer: "ErrorFixer",
+            omim_obj: "Omim",
+            exclude_benign_variants: bool = True
+    ):
         self.algo_version = data.get_algo_version()
         self.case_id = data.get_case_id()
 
         # get both the list of hgvs variants and the hgvs models used in the
         # parsing
         self.hgvs_models = data.get_variants(error_fixer)
-        self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
+        self.syndromes = data.get_syndrome_suggestions_and_diagnosis(omim_obj)
         self.features = data.get_features()
         self.submitter = data.get_submitter()
         self.realvcf = data.get_vcf()
@@ -284,6 +287,8 @@ class Case:
                 omim.omim_id_to_phenotypic_series(str(d)) or str(d)
                 for d in diagnosis["omim_id"]
             ]
+            print(diagnosis_series)
+            print(diagnosis["omim_id"])
             if len(set(diagnosis_series)) > 1:
                 issues.append(
                     {

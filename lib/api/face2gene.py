@@ -2,6 +2,8 @@
 Use the Face2Gene library to get syndrome information.
 
 '''
+import json
+import os
 import logging
 from typing import Union
 
@@ -13,14 +15,35 @@ from requests.packages.urllib3.util.retry import Retry
 LOGGER = logging.getLogger(__name__)
 
 
+class F2GLibrary:
+    '''Cached data from the face2gene library.'''
+
+    filename = "f2g_library_dump.json"
+
+    def __init__(self, path: str):
+        self.data = self.load(path, self.filename)
+
+    @staticmethod
+    def load(path: str, filename: str):
+        '''Load json file with face2gene library data.'''
+        filepath = os.path.join(path, filename)
+        with open(filepath, "r") as fileobj:
+            data = json.load(fileobj)
+        return data
+
+
 class Face2Gene(requests.Session):
     '''Implements login into face2gene to access f2g services.
     '''
 
     base_url = 'https://app.face2gene.com/'
 
-    def __init__(self, user: str='', password: str='',
-                 config: 'ConfigParser'=None):
+    def __init__(
+            self,
+            user: str = '',
+            password: str = '',
+            config: 'ConfigParser'=None
+    ):
         super().__init__()
         if config:
             user = config.face2gene['user']
