@@ -1,8 +1,4 @@
-configfile: "../1_qualityCheck/config.yml"
-
-subworkflow phenomization_workflow: 
-	workdir: "../2_phenomization"
-	snakefile: "../2_phenomization/Snakefile"
+configfile: "../config.yml"
 
 subworkflow vcfs_workflow: 
 	workdir: "../data/PEDIA/vcfs"
@@ -51,7 +47,7 @@ rule all:
 
 rule annotate:
 	input:
-		vcf="../data/PEDIA/mutations/variants.vcf.gz",
+		vcf="../data/PEDIA/mutations/{sample}.vcf.gz",
 		db="../data/jannovar/data/hg19_refseq.ser",
 		exac="../data/populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../data/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
@@ -60,7 +56,7 @@ rule annotate:
 		caddindel="../data/pathogenicityScores/InDels.tsv.gz",
 		ref="../data/referenceGenome/data/human_g1k_v37.fasta"
 	output:
-		"mutations/JsonsVCF_annotated.vcf.gz"
+		"mutations/{sample}_JsonsVCF_annotated.vcf.gz"
 	shell:
 		"""
 		java -jar ../data/jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} \
@@ -73,9 +69,9 @@ rule annotate:
 
 rule index:
 	input:
-		"mutations/JsonsVCF_annotated.vcf.gz"
+		"mutations/{sample}_JsonsVCF_annotated.vcf.gz"
 	output:
-		"mutations/JsonsVCF_annotated.vcf.gz.tbi"
+		"mutations/{sample}_JsonsVCF_annotated.vcf.gz.tbi"
 	shell:
 		"tabix '{input}'"
 
@@ -102,8 +98,8 @@ def getBackground(wc):
 
 rule spikein:
 	input:
-		index="mutations/JsonsVCF_annotated.vcf.gz.tbi",
-		vcf="mutations/JsonsVCF_annotated.vcf.gz",
+		index="mutations/{sample}_JsonsVCF_annotated.vcf.gz.tbi",
+		vcf="mutations/{sample}_JsonsVCF_annotated.vcf.gz",
 		omim="OMIM/genemap2.txt",
 		back=getBackground,
 		#back_1kg="background/results/1KG/1KG.refSeq105.AF.vcf.gz",
@@ -130,7 +126,7 @@ rule json:
 	input:
 		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
 		omim="OMIM/genemap2.txt",
-		json=phenomization_workflow("../data/PEDIA/jsons/phenomized/{sample}.json"),
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"json_simulation/{background}/CV/{sample}.json"
@@ -141,7 +137,7 @@ rule json:
 ################### REAL VCFS################################
 
 def getRealVCF(wc):
-	configfile: "../1_qualityCheck/json/currated/%s.json" % wc.sample
+	configfile: "../data/PEDIA/jsons/phenomized/%s.json" % wc.sample
 	filename = config['vcf']['original_filename']
 	vcf_index = "filtered_vcfs/%s_annotated.vcf.gz.tbi" % filename[0:-7]
 	vcf = vcf_index[0:-4] 
@@ -150,7 +146,7 @@ def getRealVCF(wc):
 rule copyReal:
 	input:
 		vcf=getRealVCF,
-		json=phenomization_workflow("../data/PEDIA/jsons/phenomized/{sample}.json")
+		json="../data/PEDIA/jsons/phenomized/{sample}.json"
 	output:
 		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
 		index="vcf_annotation/{sample}.annotation.vcf.gz.tbi"
@@ -164,7 +160,7 @@ rule jsonRealTestData:
 	input:
 		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
 		omim="OMIM/genemap2.txt",
-		json=phenomization_workflow("../data/PEDIA/jsons/phenomized/{sample}.json"),
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"json_simulation/real/test/{sample}.json"
