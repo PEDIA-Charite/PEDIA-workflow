@@ -11,8 +11,9 @@ import os
 
 import pandas
 
-from json_parser import OldJson, NewJson
-from lib import vcf_operations, constants
+from lib.model.json_parser import OldJson, NewJson
+from lib.vcf_operations import move_vcf
+from lib import constants
 
 
 LOGGER = logging.getLogger(__name__)
