@@ -416,7 +416,8 @@ class Case:
                            'QUAL', 'FILTER', 'INFO', 'FORMAT', self.case_id]
                 df = pandas.read_table(
                     vcffile.name, sep='\t', comment='#', names=columns)
-                if any(df.ALT.astype("str") == '<ERROR>'):
+                df.ALT.fillna("NA", inplace= True)
+                if any(df.ALT == '<ERROR>'):
                     return(process.stderr)
                 if self.hgvs_models[0].zygosity.lower() == 'hemizygous':
                     genotype = '1'
