@@ -277,6 +277,20 @@ class Case:
                     }
                 )
             valid = False
+        else:
+            # Check if there are multiple different disease-causing genes 
+            raw_entries = self.data.get_genomic_entries()
+            entries = self.get_hgvs_models()
+            if len(entries) > 1:
+                genes = [entry.gene['gene_id'] for entry in entries if entry.gene['gene_id']]
+                if len(set(genes)) > 1:
+                    issues.append(
+                        {
+                            "type": "MULTI_DIFFERENT_DISEASE_CAUSING_GENE",
+                            "data": raw_entries
+                        }
+                    )
+                    valid = False
 
         return valid, issues
 
