@@ -258,6 +258,17 @@ class Case:
         '''
         valid = True
         issues = []
+
+        # check if there is at least one feature (HPO)
+        features = self.features
+        if len(features) < 1:
+            issues.append(
+                {
+                    "type": "NO_FEATURES",
+                }
+            )
+            valid = False
+
         # check maximum gestalt score
         max_gestalt_score = max(self.syndromes['gestalt_score'])
         if max_gestalt_score <= 0:
