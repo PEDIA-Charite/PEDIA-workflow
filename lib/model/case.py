@@ -281,14 +281,17 @@ class Case:
         # check whether multiple diagnoses are in same phenotypic series
         if omim:
             diagnosis_series = [
-                omim.omim_id_to_phenotypic_series(d)
+                omim.omim_id_to_phenotypic_series(str(d)) or str(d)
                 for d in diagnosis["omim_id"]
             ]
             if len(set(diagnosis_series)) > 1:
                 issues.append(
                     {
                         "type": "MULTI_DIAGNOSIS",
-                        "data": list(diagnosis["omim_id"])
+                        "data": {
+                            "orig": list(diagnosis["omim_id"]),
+                            "series": diagnosis_series
+                        }
                     }
                 )
                 valid = False
