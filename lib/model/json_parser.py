@@ -19,6 +19,7 @@ import os
 import pandas
 import filetype
 
+from lib.api import omim
 from lib.utils import explode_df_column
 from lib.vcf_operations import move_vcf
 # from lib.utils import optional_descent
@@ -435,7 +436,9 @@ class NewJson(JsonFile):
                   for entry in self._js['genomic_entries']]
         return models
 
-    def get_syndrome_suggestions_and_diagnosis(self) -> pandas.DataFrame:
+    def get_syndrome_suggestions_and_diagnosis(
+            self, omim_obj: omim.Omim
+    ) -> pandas.DataFrame:
         '''Return a pandas dataframe containing all suggested syndromes and the
         selected syndroms, which is joined on the table with the confirmed
         column marking the specific entry.
@@ -446,7 +449,8 @@ class NewJson(JsonFile):
 
         # force omim_id to always be a list, required for exploding the df
         syndromes_df['omim_id'] = syndromes_df['omim_id'].apply(
-            lambda x: not isinstance(x, list) and [x] or x)
+            omim_obj.replace_deprecated_all
+        )
         # turn omim_list into multiple rows with other properties duplicated
         syndromes_df = explode_df_column(syndromes_df, 'omim_id')
         syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
@@ -454,11 +458,20 @@ class NewJson(JsonFile):
         # preprare the confirmed diagnosis for joining with the main syndrome
         # dataframe
         if self._js['selected_syndromes']:
-            selected = pandas.DataFrame.from_dict(
-                self._js['selected_syndromes'])
+            selected_syndromes = [
+                dict(
+                    s,
+                    omim_id=omim_obj.replace_deprecated_all(s["omim_id"])
+                    or ["0"]
+                )
+                for s in self._js["selected_syndromes"]
+            ]
+            selected = pandas.DataFrame.from_dict(selected_syndromes)
 
-            selected['omim_id'] = selected['omim_id'].apply(
-                lambda x: not isinstance(x, list) and [x] or x)
+            syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
+
+            # create multiple rows from list of omim_id entries duplicating
+            # other information
             selected = explode_df_column(selected, 'omim_id')
             # add a confirmed diagnosis column
             selected['confirmed'] = True
@@ -484,6 +497,9 @@ class NewJson(JsonFile):
         else:
             # if no syndromes selected, everything is false
             syndromes_df["confirmed"] = False
+
+        syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
+
         return syndromes_df
 
     def get_features(self) -> [str]:

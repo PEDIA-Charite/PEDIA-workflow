@@ -4,6 +4,12 @@
 *.vcf.gz.tbi
 .snakemake
 *.done
+*.log
+
+*.tar.gz
+
+# clean root dir
+/*.json
 
 # python files
 __pycache__
@@ -12,14 +18,29 @@ __pycache__
 # configuration files - might contain SENSITIVE data !!!!!
 config.ini
 
+# ignore all test data
+/tests/data
+
 # api files
 mim2gene.txt
 morbidmap.txt
 
+# helper directory ephemeral files
+/helper/*.txt
+/helper/*.json
+
 # static data, such as genomic data for exome simulation
 # /data/
+/data/f2g_library_dump.json
+/data/mim2gene.txt
+/data/morbidmap.txt
+/data/mimTitles.txt
+/data/phenotypicSeries.txt
+/data/omim_deprecated_replacement.json
+/data/mim_to_ps.json
+
 # dynamic data, such as json files
-process
+/process
 
 simulation/background/data/refseq/
 
