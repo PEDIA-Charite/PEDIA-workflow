@@ -2,86 +2,21 @@
 Case model created from json files.
 '''
 import logging
-from typing import Union, Dict
+from typing import Union
 
-
-import pandas
 import csv
 import subprocess
 import tempfile
 import os
 
-from lib.model.json import OldJson, NewJson
+import pandas
+
+from lib.model.json_parser import OldJson, NewJson
 from lib.vcf_operations import move_vcf
 from lib import constants
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-def genes_to_single_cols(rowdata: pandas.Series) -> pandas.Series:
-    '''Separate gene dict in genes column into separate columns.
-    '''
-    gene_dict = rowdata['genes']
-    rowdata.drop('genes', inplace=True)
-    genes = pandas.Series(gene_dict)
-    rowdata = rowdata.append(genes)
-    return rowdata
-
-
-def create_gene_table(rowdata: pandas.Series, omim: 'Omim') -> pandas.Series:
-    '''Get gene information from row information.
-    This includes: all scores, gene_symbol, gene_id, gene_omim_id, syndrome_id
-    '''
-    disease_id = rowdata['omim_id']
-    phenotypic_series = rowdata["phenotypic_series"]
-
-    syndrome_name = rowdata["syndrome_name"] \
-        or rowdata["disease-name_pheno"] \
-        or rowdata["disease-name_boqa"]
-
-    # get dict containing gene_id, gene_symbol, gene_omim_id
-    genes = list(omim.mim_pheno_to_gene(disease_id).values())
-
-    if rowdata["gene-id"]:
-        genes += [
-            {
-                "gene_id": eid,
-                "gene_symbol": omim.entrez_id_to_symbol(eid),
-                "gene_omim_id": omim.entrez_id_to_mim_gene(eid)
-            }
-            for eid in rowdata["gene-id"].split(", ")
-            if eid not in [g["gene_id"] for g in genes]
-        ]
-
-    # get all three scores provided by face2gene
-    gestalt_score = rowdata["gestalt_score"]
-    feature_score = rowdata['feature_score']
-    combined_score = rowdata['combined_score']
-    pheno_score = rowdata['value_pheno']
-    boqa_score = rowdata['value_boqa']
-
-    resp = pandas.Series({
-        "disease_id": disease_id,
-        "phenotypic_series": phenotypic_series,
-        "syndrome_name": syndrome_name,
-        "genes": genes,
-        "gestalt_score": gestalt_score,
-        "feature_score": feature_score,
-        "combined_score": combined_score,
-        "pheno_score": pheno_score,
-        "boqa_score": boqa_score
-    })
-    return resp
-
-
-def filter_phenotypic_series(ps_group: "DataFrame") -> "DataFrame":
-    '''Filter phenotypic series group to return maximum values in group.'''
-    if ps_group["phenotypic_series"].iloc[0] == "":
-        return ps_group
-
-    ps_group = ps_group.groupby("gene_id", as_index=False).max()
-    return ps_group
 
 
 class Case:
@@ -96,16 +31,19 @@ class Case:
     realvcf - list of vcf filenames
     '''
 
-    def __init__(self, data: Union[OldJson, NewJson],
-                 error_fixer: "ErrorFixer",
-                 exclude_benign_variants: bool = True):
+    def __init__(
+            self, data: Union[OldJson, NewJson],
+            error_fixer: "ErrorFixer",
+            omim_obj: "Omim",
+            exclude_benign_variants: bool = True
+    ):
         self.algo_version = data.get_algo_version()
         self.case_id = data.get_case_id()
 
         # get both the list of hgvs variants and the hgvs models used in the
         # parsing
         self.hgvs_models = data.get_variants(error_fixer)
-        self.syndromes = data.get_syndrome_suggestions_and_diagnosis()
+        self.syndromes = data.get_syndrome_suggestions_and_diagnosis(omim_obj)
         self.features = data.get_features()
         self.submitter = data.get_submitter()
         self.realvcf = data.get_vcf()
@@ -135,14 +73,22 @@ class Case:
             pheno_boqa, left_on='omim_id', how='outer', right_index=True)
         self.syndromes.reset_index(drop=True, inplace=True)
 
+        self.syndromes.rename(
+            columns={
+                "value_pheno": "pheno_score",
+                "value_boqa": "boqa_score",
+            },
+            inplace=True
+        )
+
         # fill nans created by merge
         self.syndromes.fillna(
             {
                 'combined_score': 0.0,
                 'feature_score': 0.0,
                 'gestalt_score': 0.0,
-                'value_pheno': 0.0,
-                'value_boqa': 0.0,
+                'pheno_score': 0.0,
+                'boqa_score': 0.0,
                 'syndrome_name': '',
                 'confirmed': False,
                 'has_mask': False,
@@ -208,8 +154,8 @@ class Case:
                         "gestalt_score": syndrome["gestalt_score"],
                         "feature_score": syndrome["feature_score"],
                         "combined_score": syndrome["combined_score"],
-                        "pheno_score": syndrome["value_pheno"],
-                        "boqa_score": syndrome["value_boqa"]
+                        "pheno_score": syndrome["pheno_score"],
+                        "boqa_score": syndrome["boqa_score"]
                     },
                     **gene
                 )
@@ -258,7 +204,7 @@ class Case:
         '''
         valid = True
         issues = []
-
+        
         # check if there is at least one feature (HPO)
         features = self.features
         if len(features) < 1:
@@ -268,13 +214,19 @@ class Case:
                 }
             )
             valid = False
+            
+        scores = [
+            "gestalt_score", "feature_score", "pheno_score", "boqa_score"
+        ]
+        max_scores = {s: max(self.syndromes[s]) for s in scores}
+        zero_scores = [s for s, n in max_scores.items() if n <= 0]
 
         # check maximum gestalt score
-        max_gestalt_score = max(self.syndromes['gestalt_score'])
-        if max_gestalt_score <= 0:
+        if zero_scores:
             issues.append(
                 {
-                    "type": "NO_GESTALT",
+                    "type": "MISSING_SCORES",
+                    "data": max_scores
                 }
             )
             valid = False
@@ -292,14 +244,17 @@ class Case:
         # check whether multiple diagnoses are in same phenotypic series
         if omim:
             diagnosis_series = [
-                omim.omim_id_to_phenotypic_series(d)
+                omim.omim_id_to_phenotypic_series(str(d)) or str(d)
                 for d in diagnosis["omim_id"]
             ]
             if len(set(diagnosis_series)) > 1:
                 issues.append(
                     {
                         "type": "MULTI_DIAGNOSIS",
-                        "data": list(diagnosis["omim_id"])
+                        "data": {
+                            "orig": list(diagnosis["omim_id"]),
+                            "series": diagnosis_series
+                        }
                     }
                 )
                 valid = False

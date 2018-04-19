@@ -4,20 +4,43 @@ Test case functions
 import os
 import unittest
 from lib.model import json, case
+from tests.test_json_loading import BaseMapping
 
 
-INPUT_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    "data")
-
-
-class CaseTest(unittest.TestCase):
+class CaseTest(BaseMapping):
     '''Case method tests.'''
 
-    def setUp(self):
-        input_file = os.path.join(INPUT_PATH, "cases", "normal.json")
-        loaded_correct = json.NewJson.from_file(input_file)
-        self.case = case.Case(loaded_correct)
+    def load_json(self, name: str) -> dict:
+        loaded = json.NewJson.from_file(
+            self.get_case_path(name)
+        )
+        return loaded
+
+    def load_case(self, name: str) -> case.Case:
+        case_obj = case.Case(
+            self.load_json(name),
+            error_fixer=self.error_fixer,
+            omim_obj=self.omim,
+        )
+        return case_obj
 
     def test_check(self):
-        self.assertTrue(self.case.check(), "Internal self-check did not pass.")
+        tests = [
+            (
+                "normal.json", True,
+                "Normal case did not pass."
+            ),
+            (
+                "diagnosis_many_omim.json", True,
+                "Single Syndrome multi omim did not pass."
+            ),
+            (
+                "syndrome_with_card.json", True,
+                "Syndrome with available card did not pass."
+            )
+        ]
+        for fname, valid, msg in tests:
+            with self.subTest(i=fname):
+                tcase = self.load_case(fname)
+                check_status, _ = tcase.check(self.omim)
+                self.assertEqual(check_status, valid, msg)
