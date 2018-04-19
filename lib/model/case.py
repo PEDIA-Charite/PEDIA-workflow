@@ -204,11 +204,23 @@ class Case:
         '''
         valid = True
         issues = []
+        
+        # check if there is at least one feature (HPO)
+        features = self.features
+        if len(features) < 1:
+            issues.append(
+                {
+                    "type": "NO_FEATURES",
+                }
+            )
+            valid = False
+            
         scores = [
             "gestalt_score", "feature_score", "pheno_score", "boqa_score"
         ]
         max_scores = {s: max(self.syndromes[s]) for s in scores}
         zero_scores = [s for s, n in max_scores.items() if n <= 0]
+
         # check maximum gestalt score
         if zero_scores:
             issues.append(
