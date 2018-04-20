@@ -94,6 +94,13 @@ class Omim:
             "type": "json",
             "colnames": []
         },
+        "mimTitles": {
+            "filename": "mimTitles.txt",
+            "type": "pandas",
+            "colnames": [
+                "prefix", "mim_number", "title", "alt", "inc"
+            ]
+        }
     }
 
     indexes_meta = {
@@ -202,6 +209,9 @@ class Omim:
             data['phen_mim_number'] = data['phenotype'].apply(
                 self.extract_omim
             )
+        if filename == "mimTitles":
+            data["mim_number"] = data["mim_number"].astype(int)
+            data.set_index("mim_number", inplace=True)
         return data
 
     @staticmethod
@@ -267,7 +277,10 @@ class Omim:
         '''
         if not os.path.exists(filename):
             raise RuntimeError(
-                "{} does not exist. Add them to the location manually.")
+                "{} does not exist. Add them to the location manually.".format(
+                    filename
+                )
+            )
         return pandas.read_table(
             filename, delimiter='\t', comment='#', names=colnames, dtype=str)
 
@@ -324,6 +337,14 @@ class Omim:
                 self.indexes["pheno_omim"][str(mim_pheno)]
             ]
         return []
+
+    def mim_pheno_to_syndrome_name(self, mim_pheno):
+        '''Phenotypic omim id to syndrome name.'''
+        return self.search_table(
+            self.files["mimTitles"],
+            int(mim_pheno),
+            "title"
+        )
 
     def mim_pheno_to_gene(self, mim_pheno):
         '''Convert a phenotype omim id to a gene dictionary object containing
