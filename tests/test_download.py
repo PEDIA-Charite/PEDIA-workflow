@@ -2,21 +2,17 @@ import os
 import shutil
 import unittest
 from lib import download
-from lib.model import config
 
-INPUT_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    "data")
+from tests.test_config import BaseConfig
 
+class DownloadTest(BaseConfig):
 
-class DownloadTest(unittest.TestCase):
-
-    def setUp(self):
-        self.config = config.ConfigManager(
-            os.path.join(INPUT_PATH, "config.ini"))
-
-        self.dl_clean = os.path.join(INPUT_PATH, "test_clean")
-        os.makedirs(self.dl_clean)
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        base, data = os.path.split(cls.input_path)
+        cls.dl_clean = os.path.join(base, "aws")
+        os.makedirs(cls.dl_clean, exist_ok=True)
 
     def test_download_clean(self):
         download.backup_s3_folder(
