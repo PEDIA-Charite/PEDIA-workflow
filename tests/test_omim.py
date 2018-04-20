@@ -83,3 +83,13 @@ class OmimTest(BaseConfig):
             with self.subTest(i=test):
                 replaced = self.omim.replace_deprecated_all(test)
                 self.assertListEqual(replaced, correct)
+
+    def test_pheno_to_name(self):
+        tests = [
+            ("135900", "COFFIN-SIRIS SYNDROME 1; CSS1"),
+            ("106200", "MOVED TO 106210"),
+        ]
+        for test, correct in tests:
+            with self.subTest(i=test):
+                res = self.omim.mim_pheno_to_syndrome_name(test)
+                self.assertEqual(res, correct)
