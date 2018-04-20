@@ -160,6 +160,19 @@ def create_jsons(args, config_data):
 
     print('Unfiltered', len(new_json_objs))
 
+    if config_data.jsonparser["json_qc_log"] and not args.single:
+        qc_failed_results = [
+            {
+                "case_id": case_id,
+                "issues": issues,
+                "valid": valid
+            }
+            for case_id, (valid, issues) in
+            [(j.get_case_id(), j.check()) for j in new_json_objs]
+        ]
+        with open(config_data.jsonparser["json_qc_log"], "w") as failedfile:
+            json.dump(qc_failed_results, failedfile, indent=4)
+
     filtered_new = [j for j in new_json_objs if j.check()[0]]
     print('Filtered rough criteria', len(filtered_new))
     return filtered_new
