@@ -100,17 +100,17 @@ def create_config(
     singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder)]
     testfiles = []
     with open("config.yml", "w") as configfile:
-        configfile.write('SINGLE_SAMPLES: \n')
+        configfile.write('SINGLE_SAMPLES:\n')
         for file in singlefiles:
             if file not in vcffiles:
                 configfile.write(" - " + file + "\n")
-        configfile.write('VCF_SAMPLES: \n')
+        configfile.write('VCF_SAMPLES:\n')
         for file in vcffiles:
             if file in singlefiles:
                 configfile.write(" - " + file + "\n")
             else:
                 testfiles.append(file)
-        configfile.write('TEST_SAMPLES: \n')
+        configfile.write('TEST_SAMPLES:\n')
         for file in testfiles:
             configfile.write(" - " + file + "\n")
 
