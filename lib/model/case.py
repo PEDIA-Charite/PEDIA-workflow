@@ -121,11 +121,7 @@ class Case:
                 str(disease_id)
             ) or str(disease_id)
 
-            syndrome_name = (
-                syndrome["syndrome_name"]
-                or syndrome["disease-name_pheno"]
-                or syndrome["disease-name_boqa"]
-            )
+            syndrome_name = omim.mim_pheno_to_syndrome_name(disease_id)
 
             genes = list(omim.mim_pheno_to_gene(disease_id).values())
             if syndrome["gene-id"]:
@@ -143,9 +139,9 @@ class Case:
                 if not gene["gene_id"]:
                     continue
 
-                # uniqueness constraint on phenotypic series and
+                # uniqueness constraint on disease_id and
                 # gene_id
-                key = "{}|{}".format(phenotypic_series, gene["gene_id"])
+                key = "{}|{}".format(disease_id, gene["gene_id"])
                 update_data = dict(
                     {
                         "disease_id": disease_id,
