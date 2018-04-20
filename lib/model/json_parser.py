@@ -97,12 +97,19 @@ class JsonFile:
         # load a corrected json if it exists and is given
         base, filename = os.path.split(path)
         basedir, jsondir = os.path.split(base)
+        override_data = {}
         if corrected_location:
             override = os.path.join(corrected_location, jsondir, filename)
-            path = os.path.exists(override) and override or path
+            if os.path.exists(override):
+                with open(override, "r") as js_file:
+                    override_data = json.load(js_file)
 
         with open(path, "r") as js_file:
             json_data = json.load(js_file)
+            if bool(override_data):
+                for key in override_data.keys():
+                    json_data[key] = override_data[key]
+
         # create the parent class
         json_obj = cls(data=json_data, path=path, base_path=basedir,
                        override=corrected_location)
