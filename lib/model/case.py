@@ -243,17 +243,52 @@ class Case:
 
         # check whether multiple diagnoses are in same phenotypic series
         if omim:
-            diagnosis_series = [
-                omim.omim_id_to_phenotypic_series(str(d)) or str(d)
-                for d in diagnosis["omim_id"]
-            ]
-            if len(set(diagnosis_series)) > 1:
+            ps_dict = {}
+            for _, diag in diagnosis.iterrows():
+                ps_res = omim.omim_id_to_phenotypic_series(
+                    str(diag["omim_id"])
+                ) or str(diag["omim_id"])
+                # ignore entries without omim id
+                if ps_res == '0':
+                    continue
+                if diag["syndrome_name"] in ps_dict:
+                    ps_dict[diag["syndrome_name"]].add(ps_res)
+                else:
+                    ps_dict[diag["syndrome_name"]] = set([ps_res])
+            # compact ps_dict based on omim ids
+            reduced_ps_dict = {}
+
+            for key, series in ps_dict.items():
+                contained = False
+                for kk, ss in ps_dict.items():
+                    if kk == key:
+                        continue
+                    if series <= set(ss):
+                        contained = True
+                if not contained:
+                    reduced_ps_dict[key] = series
+
+            # diagnosis_series = [
+            #     omim.omim_id_to_phenotypic_series(str(d)) or str(d)
+            #     for d in diagnosis["omim_id"]
+            # ]
+            # diagnosis_names = list(
+            #     set([d for d in diagnosis["syndrome_name"]])
+            # )
+
+            # if len(set(diagnosis_series)) > 1 \
+            #         and len(diagnosis_names) > 1:
+            if len(reduced_ps_dict) > 1:
+                print(reduced_ps_dict.keys())
+                print(reduced_ps_dict)
                 issues.append(
                     {
                         "type": "MULTI_DIAGNOSIS",
                         "data": {
                             "orig": list(diagnosis["omim_id"]),
-                            "series": diagnosis_series
+                            # "series": diagnosis_series,
+                            # "names": diagnosis_names
+                            'dict': reduced_ps_dict
                         }
                     }
                 )
