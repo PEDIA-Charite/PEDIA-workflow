@@ -260,35 +260,24 @@ class Case:
 
             for key, series in ps_dict.items():
                 contained = False
-                for kk, ss in ps_dict.items():
-                    if kk == key:
+                for other_key, other_series in ps_dict.items():
+                    if other_key == key:
                         continue
-                    if series <= set(ss):
+                    if series <= other_series:
                         contained = True
                 if not contained:
                     reduced_ps_dict[key] = series
 
-            # diagnosis_series = [
-            #     omim.omim_id_to_phenotypic_series(str(d)) or str(d)
-            #     for d in diagnosis["omim_id"]
-            # ]
-            # diagnosis_names = list(
-            #     set([d for d in diagnosis["syndrome_name"]])
-            # )
-
-            # if len(set(diagnosis_series)) > 1 \
-            #         and len(diagnosis_names) > 1:
             if len(reduced_ps_dict) > 1:
-                print(reduced_ps_dict.keys())
-                print(reduced_ps_dict)
                 issues.append(
                     {
                         "type": "MULTI_DIAGNOSIS",
                         "data": {
                             "orig": list(diagnosis["omim_id"]),
-                            # "series": diagnosis_series,
-                            # "names": diagnosis_names
-                            'dict': reduced_ps_dict
+                            'names': list(reduced_ps_dict.keys()),
+                            "converted_ids": [
+                                e for v in reduced_ps_dict.values() for e in v
+                            ]
                         }
                     }
                 )
