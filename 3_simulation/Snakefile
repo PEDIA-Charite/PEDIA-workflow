@@ -138,8 +138,8 @@ rule json:
 
 def getRealVCF(wc):
 	configfile: "../data/PEDIA/jsons/phenomized/%s.json" % wc.sample
-	filename = config['vcf']['original_filename']
-	vcf_index = "filtered_vcfs/%s_annotated.vcf.gz.tbi" % filename[0:-7]
+	filename = config['vcf'][0].split('/')[-1]
+	vcf_index = "annotated_vcfs/%s_annotated.vcf.gz.tbi" % filename[0:-7]
 	vcf = vcf_index[0:-4] 
 	return [vcfs_workflow(vcf), vcfs_workflow(vcf_index)]
 
