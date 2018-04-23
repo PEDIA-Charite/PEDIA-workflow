@@ -4,7 +4,7 @@ Test loading of jsons from new-style json files.
 import os
 import unittest
 from lib import errorfixer
-from lib.model import json, config
+from lib.model import json_parser, config
 from lib.api import mutalyzer, omim, phenomizer, face2gene
 
 from tests.test_config import BaseConfig
@@ -42,8 +42,8 @@ class JsonLoadingTest(BaseMapping):
     def setUp(self):
         input_file = os.path.join(self.input_path, "cases", "normal.json")
         error_file = os.path.join(self.input_path, "cases", "error_hgvs.json")
-        self.loaded_correct = json.NewJson.from_file(input_file)
-        self.loaded_error = json.NewJson.from_file(error_file)
+        self.loaded_correct = json_parser.Newjson_parser.from_file(input_file)
+        self.loaded_error = json_parser.Newjson_parser.from_file(error_file)
 
     def test_check(self):
         '''Test whether the file check is passing.'''
