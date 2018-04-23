@@ -204,7 +204,7 @@ class Case:
         '''
         valid = True
         issues = []
-        
+
         # check if there is at least one feature (HPO)
         features = self.features
         if len(features) < 1:
@@ -214,9 +214,9 @@ class Case:
                 }
             )
             valid = False
-            
+
         scores = [
-            "gestalt_score", "feature_score", "pheno_score", "boqa_score"
+            "gestalt_score"
         ]
         max_scores = {s: max(self.syndromes[s]) for s in scores}
         zero_scores = [s for s, n in max_scores.items() if n <= 0]
@@ -263,7 +263,7 @@ class Case:
 
         if not self.get_variants():
             raw_entries = self.data.get_genomic_entries()
-            if not len(raw_entries):
+            if not raw_entries:
                 issues.append(
                     {
                         "type": "NO_GENOMIC",
