@@ -44,13 +44,21 @@ class CaseTest(BaseMapping):
             (
                 "syndrome_with_card.json", True,
                 "Syndrome with available card did not pass."
-            )
+            ),
+            (
+                "no_scores_0.json", False,
+                "No transmitted detected syndromes"
+            ),
+            (
+                "no_scores_1.json", True,
+                "Missing scores because of transfer issues."
+            ),
         ]
         for fname, valid, msg in tests:
             with self.subTest(i=fname):
                 tcase = self.load_case(fname)
                 check_status, issues = tcase.check(self.omim)
-                if not check_status:
+                if check_status != valid:
                     print(issues)
                 self.assertEqual(check_status, valid, msg)
 
@@ -79,6 +87,50 @@ class CaseTest(BaseMapping):
             ("multi_diagnosis_19.json", True),
         ]
 
+        for test, result in tests:
+            with self.subTest(i=test):
+                tcase = self.load_case(test)
+                check_stats, issues = tcase.check(self.omim)
+                if not check_stats:
+                    print(issues)
+                self.assertEqual(check_stats, result)
+
+    def test_still_multi(self):
+        '''Test cases that are still classified as multi diagnosis.'''
+        tests = [
+            ("still_multi_0.json", True),
+            ("still_multi_1.json", True),
+            ("still_multi_2.json", True),
+            ("still_multi_3.json", True),
+            ("still_multi_4.json", True),
+            ("still_multi_5.json", True),
+            ("still_multi_6.json", True),
+            ("still_multi_7.json", True),
+            ("still_multi_8.json", True),
+            ("still_multi_9.json", True),
+            ("still_multi_10.json", True),
+            ("still_multi_11.json", True),
+            ("still_multi_12.json", True),
+            ("still_multi_13.json", True),
+            ("still_multi_14.json", True),
+            ("still_multi_15.json", True),
+            ("still_multi_16.json", True),
+            ("still_multi_17.json", True),
+        ]
+        for test, result in tests:
+            with self.subTest(i=test):
+                tcase = self.load_case(test)
+                check_stats, issues = tcase.check(self.omim)
+                if not check_stats:
+                    print(issues)
+                self.assertEqual(check_stats, result)
+
+    def test_hpo_no_score(self):
+        '''Test cases with hpo features but no scores.'''
+        tests = [
+            ("no_pheno_0.json", True),
+            ("no_pheno_1.json", True),
+        ]
         for test, result in tests:
             with self.subTest(i=test):
                 tcase = self.load_case(test)
