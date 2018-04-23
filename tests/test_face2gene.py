@@ -13,8 +13,8 @@ class Face2GeneTest(BaseConfig):
 
     def test_search_syndrome_name(self):
         tests = [
-            ("Coffin-Siris", None),
-            ("Coffin-Siris Syndrome 3", None)
+            ("Multiple Congenital Anomalies-Hypotonia-Seizures Syndrome 1; MCAHS1", None),
+            ("Multiple Congenital Anomalies-Hypotonia-Seizures Syndrome", None)
         ]
         for test, correct in tests:
             with self.subTest(i=test):
