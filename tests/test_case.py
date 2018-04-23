@@ -3,8 +3,9 @@ Test case functions
 '''
 import os
 import unittest
-from lib.api import phenomizer
+from lib.api import phenomizer, mutalyzer
 from lib.model import json_parser, case
+from lib.errorfixer import ErrorFixer
 from tests.test_json_loading import BaseMapping
 
 
@@ -15,6 +16,11 @@ class CaseTest(BaseMapping):
     def setUpClass(cls):
         super().setUpClass()
         cls.phenomizer = phenomizer.PhenomizerService(config=cls.config)
+        cls.error_fixer = ErrorFixer(
+            hgvs_error_file="tests/data/hgvs_errors_real.json",
+            hgvs_new_errors="tests/data/hgvs_new_errors.json",
+            version=0
+        )
 
     def load_json(self, name: str) -> dict:
         loaded = json_parser.NewJson.from_file(
@@ -76,7 +82,7 @@ class CaseTest(BaseMapping):
             ("multi_diagnosis_8.json", True),
             ("multi_diagnosis_9.json", True),
             ("multi_diagnosis_10.json", True),
-            ("multi_diagnosis_11.json", True),
+            ("multi_diagnosis_11.json", False),  # no syndromes transmitted
             ("multi_diagnosis_12.json", True),
             ("multi_diagnosis_13.json", True),
             ("multi_diagnosis_14.json", True),
@@ -91,9 +97,13 @@ class CaseTest(BaseMapping):
             with self.subTest(i=test):
                 tcase = self.load_case(test)
                 check_stats, issues = tcase.check(self.omim)
-                if not check_stats:
+                if check_stats != result:
                     print(issues)
                 self.assertEqual(check_stats, result)
+                if issues:
+                    self.assertTrue(all(
+                        [s["type"] != "MULTI_DIAGNOSIS" for s in issues]
+                    ))
 
     def test_still_multi(self):
         '''Test cases that are still classified as multi diagnosis.'''
@@ -109,7 +119,7 @@ class CaseTest(BaseMapping):
             ("still_multi_8.json", True),
             ("still_multi_9.json", True),
             ("still_multi_10.json", True),
-            ("still_multi_11.json", True),
+            ("still_multi_11.json", True),  # requires corrected hgvs dict
             ("still_multi_12.json", True),
             ("still_multi_13.json", True),
             ("still_multi_14.json", True),
