@@ -265,10 +265,10 @@ class JsonFile:
             directive: Define fields, on which loading operations should be
             done
         '''
-        self._js = self._linked(self._js, directive, self._corrected_keys)
+        self._js = self._linked(self._js, directive)
 
     @classmethod
-    def _linked(cls, data, load_directive, hidden_keys):
+    def _linked(cls, data, load_directive):
         '''Load data according to the provided load directive. This will
         recursively traverse the json structure and match it against the
         provided loading directive.
@@ -277,15 +277,13 @@ class JsonFile:
             for k, entry in load_directive.items():
                 if k not in data:
                     raise IndexError("{} not in data dict.".format(k))
-                elif k in hidden_keys:
-                    continue
                 # do not propagate hidden keys to deeper levels
-                data[k] = cls._linked(data[k], entry, [])
+                data[k] = cls._linked(data[k], entry)
         elif isinstance(load_directive, list):
             data = [
                 r for r in
                 [
-                    cls._linked(v, d, [])  # hidden keys not used further
+                    cls._linked(v, d)  # hidden keys not used further
                     for d in load_directive
                     for v in data
                 ]
