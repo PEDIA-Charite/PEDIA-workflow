@@ -27,6 +27,29 @@ from lib.model.hgvs_parser import HGVSModel
 from lib.constants import CHROMOSOMAL_TESTS, POSITIVE_RESULTS
 
 
+class Directive:
+    '''Function to fill a directive'''
+    def __init__(self, function: Callable, target: type, intypes: list = []):
+        self._target = target
+        self._types = intypes
+        self._func = self._build_call(function, target)
+
+    def __eq__(self, other):
+        if not self._types:
+            return True
+        return any(isinstance(other, t) for t in self._types)
+
+    @staticmethod
+    def _build_call(function, target):
+        def call(entry):
+            if isinstance(entry, target):
+                return entry
+            return function(entry)
+        return call
+
+    def __call__(self, entry):
+        return self._func(entry)
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -63,7 +86,8 @@ class JsonFile:
             base_path: str = '',
             override: str = '',
             save_path: str = '',
-            file_name: str = ''
+            file_name: str = '',
+            corrected_keys: list = [],
     ):
         '''
         Args:
@@ -79,6 +103,7 @@ class JsonFile:
         self._override_dir = override
         self._save_path = save_path
         self._filename = file_name
+        self._corrected_keys = corrected_keys
 
     @classmethod
     def from_file(cls, path: str, corrected_location: str= '') -> 'JsonFile':
@@ -110,18 +135,26 @@ class JsonFile:
                 for key in override_data.keys():
                     json_data[key] = override_data[key]
 
-        # create the parent class
-        json_obj = cls(data=json_data, path=path, base_path=basedir,
-                       override=corrected_location)
 
         LOGGER.debug("Loading json %s", filename)
-        return json_obj
+        # create the parent class
+        return cls(
+            data=json_data,
+            path=path,
+            base_path=basedir,
+            override=corrected_location,
+            corrected_keys=list(override_data.keys()),
+        )
 
-    def save_json(self, save_path: Union[None, str] = None):
+    def save_json(
+            self,
+            save_path: Union[None, str] = None,
+            file_name: Union[None, str] = None
+    ):
         '''Save the json data contained in self._js
         '''
         save_path = self._save_path if save_path is None else save_path
-        file_name = self._filename
+        file_name = self._filename if file_name is None else file_name
 
         os.makedirs(save_path, exist_ok=True)
         file_path = os.path.join(save_path, file_name)
@@ -232,39 +265,36 @@ class JsonFile:
             directive: Define fields, on which loading operations should be
             done
         '''
-        self._js = self._linked(self._js, directive)
+        self._js = self._linked(self._js, directive, self._corrected_keys)
 
     @classmethod
-    def _linked(cls, data, load_directive):
+    def _linked(cls, data, load_directive, hidden_keys):
         '''Load data according to the provided load directive. This will
         recursively traverse the json structure and match it against the
         provided loading directive.
         '''
-        if isinstance(data, dict):
-            if not isinstance(load_directive, dict):
-                raise TypeError
-            out = {}
-            for k, entry in data.items():
-                # only load entries, for which we have defined a load directive
-                if k in load_directive:
-                    out[k] = cls._linked(entry, load_directive[k])
-                else:
-                    out[k] = entry
-            return out
-        elif isinstance(data, list):
-            if not isinstance(load_directive, list):
-                raise TypeError
-            # return the original list, if we have no directives defined
-            if len(load_directive) == 0:
-                return data
-            else:
-                return [cls._linked(v, load_directive[0]) for v in data]
-        else:
-            if not hasattr(load_directive, '__call__'):
-                LOGGER.error(data)
-                LOGGER.error(load_directive)
-                raise TypeError("Not a loader function.")
-            return load_directive(data)
+        if isinstance(load_directive, dict):
+            for k, entry in load_directive.items():
+                if k not in data:
+                    raise IndexError("{} not in data dict.".format(k))
+                elif k in hidden_keys:
+                    continue
+                # do not propagate hidden keys to deeper levels
+                data[k] = cls._linked(data[k], entry, [])
+        elif isinstance(load_directive, list):
+            data = [
+                r for r in
+                [
+                    cls._linked(v, d, [])  # hidden keys not used further
+                    for d in load_directive
+                    for v in data
+                ]
+                if r
+            ]
+        elif isinstance(load_directive, Directive):
+            if data == load_directive:
+                data = load_directive(data)
+        return data
 
 
 class OldJson(JsonFile):
@@ -318,7 +348,8 @@ class OldJson(JsonFile):
                 }
             }
             # Remove empty genomic entry
-            if data['Test Information']['Gene Name'] != "" or data['Mutations']['HGVS-code'] != "":
+            if data['Test Information']['Gene Name'] != "" \
+                    or data['Mutations']['HGVS-code'] != "":
                 genomic_data.append(data)
 
         data = {
@@ -381,9 +412,12 @@ class NewJson(JsonFile):
         # afterwards
         directive = {
             'genomic_entries': [
-                lambda x: self._load_json('genomics_entries', x)
+                Directive(
+                    lambda x: self._load_json("genomics_entries", x),
+                    target=dict, intypes=[str, int]
+                )
             ]
-            }
+        }
         # load fields according to directives
         self.load_linked(directive)
 
