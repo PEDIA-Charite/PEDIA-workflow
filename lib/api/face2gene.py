@@ -4,7 +4,9 @@ Use the Face2Gene library to get syndrome information.
 '''
 import json
 import os
+import re
 import logging
+import collections
 from typing import Union
 
 import hashlib
@@ -14,6 +16,15 @@ from requests.packages.urllib3.util.retry import Retry
 
 LOGGER = logging.getLogger(__name__)
 
+NON_ALNUM = re.compile('[\W_]+')
+
+
+def clean_key(raw: str) -> str:
+    raw = raw.lower()
+    raw = raw.split(";")[0]
+    raw = NON_ALNUM.sub('', raw)
+    return raw
+
 
 class F2GLibrary:
     '''Cached data from the face2gene library.'''
@@ -22,6 +33,17 @@ class F2GLibrary:
 
     def __init__(self, path: str):
         self.data = self.load(path, self.filename)
+        self.syndrome_name_table = self._create_names(self.data)
+
+    def search_syndrome(self, query: str) -> dict:
+        '''Search for syndrome string in dict.'''
+        cleaned = clean_key(query)
+        if cleaned not in self.syndrome_name_table:
+            print(query)
+        try:
+            return self.syndrome_name_table[cleaned]
+        except KeyError:
+            return []
 
     @staticmethod
     def load(path: str, filename: str):
@@ -30,6 +52,15 @@ class F2GLibrary:
         with open(filepath, "r") as fileobj:
             data = json.load(fileobj)
         return data
+
+    @staticmethod
+    def _create_names(data: list) -> dict:
+        name_map = collections.defaultdict(list)
+        for entry in data:
+            sname = entry["syndrome_name"]
+            key = clean_key(sname)
+            name_map[key].append(entry)
+        return name_map
 
 
 class Face2Gene(requests.Session):
@@ -157,4 +188,4 @@ class Face2Gene(requests.Session):
                 "Chrome/40.0.2214.85 Safari/537.36"
             )
         }
-        r = self.post('https://app.face2gene.com/access/login', data=payload)
+        self.post('https://app.face2gene.com/access/login', data=payload)
