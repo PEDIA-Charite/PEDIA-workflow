@@ -483,8 +483,17 @@ class NewJson(JsonFile):
         column marking the specific entry.
         '''
         # create a dataframe from the list of detected syndromes
-        syndromes_df = pandas.DataFrame.from_dict(
-            self._js['detected_syndromes'])
+        if self._js["detected_syndromes"]:
+            syndromes_df = pandas.DataFrame.from_dict(
+                self._js['detected_syndromes']
+            )
+        else:
+            syndromes_df = pandas.DataFrame(
+                columns=[
+                    "omim_id", "gestalt_score", "combined_score",
+                    "feature_score", "has_mask", "syndrome_name"
+                ]
+            )
 
         # force omim_id to always be a list, required for exploding the df
         syndromes_df['omim_id'] = syndromes_df['omim_id'].apply(
