@@ -128,7 +128,7 @@ class Case:
             )
 
             genes = list(omim.mim_pheno_to_gene(disease_id).values())
-            if syndrome["gene-id"]:
+            if "gene-id" in syndrome and syndrome["gene-id"]:
                 genes += [
                     {
                         "gene_id": eid,
@@ -146,6 +146,10 @@ class Case:
                 # uniqueness constraint on disease_id and
                 # gene_id
                 key = "{}|{}".format(syndrome_name, gene["gene_id"])
+                pheno_score = syndrome["pheno_score"] \
+                    if "pheno_score" in syndrome else 0.0
+                boqa_score = syndrome["boqa_score"] \
+                    if "boqa_score" in syndrome else 0.0
                 update_data = dict(
                     {
                         "disease_id": disease_id,
@@ -154,8 +158,8 @@ class Case:
                         "gestalt_score": syndrome["gestalt_score"],
                         "feature_score": syndrome["feature_score"],
                         "combined_score": syndrome["combined_score"],
-                        "pheno_score": syndrome["pheno_score"],
-                        "boqa_score": syndrome["boqa_score"]
+                        "pheno_score": pheno_score,
+                        "boqa_score": boqa_score
                     },
                     **gene
                 )
