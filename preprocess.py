@@ -199,11 +199,15 @@ def create_cases(args, config_data, jsons):
 
 def phenomize(args, config_data, cases):
     print("== Phenomization of cases ==")
-    phen = phenomizer.PhenomizerService(config=config_data)
-    yield_phenomized(cases, phen)
+    if "phenomizer" in config_data and config_data.phenomizer["url"]:
+        phen = phenomizer.PhenomizerService(config=config_data)
+        yield_phenomized(cases, phen)
 
-    if config_data.general['dump_intermediate'] and not args.single:
-        pickle.dump(cases, open('case_phenomized.p', 'wb'))
+        if config_data.general['dump_intermediate'] and not args.single:
+            pickle.dump(cases, open('case_phenomized.p', 'wb'))
+    else:
+        print("No config found. Phenomization will be skipped.")
+
     return cases
 
 

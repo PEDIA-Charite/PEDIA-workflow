@@ -21,7 +21,7 @@ class Indexer:
 class ConfigManager:
     """Configuration for all steps in the pipeline.
     """
-    def __init__(self, conf_file: str='config.ini'):
+    def __init__(self, conf_file: str = 'config.ini'):
         self._load_config(conf_file)
 
         # adding each section as an attribute to the class
@@ -49,3 +49,6 @@ class ConfigManager:
 
     def __getitem__(self, key):
         return self._data[key]
+
+    def __contains__(self, key):
+        return key in self._data
