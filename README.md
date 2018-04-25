@@ -222,7 +222,7 @@ There are three steps to run pipeline.
 
 1. Train with all cases and test on patient with unknown diagnosis
    ```
-   snakemake ../output/test/1KG/21147/21147.csv
+   snakemake ../output/test/1KG/21147/21147.log
    ```
 
 1. How to read the PEDIA results?

@@ -180,6 +180,20 @@ rule jsonRealTrainData:
 		ln {input} {output}
 		"""
 
+rule jsonRealUnknownTestData:
+	input:
+		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
+		omim="OMIM/genemap2.txt",
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+	output:
+		"json_simulation/real/unknown_test/{sample}.json"
+	shell:
+		"""
+		java -jar -Xmx20g {input.simulator} extendjson \
+		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
+		"""
+
 ## performance evaluation
 
 rule createCsvTrain:
