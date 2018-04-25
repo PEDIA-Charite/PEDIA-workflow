@@ -16,7 +16,7 @@ rule decompress:
 		"original/{sample}.vcf"
 	shell:
 		"""
-		bgzip -d -c {input} | awk '{{gsub(/chr/,""); print}}' > {output}
+		bgzip -d -c {input} | awk '{{gsub(/chr/,""); print}}' | awk '{{if($1!="M") print $0}}' > {output}
 		"""
 
 rule sort:
