@@ -10,6 +10,7 @@ import hgvs.parser
 import hgvs.validator
 import hgvs.exceptions
 import hgvs.assemblymapper
+import hgvs.config
 
 
 from lib.errorfixer import ErrorFixer
@@ -18,6 +19,10 @@ from lib.constants import HGVS_OPS, HGVS_PREFIX
 
 
 LOGGER = logging.getLogger("lib")
+
+
+# always leave the reference string in hgvs strings
+hgvs.config.global_config.formatting.max_ref_length = None
 
 
 # external API for hgvs string checking and RS number resolution
@@ -63,10 +68,10 @@ def clean_hgvs(hgvs_string: str) -> str:
     # remove any whitespace first
 
     no_white = "".join(hgvs_string.split())
-    #resolve strings with deldel
+    # resolve strings with deldel
     if "deldel" in hgvs_string:
         fixed_code = hgvs_string.replace("deldel", "del")
-        #exchange wrong "<" for ">"
+        # exchange wrong "<" for ">"
         fixed_code = fixed_code.replace('<', '>')
         return fixed_code
     # resolve strings of format NORMAL(PROTEIN):NORMAL(PROTEIN)
@@ -98,7 +103,7 @@ class HGVSModel:
     def __init__(
             self,
             entry_dict: dict,
-            error_fixer: Union[ErrorFixer, None]
+            error_fixer: ErrorFixer
     ):
         '''New gene entry format contains:
         entry_id - entry id of gene entry json file
