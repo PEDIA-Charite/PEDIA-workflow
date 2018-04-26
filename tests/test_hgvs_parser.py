@@ -23,12 +23,18 @@ class HGVSTest(BaseMapping):
 
     def test_normal_entries(self):
         tests = [
+            (
+                "deleted_base.json",
+                ['NM_000489.4:c.7205delT']
+            )
+
         ]
 
-        for test in tests:
+        for test, correct in tests:
             test_data = self.load_genomic_entry(test)
             model = self.create_model(test_data)
-            print(model.variants)
+            var_strs = [str(v) for v in model.variants]
+            self.assertListEqual(var_strs, correct)
 
 
     def test_huge_hgvs(self):
@@ -43,5 +49,4 @@ class HGVSTest(BaseMapping):
             test_data = self.load_genomic_entry(test)
             model = self.create_model(test_data)
             var_strs = [str(v) for v in model.variants]
-            print(var_strs)
             self.assertListEqual(var_strs, correct)
