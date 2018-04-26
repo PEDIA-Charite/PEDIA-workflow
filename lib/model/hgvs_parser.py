@@ -335,9 +335,9 @@ class HGVSModel:
                 transcript=transcript,
                 prefix=prefix,
                 position=position,
-                orig=orig,
+                orig=orig.upper(),
                 operation=operation,
-                sub=sub)
+                sub=sub.upper())
         hgvs_string = "".join(hgvs_string.split())
         return hgvs_string
 
