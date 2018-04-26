@@ -98,6 +98,8 @@ def create_config(
     '''Creates config.yml file based on the VCF files'''
     vcffiles = [file.split(".")[0] for file in os.listdir(vcffolder)]
     singlefiles = [file.split(".")[0] for file in os.listdir(simvcffolder)]
+    vcffiles = list(filter(None,vcffiles))
+    singlefiles = list(filter(None,singlefiles))
     testfiles = []
     with open("config.yml", "w") as configfile:
         configfile.write('SINGLE_SAMPLES:\n')
@@ -329,7 +331,7 @@ def main():
     '''
     Some program blocks are enabled and disabled via config options in general
     '''
-
+    
     configure_logging("lib")
     config_data = config.ConfigManager()
 
