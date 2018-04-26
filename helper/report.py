@@ -16,6 +16,8 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
     # Submitter
     submitter = file_content["submitter"]
     name = submitter["user_name"]
+    email = submitter["user_email"]
+    team = submitter["user_team"]
 
     # Check disease-causing gene
     for entry in file_content['genomic_entries']:
@@ -55,6 +57,8 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
     tmp_out.append(str(reason)[1:-1])
     tmp_out.append(str(ge_out)[1:-1])
     tmp_out.append(name)
+    tmp_out.append(email)
+    tmp_out.append(team)
     tmp_out.append(syn_out)
     tmp_out.append(omim_out)
     file_writer.writerow(tmp_out)
