@@ -25,8 +25,6 @@ PLOTS=['ROC','percentile','PRC','balanced-accuracy','recall','precision','f-scor
 
 rule all:
 	input:
-		"mutations/JsonsVCF_annotated.vcf.gz",
-		"mutations/JsonsVCF_annotated.vcf.gz.tbi",
 		expand("vcf_simulation/{background}/{sample}.vcf.gz", sample=SAMPLES, background=BACKGROUNDS),
 		expand("json_simulation/{background}/CV/{sample}.json", sample=SAMPLES, background=BACKGROUNDS),
 		expand("vcf_annotation/{sample}.annotation.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),

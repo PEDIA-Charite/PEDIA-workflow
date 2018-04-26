@@ -1,6 +1,15 @@
-configfile: "config.json"
+configfile: "../../../config.yml"
 
-SAMPLES = config['samples']
+def allSamples(a,b):
+	samples = []
+	samples.extend(a)
+	samples.extend(b)
+	return samples
+
+
+VCF_SAMPLES = config['VCF_SAMPLES']
+TEST_SAMPLES = config['TEST_SAMPLES']
+SAMPLES = allSamples(VCF_SAMPLES, TEST_SAMPLES)
 
 rule all:
 	input:
@@ -13,10 +22,10 @@ rule decompress:
 	input:
 		"original/{sample}.vcf.gz"
 	output:
-		"original/{sample}.vcf"
+		temp("original/{sample}.vcf")
 	shell:
 		"""
-		bgzip -d -c {input} | awk '{{gsub(/chr/,""); print}}' | awk '{{if($1!="M") print $0}}' > {output}
+		bgzip -d -c {input} | awk '{{gsub(/chr/,""); print}}' | awk '{{if($1!="M" && $5!=".") print $0}}' > {output}
 		"""
 
 rule sort:
@@ -27,7 +36,6 @@ rule sort:
 	shell:
 		"""
 		(cat '{input}' | egrep "^#"; cat '{input}' | egrep -v "^#" | sort -k1,1 -k2,2n) | bgzip -c > '{output}'
-		rm -f {input}
 		"""
 
 rule index_sorted:
@@ -41,6 +49,7 @@ rule index_sorted:
 rule annotate:
 	input:
 		vcf="sorted/{sample}.vcf.gz",
+		vcf_index="sorted/{sample}.vcf.gz.tbi",
 		db="../../jannovar/data/hg19_refseq.ser",
 		exac="../../populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../../populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
