@@ -36,7 +36,6 @@ class HGVSTest(BaseMapping):
             var_strs = [str(v) for v in model.variants]
             self.assertListEqual(var_strs, correct)
 
-
     def test_huge_hgvs(self):
         tests = [
             (
@@ -45,6 +44,27 @@ class HGVSTest(BaseMapping):
             )
         ]
 
+        for test, correct in tests:
+            test_data = self.load_genomic_entry(test)
+            model = self.create_model(test_data)
+            var_strs = [str(v) for v in model.variants]
+            self.assertListEqual(var_strs, correct)
+
+    def test_bracket_entries(self):
+        tests = [
+            (
+                "hgvs_bracket_name.json",
+                []
+            ),
+            (
+                "hgvs_bracket_name_reversed.json",
+                []
+            ),
+            (
+                "hgvs_double_bracket.json",
+                []
+            ),
+        ]
         for test, correct in tests:
             test_data = self.load_genomic_entry(test)
             model = self.create_model(test_data)
