@@ -77,12 +77,13 @@ rule index:
 
 rule ExAC_genotypes:
 	input:
-		background_workflow("results/ExAC/ExAC.refSeq105.AF.vcf.gz")
+		vcf = background_workflow("results/ExAC/ExAC.refSeq105.AF.vcf.gz"),
+		index = background_workflow("results/ExAC/ExAC.refSeq105.AF.vcf.gz.tbi")
 	output:
 		"background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz"
 	shell:
 		"""
-		java -jar simdrom/simdrom-cli-0.0.3-SNAPSHOT.jar -b {input} -bAChom Hom_NFE -bAChet Het_NFE -bAChemi Hemi_NFE -bAN AN_NFE -n NFE.{wildcards.sample} --output {output}
+		java -jar simdrom/simdrom-cli-0.0.3-SNAPSHOT.jar -b {input.vcf} -bAChom Hom_NFE -bAChet Het_NFE -bAChemi Hemi_NFE -bAN AN_NFE -n NFE.{wildcards.sample} --output {output}
 		"""
 
 def getBackground(wc):
