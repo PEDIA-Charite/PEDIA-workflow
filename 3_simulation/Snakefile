@@ -88,11 +88,11 @@ rule ExAC_genotypes:
 
 def getBackground(wc):
 	if wc.background == "1KG":
-		return background_workflow("results/1KG/1KG.refSeq105.AF.vcf.gz")
+		return [background_workflow("results/1KG/1KG.refSeq105.AF.vcf.gz"), background_workflow("results/1KG/1KG.refSeq105.AF.vcf.gz.tbi")]
 	elif wc.background == "ExAC":
 		return expand("background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz", sample=[wc.sample])
 	elif wc.background == "IRAN":
-		return background_workflow("results/IRAN/IRAN.refSeq105.AF.vcf.gz")
+		return [background_workflow("results/IRAN/IRAN.refSeq105.AF.vcf.gz"), background_workflow("results/IRAN/IRAN.refSeq105.AF.vcf.gz.tbi")]
 
 
 rule spikein:
@@ -106,10 +106,11 @@ rule spikein:
 		#back_iran="background/results/IRAN/IRAN.refSeq105.AF.vcf.gz"
 	output:
 		"vcf_simulation/{background}/{sample}.vcf.gz"
-	shell:
-		"""
-		java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v {input.back} -m {input.vcf} --sample {wildcards.sample}
-		"""
+	run:
+		if wildcards.background == "ExAC":
+			shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back}' -m '{input.vcf}' --sample '{wildcards.sample}'")
+		else:
+			shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back[0]}' -m '{input.vcf}' --sample '{wildcards.sample}'")
 	'''
 		if not containsVcf(wildcards):
 			if wildcards.background == "1KG":
