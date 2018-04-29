@@ -13,6 +13,7 @@ function.
 
 import os
 import logging
+from collections import defaultdict
 
 import time
 import datetime
@@ -45,7 +46,8 @@ def backup_s3_folder(
         aws_access_key: str = '',
         aws_secret_key: str = '',
         download_location: str = '',
-        config: 'ConfigParser' = None):
+        config: 'ConfigParser' = None
+) -> dict:
     '''Save entire AWS bucket defined by AWS_BUCKET_NAME to download location.
     '''
     if config:
@@ -73,6 +75,7 @@ def backup_s3_folder(
     LOGGER.info("Downloading files from AWS Bucket %s", AWS_BUCKET_NAME)
     bucket_objs = list(bucket.objects.all())
     num_objs = len(bucket_objs)
+    changed_files = defaultdict(list)
     for i, key in enumerate(bucket_objs):
         visual.print_status("Checking AWS", 20, i+1, num_objs)
         # strip leading slashes for path joining
@@ -95,6 +98,8 @@ def backup_s3_folder(
             updated += 1
         else:
             downloaded += 1
+        changed_files[path].append(filename)
+
         # download file to specified location this process might be unreliable
         # some exceptions might need to be caught for the process to run
         # reliably
@@ -108,3 +113,4 @@ def backup_s3_folder(
 
     LOGGER.info("S3 Stats: Downloaded %d new %d updated of %d total files.",
                 downloaded, updated, num_objs)
+    return changed_files

@@ -8,7 +8,10 @@ import io
 import re
 from typing import Union, List
 import pandas
+import requests
+from requests.adapters import HTTPAdapter
 import zeep
+from zeep.transports import Transport
 import hgvs.parser
 # import pandas
 
@@ -47,7 +50,11 @@ class Mutalyzer(zeep.Client):
     wsdl_url = 'https://mutalyzer.nl/services/?wsdl'
 
     def __init__(self):
-        super().__init__(self.wsdl_url)
+        session = requests.Session()
+        session.mount('http', HTTPAdapter(max_retries=3))
+        session.mount('https', HTTPAdapter(max_retries=3))
+        transport = Transport(session=session)
+        super().__init__(self.wsdl_url, transport=transport)
 
     def batch_position_convert(self, data: str):
         '''Submit a batch job to the mutalyzer, monitor it and return the
@@ -111,8 +118,10 @@ class Mutalyzer(zeep.Client):
                 if key in response:
                     alt_transcript = response[key]
                     if alt_transcript:
-                        LOGGER.debug('Replace %s with %s',
-                                    var.ac, alt_transcript)
+                        LOGGER.debug(
+                            'Replace %s with %s',
+                            var.ac, alt_transcript
+                        )
                         var.ac = alt_transcript
         return transcripts
 

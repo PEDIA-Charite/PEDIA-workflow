@@ -14,6 +14,9 @@ class Indexer:
         self._obj = obj
         self._section = section
 
+    def getboolean(self, key: str):
+        return self._obj[self._section].getboolean(key)
+
     def __getitem__(self, key: Union[str, tuple, list]):
         return self._obj.get(self._section, key)
 
