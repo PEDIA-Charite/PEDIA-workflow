@@ -134,7 +134,7 @@ def create_config(
         "VCF_SAMPLES": vcf_samples,
         "TEST_SAMPLES": test_samples
     }
-    if merge:
+    if merge and os.path.exists(config_path):
         with open(config_path, "r") as configfile:
             olddata = yaml.load(configfile)
         config_data = {
@@ -173,7 +173,8 @@ def create_jsons(args, config_data):
             [(j.get_case_id(), j.check()) for j in new_json_objs]
         }
         # merge with old log data if partial update
-        if config_data.general.getboolean("changed_only"):
+        if config_data.general.getboolean("changed_only") \
+                and os.path.exists(logpath):
             with open(logpath, "r") as failedfile:
                 olddata = json.load(failedfile)
             qc_failed_results = {**olddata, **qc_failed_results}
@@ -350,8 +351,10 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
         "passed": {k: "" for k in qc_passed}
     }
 
-    if config_data.general.getboolean("changed_only"):
-        with open(config_data.quality["qc_detailed_log"], "r") as qc_file:
+    qc_detailed_path = config_data.quality["qc_detailed_log"]
+    if config_data.general.getboolean("changed_only") \
+            and os.path.exists(qc_detailed_path):
+        with open(qc_detailed_path, "r") as qc_file:
             olddata = json.load(qc_file)
         qc_output = {
             k: {**olddata[k], **v}
@@ -362,7 +365,7 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
     print("Saving qc log")
     if config_data.quality.getboolean("qc_detailed") \
             and config_data.quality["qc_detailed_log"]:
-        with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
+        with open(qc_detailed_path, "w") as qc_out:
             json.dump(qc_output, qc_out, indent=4)
 
     # move cases to qc directory
@@ -376,11 +379,12 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
         @progress_bar("Save passing qc")
         def save_old_to_qc():
             '''Save old jsons passing QC to a new location.'''
-            for pcase in qc_passed.values():
-                old_js = old_jsons[pcase.get_case_id()]
+            for pcase in qc_passed:
+                old_js = old_jsons[pcase]
                 old_js.save_json(
                     destination=config_data.quality["qc_output_path"]
                 )
+        save_old_to_qc()
 
     return {"pass": len(qc_passed), "fail": len(qc_failed_msg)}, qc_passed
 
