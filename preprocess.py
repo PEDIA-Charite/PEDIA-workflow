@@ -156,7 +156,7 @@ def yield_old_json(case_objs, destination, omim_obj):
 def create_jsons(args, config_data):
     print("== Process new json files ==")
     # get either from single file or from directory
-    json_files, corrected = ([args.single], "") \
+    json_files, corrected = ([args.single], config_data.preprocess['corrected_location']) \
         if args.single else json_from_directory(config_data)
     new_json_objs = yield_jsons(json_files, corrected)
 
