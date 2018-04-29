@@ -65,6 +65,10 @@ def parse_arguments():
               "Used in conjunction with --pickle."),
         default="pheno"
     )
+    parser.add_argument(
+        "--skip-vcf", action='store_true',
+        help="Skip vcf convertion."
+    )
 
     return parser.parse_args()
 
@@ -355,9 +359,10 @@ def main():
         # QC Check for only using cases passing qc
         qc_cases = get_qc_cases(config_data, cases)
 
-        # VCF Generation
-        qc_cases = save_vcfs(args, config_data, qc_cases)
-        create_config()
+        if not args.skip_vcf:
+            # VCF Generation
+            qc_cases = save_vcfs(args, config_data, qc_cases)
+            create_config()
     else:
         qc_cases = cases
 
