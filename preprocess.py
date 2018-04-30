@@ -117,12 +117,12 @@ def create_config(
     '''Creates config.yml file based on the VCF files'''
     # real vcf files
     vcffiles = {
-        f.split(".")[0]
+        int(f.split(".")[0])
         for f in os.listdir(vcffolder) if not f.startswith(".")
     }
     # simulated vcf files
     singlefiles = {
-        f.split(".")[0]
+        int(f.split(".")[0])
         for f in os.listdir(simvcffolder) if not f.startswith(".")
     }
 
@@ -181,7 +181,11 @@ def create_jsons(args, config_data):
                 and os.path.exists(logpath):
             with open(logpath, "r") as failedfile:
                 olddata = json.load(failedfile)
-            qc_failed_results = {**olddata, **qc_failed_results}
+            if isinstance(olddata, dict):
+                qc_failed_results = {**olddata, **qc_failed_results}
+            else:
+                print("Not merging with old data. Incompatible formats.")
+
         with open(logpath, "w") as failedfile:
             json.dump(qc_failed_results, failedfile, indent=4)
 
@@ -360,10 +364,13 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
             and os.path.exists(qc_detailed_path):
         with open(qc_detailed_path, "r") as qc_file:
             olddata = json.load(qc_file)
-        qc_output = {
-            k: {**olddata[k], **v}
-            for k, v in qc_output.items()
-        }
+        if isinstance(olddata, dict):
+            qc_output = {
+                k: {**olddata[k], **v}
+                for k, v in qc_output.items() if isinstance(olddata[k], dict)
+            }
+        else:
+            print("Incompatible formats. Not merging.")
 
     # save qc results in detailed log if needed
     print("Saving qc log")
