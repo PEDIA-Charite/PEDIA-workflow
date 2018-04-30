@@ -117,6 +117,8 @@ class HGVSModel:
         '''
         self.error_fixer = error_fixer
 
+        self.corrected = False
+
         self._js = entry_dict
         self.entry_id = entry_dict['entry_id']
         LOGGER.debug('Processing genomic entry %s', self.entry_id)
@@ -187,7 +189,10 @@ class HGVSModel:
         if self.entry_id in self.error_fixer:
             if len(self.error_fixer[self.entry_id]) > 0:
                 variants = self.error_fixer[self.entry_id]
-                variants = [HGVS_PARSER.parse_hgvs_variant(v) for v in variants]
+                variants = [
+                    HGVS_PARSER.parse_hgvs_variant(v) for v in variants
+                ]
+                self.corrected = True
                 return variants
 
         # return empty if variants are empty
@@ -211,10 +216,10 @@ class HGVSModel:
         for mutation in mutations:
             hgvs_candidates += self._parse_mutations(
                 mutation, variant_information)
-        variants = []
 
         # try to parse collected hgvs strings
         # only return successfully parsed hgvs strings
+        variants = []
         failures = 0
         failed = []
         for candidate in hgvs_candidates:
