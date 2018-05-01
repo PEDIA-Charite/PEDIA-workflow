@@ -367,7 +367,8 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
         if isinstance(olddata, dict):
             qc_output = {
                 k: {**olddata[k], **v}
-                for k, v in qc_output.items() if isinstance(olddata[k], dict)
+                for k, v in qc_output.items()
+                if k in olddata and isinstance(olddata[k], dict)
             }
         else:
             print("Incompatible formats. Not merging.")
