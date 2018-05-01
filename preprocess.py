@@ -395,6 +395,8 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
                 old_js.save_json(
                     destination=config_data.quality["qc_output_path"]
                 )
+                yield
+
         save_old_to_qc()
 
     return {"pass": len(qc_passed), "fail": len(qc_failed_msg)}, qc_passed
