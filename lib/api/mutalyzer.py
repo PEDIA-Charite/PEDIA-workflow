@@ -29,7 +29,7 @@ def correct_reference_transcripts(case_objs: List['Case']) -> List['Case']:
             vv for m in v.get_hgvs_models() if not m.corrected
             for vv in m.variants
         ]
-        for v in case_objs if not v.has_hgvs_corrected()
+        for v in case_objs
     }
     mutalyzer = Mutalyzer()
     mutalyzer.correct_transcripts(case_dict)
