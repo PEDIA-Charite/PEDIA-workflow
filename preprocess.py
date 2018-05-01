@@ -389,16 +389,16 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
         old_jsons = {j.get_case_id(): j for j in old_jsons}
 
         @progress_bar("Save passing qc")
-        def save_old_to_qc():
+        def save_old_to_qc(cases):
             '''Save old jsons passing QC to a new location.'''
-            for pcase in qc_passed:
+            for pcase in cases:
                 old_js = old_jsons[pcase]
                 old_js.save_json(
                     destination=config_data.quality["qc_output_path"]
                 )
                 yield
 
-        save_old_to_qc()
+        save_old_to_qc(qc_passed)
 
     return {"pass": len(qc_passed), "fail": len(qc_failed_msg)}, qc_passed
 
