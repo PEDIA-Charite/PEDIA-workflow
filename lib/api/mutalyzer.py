@@ -111,7 +111,7 @@ class Mutalyzer(zeep.Client):
         # search in cache first
         all_variants = [v for l in transcripts.values() for v in l]
         for variant in all_variants:
-            if str(variant) in self._variant_cache:
+            if str(variant) in self._transcript_cache:
                 variant
         remaining_transcripts = [
             v for v in all_variants if not self._modify_transcript_cached(v)
@@ -129,7 +129,7 @@ class Mutalyzer(zeep.Client):
         return transcripts
 
     def _get_cache_path(self) -> str:
-        return os.path.join(CACHE_DIR, __name__, "transcript_cache.json")
+        return os.path.join(CACHE_DIR, __name__ + "_transcript_cache.json")
 
     def _load_cache(self) -> dict:
         if os.path.exists(self._get_cache_path()):
@@ -141,6 +141,7 @@ class Mutalyzer(zeep.Client):
 
     def _update_cache(self, update: dict) -> None:
         self._transcript_cache = {**self._transcript_cache, **update}
+        os.makedirs(CACHE_DIR, exist_ok=True)
         with open(self._get_cache_path(), "w") as cache_file:
             json.dump(self._transcript_cache, cache_file)
 
