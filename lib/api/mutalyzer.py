@@ -5,19 +5,20 @@ check the validity of hgvs strings.
 import logging
 import time
 import io
+import os
+import json
 import re
 from typing import Union, List
 import pandas
 import zeep
-import hgvs.parser
-# import pandas
 
 from lib import visual
+from lib.constants import CACHE_DIR
 
 LOGGER = logging.getLogger(__name__)
 
 # alternative hgvs transcript
-RE_VERSION_ALTERNATIVE = re.compile('We found these versions: ([\w.]+)')
+RE_VERSION_ALTERNATIVE = re.compile(r'We found these versions: ([\w.]+)')
 
 
 def correct_reference_transcripts(case_objs: List['Case']) -> List['Case']:
@@ -54,6 +55,8 @@ class Mutalyzer(zeep.Client):
 
     def __init__(self):
         super().__init__(self.wsdl_url)
+
+        self._transcript_cache = self._load_cache()
 
     def batch_position_convert(self, data: str):
         '''Submit a batch job to the mutalyzer, monitor it and return the
@@ -105,23 +108,62 @@ class Mutalyzer(zeep.Client):
         '''Get a dictionary with assignments for each transcript we have sent
         to the batch job, whether the given transcript is correct.
         '''
+        # search in cache first
+        all_variants = [v for l in transcripts.values() for v in l]
+        for variant in all_variants:
+            if str(variant) in self._variant_cache:
+                variant
+        remaining_transcripts = [
+            v for v in all_variants if not self._modify_transcript_cached(v)
+        ]
+
         # create transcript input data
-        data = "\n".join([str(v) for l in transcripts.values() for v in l])
+        data = "\n".join([str(v) for v in remaining_transcripts])
         if not data:
             LOGGER.warning("Data empty. No batch process created.")
             return []
         response = self.batch_position_convert(data=data)
-        for hgvs_variants in transcripts.values():
-            for var in hgvs_variants:
-                key = str(var)
-                if key in response:
-                    alt_transcript = response[key]
-                    if alt_transcript:
-                        LOGGER.debug(
-                            'Replace %s with %s', var.ac, alt_transcript
-                        )
-                        var.ac = alt_transcript
+        for var in remaining_transcripts:
+            self._modify_transcript(var, response)
+        self._update_cache(response)
         return transcripts
+
+    def _get_cache_path(self) -> str:
+        return os.path.join(CACHE_DIR, __name__, "transcript_cache.json")
+
+    def _load_cache(self) -> dict:
+        if os.path.exists(self._get_cache_path()):
+            with open(self._get_cache_path(), "r") as cache_file:
+                data = json.load(cache_file)
+        else:
+            data = {}
+        return data
+
+    def _update_cache(self, update: dict) -> None:
+        self._transcript_cache = {**self._transcript_cache, **update}
+        with open(self._get_cache_path(), "w") as cache_file:
+            json.dump(self._transcript_cache, cache_file)
+
+    def _modify_transcript_cached(
+            self,
+            variant: "hgvs.sequencevariant"
+    ) -> bool:
+        return self._modify_transcript(variant, self._transcript_cache)
+
+    def _modify_transcript(
+            self,
+            variant: "hgvs.sequencevariant",
+            trans_dict: dict
+    ) -> bool:
+        if str(variant) in trans_dict:
+            alt_transcript = trans_dict[str(variant)]
+            if alt_transcript:
+                LOGGER.debug(
+                    'Replace %s with %s', variant.ac, alt_transcript
+                )
+                variant.ac = alt_transcript
+            return True
+        return False
 
     def get_db_snp_descriptions(self, rs_id: str) -> [str]:
         '''Return a list of possible RS numbers for the given RS code.
@@ -135,7 +177,6 @@ class Mutalyzer(zeep.Client):
                 print(error)
                 tries += 1
         return variants
-
 
     def check_syntax(self, hgvs_string: str) -> dict:
         '''Check the syntax of an hgvs variant and return the validity and list

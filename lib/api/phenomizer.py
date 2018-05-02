@@ -14,7 +14,12 @@ import re
 import logging
 
 import requests
+import requests_cache
 import pandas
+
+from lib.constants import CACHE_DIR
+
+requests_cache.install_cache(CACHE_DIR + "/phenomizer", expire_after=None)
 
 
 RE_SYMBOL = re.compile('(\w+) \(\d+\)')
@@ -45,11 +50,13 @@ class PhenomizerService(requests.Session):
     and boqa scores used in the process.
     '''
 
-    def __init__(self,
-                 Phenomizer_Url: str='',
-                 Phenomizer_User: str='',
-                 Phenomizer_Password: str='',
-                 config: 'ConfigParser'=None):
+    def __init__(
+            self,
+            Phenomizer_Url: str = '',
+            Phenomizer_User: str = '',
+            Phenomizer_Password: str = '',
+            config: 'ConfigParser' = None
+    ):
         '''
         Create a new phenomizer service instance.
 
