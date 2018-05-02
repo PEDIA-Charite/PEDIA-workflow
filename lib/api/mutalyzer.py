@@ -27,7 +27,13 @@ def correct_reference_transcripts(case_objs: List['Case']) -> List['Case']:
     '''Check reference transcript number via batch call to mutalyzer.
     This will edit the hgvs objects in-place.
     '''
-    case_dict = {v.case_id: v.get_variants() for v in case_objs}
+    case_dict = {
+        v.case_id: [
+            vv for m in v.get_hgvs_models() if not m.corrected
+            for vv in m.variants
+        ]
+        for v in case_objs
+    }
     mutalyzer = Mutalyzer()
     mutalyzer.correct_transcripts(case_dict)
 
@@ -137,6 +143,7 @@ class Mutalyzer(zeep.Client):
                 print(error)
                 tries += 1
         return variants
+
 
     def check_syntax(self, hgvs_string: str) -> dict:
         '''Check the syntax of an hgvs variant and return the validity and list

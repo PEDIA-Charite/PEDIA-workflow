@@ -36,11 +36,37 @@ HGVS_VALIDATOR = hgvs.validator.IntrinsicValidator()
 RE_PROTEIN = re.compile(r'\w \((\w+)\)')
 # rough matching of hgvs strings
 RE_HGVS = re.compile(r'[gcmnrp]\.\d+', re.IGNORECASE)
-# matching of double bracket expressions, such as:
-# xyz(abc):xyz(abc) - this was used by some people to denoted protein and dna
-# sequences
-RE_DOUBLE_BRACKETS = re.compile(
-    r'([\w_.]+)\([\w_.]+\):([\w_.><]+)\([\w_.>]+\)')
+
+# match hgvs strings with single brakets containing the gene name
+# such as NM_001.1(XYZ1):12del
+TRANSCRIPT = r"[A-Za-z]{2,3}_\d+(\.\d+)?"
+VARIANT = r"[gcmnrp]\."
+POSITION = r"\d+(_\d+)?"
+
+RE_POSITION = re.compile(VARIANT + POSITION)
+
+RE_TRANSCRIPT = re.compile(TRANSCRIPT)
+
+RE_BRACKET = re.compile(r"\(([\w ._]+)\)")
+
+REFSEQ_PROVIDERS = ["NC", "LRG", "NG", "NM", "NR", "NP"]
+
+
+def is_transcript(cand: str) -> bool:
+    '''Check whether string contains a valid transcript number, and given
+    reference transcript string is from a valid provider.
+    '''
+    matched_transcript = bool(RE_TRANSCRIPT.match(cand))
+    valid_provider = any(
+        [cand.upper().startswith(p) for p in REFSEQ_PROVIDERS]
+    )
+    return matched_transcript and valid_provider
+
+
+def is_position(cand: str) -> bool:
+    '''Check whether string might describe a HGVS edit with position.'''
+    matched_position = bool(RE_POSITION.match(cand))
+    return matched_position
 
 
 def extract_amino(protein_code: str) -> str:
@@ -49,9 +75,9 @@ def extract_amino(protein_code: str) -> str:
     (Stop). So we need to take this into account.
     '''
     match = RE_PROTEIN.search(protein_code)
-    match = match and match.group(1) or ''
+    match = match.group(1) if match else ""
     # replace stop, which is not a valid three letter code with Ter
-    return match == 'Stop' and 'Ter' or match
+    return "Ter" if match == "Stop" else match
 
 
 def is_hgvs(hgvs_candidate: str) -> bool:
@@ -66,17 +92,48 @@ def clean_hgvs(hgvs_string: str) -> str:
     '''Remove extraneous information from possible hgvs code.
     '''
     # remove any whitespace first
+    hgvs_string = "".join(hgvs_string.split())
 
-    no_white = "".join(hgvs_string.split())
     # resolve strings with deldel
-    if "deldel" in hgvs_string:
-        fixed_code = hgvs_string.replace("deldel", "del")
-        # exchange wrong "<" for ">"
-        fixed_code = fixed_code.replace('<', '>')
-        return fixed_code
+    hgvs_string = hgvs_string.replace("deldel", "del")
+    # exchange wrong "<" for ">"
+    hgvs_string = hgvs_string.replace('<', '>')
+
     # resolve strings of format NORMAL(PROTEIN):NORMAL(PROTEIN)
-    match = RE_DOUBLE_BRACKETS.search(no_white)
-    return match and ":".join([match.group(1), match.group(2)]) or no_white
+    # and alternatively less brackets
+    if ":" in hgvs_string:
+        raw_transcript, raw_posedit = hgvs_string.split(":", 1)
+        # iteratively match transcript
+        transcripts = []
+        while True:
+            match = RE_BRACKET.search(raw_transcript)
+            if not match:
+                if not transcripts or is_transcript(raw_transcript):
+                    transcripts.append(raw_transcript)
+                break
+            if is_transcript(match[1]):
+                transcripts.append(match[1])
+            raw_transcript = RE_BRACKET.sub("", raw_transcript)
+
+        # iteratively match position
+        posedits = []
+        while True:
+            match = RE_BRACKET.search(raw_posedit)
+            if not match:
+                if not posedits or is_position(raw_posedit):
+                    posedits.append(raw_posedit)
+                break
+            if is_position(match[1]):
+                posedits.append(match[1])
+
+            raw_posedit = RE_BRACKET.sub("", raw_posedit)
+
+        transcript = transcripts[-1]
+        posedit = posedits[-1]
+
+        hgvs_string = "{}:{}".format(transcript, posedit)
+
+    return hgvs_string
 
 
 def get_multi_field(data: dict, candidate_ids: [str]) -> str:
@@ -95,6 +152,41 @@ def get_multi_field(data: dict, candidate_ids: [str]) -> str:
         elif candidate:
             entry = candidate
     return entry
+
+
+def hgvs_identical(
+        seqa: hgvs.sequencevariant, seqb: hgvs.sequencevariant
+) -> bool:
+    '''Compare whether two HGVS strings most probably describe the same
+    variant.'''
+    # true if all equal
+    if str(seqa) == str(seqb):
+        return True
+
+    # check if same position has been described with missing info
+    acc_eq = seqa.ac == seqb.ac
+
+    posea = seqa.posedit
+    poseb = seqb.posedit
+    posa = posea.pos
+    posb = poseb.pos
+    pos_eq = posa == posb
+
+    edita = posea.edit
+    editb = poseb.edit
+    if edita.type != editb.type:
+        edit_eq = False
+    elif (hasattr(edita, "ref")
+          and (edita.ref and editb.ref)
+          and (edita.ref != editb.ref)):
+        edit_eq = False
+    elif (hasattr(edita, "alt")
+          and (edita.alt and editb.alt)
+          and (edita.alt != editb.alt)):
+        edit_eq = False
+    else:
+        edit_eq = True
+    return acc_eq and pos_eq and edit_eq
 
 
 class HGVSModel:
@@ -116,6 +208,8 @@ class HGVSModel:
         entries.
         '''
         self.error_fixer = error_fixer
+
+        self.corrected = False
 
         self._js = entry_dict
         self.entry_id = entry_dict['entry_id']
@@ -157,7 +251,9 @@ class HGVSModel:
 
     def _correct_gene_name(self):
         if 'correct_gene' in self.error_fixer.get_data(self.entry_id):
-            self.gene = self.error_fixer.get_data(self.entry_id)['correct_gene']
+            self.gene = self.error_fixer.get_data(
+                self.entry_id
+            )['correct_gene']
 
     def _parse_variants(self, variant_dict: dict) -> list:
         '''Create variant information from entries in the form of hgvs codes.
@@ -187,7 +283,10 @@ class HGVSModel:
         if self.entry_id in self.error_fixer:
             if len(self.error_fixer[self.entry_id]) > 0:
                 variants = self.error_fixer[self.entry_id]
-                variants = [HGVS_PARSER.parse_hgvs_variant(v) for v in variants]
+                variants = [
+                    HGVS_PARSER.parse_hgvs_variant(v) for v in variants
+                ]
+                self.corrected = True
                 return variants
 
         # return empty if variants are empty
@@ -211,10 +310,10 @@ class HGVSModel:
         for mutation in mutations:
             hgvs_candidates += self._parse_mutations(
                 mutation, variant_information)
-        variants = []
 
         # try to parse collected hgvs strings
         # only return successfully parsed hgvs strings
+        variants = []
         failures = 0
         failed = []
         for candidate in hgvs_candidates:
@@ -222,7 +321,8 @@ class HGVSModel:
             if cleaned_hgvs:
                 try:
                     var = HGVS_PARSER.parse_hgvs_variant(cleaned_hgvs)
-                    variants.append(var)
+                    if not any([hgvs_identical(v, var) for v in variants]):
+                        variants.append(var)
                 except hgvs.exceptions.HGVSParseError:
                     failures += 1
                     failed.append(cleaned_hgvs)
