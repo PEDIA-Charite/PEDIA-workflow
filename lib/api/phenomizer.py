@@ -11,6 +11,7 @@ returned by phenomization and boqa can be different.
 '''
 import io
 import re
+import os
 import logging
 
 import requests
@@ -18,8 +19,6 @@ import requests_cache
 import pandas
 
 from lib.constants import CACHE_DIR
-
-requests_cache.install_cache(CACHE_DIR + "/phenomizer", expire_after=None)
 
 
 RE_SYMBOL = re.compile('(\w+) \(\d+\)')
@@ -45,7 +44,7 @@ def get_max_gene(df_group: pandas.DataFrame) -> pandas.Series:
     return row
 
 
-class PhenomizerService(requests.Session):
+class PhenomizerService(requests_cache.CachedSession):
     '''Handling of interop with Phenomizer service, which provides the pheno
     and boqa scores used in the process.
     '''
@@ -67,7 +66,9 @@ class PhenomizerService(requests.Session):
             config: Alternative ConfigParser object to fill url, user and
                     password, which will read the values from a config.ini
         '''
-        super().__init__()
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        cache_name = os.path.join(CACHE_DIR, __name__+"cache.sqlite")
+        super().__init__(cache_name=cache_name, expire_after=None)
         if config:
             self.url = config.phenomizer['url']
             self.user = config.phenomizer['user']
