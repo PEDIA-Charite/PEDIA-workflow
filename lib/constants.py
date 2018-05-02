@@ -10,6 +10,9 @@ HGVS_ERRORDICT_VERSION = 10
 # Bucket name, from where Face2Gene vcf and json files will be downloaded
 AWS_BUCKET_NAME = "fdna-pedia-dump"
 
+# caching directory
+CACHE_DIR = ".cache"
+
 # tests that count as chromosomal tests, if these are positive, cases will be
 # excluded
 CHROMOSOMAL_TESTS = [
