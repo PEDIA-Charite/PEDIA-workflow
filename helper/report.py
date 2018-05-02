@@ -12,6 +12,7 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
     out = []
     tmp_out = []
     info = []
+    ge_out = []
    
     # Submitter
     submitter = file_content["submitter"]
@@ -21,11 +22,12 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
 
     # Check disease-causing gene
     for entry in file_content['genomic_entries']:
-        if 'notes' in entry['variants']:
-            info.append(entry['variants']['notes'])
-
-    genomic = file_content['genomicData']
-    ge_out = [ge_entry['Test Information']['Gene Name'] for ge_entry in genomic]
+        if type(entry) != int and 'variants' in entry:
+            if 'notes' in entry['variants']:
+                info.append(entry['variants']['notes'])
+    if 'genomicData' in file_content:
+        genomic = file_content['genomicData']
+        ge_out = [ge_entry['Test Information']['Gene Name'] for ge_entry in genomic]
 
     # Check selected syndrome
     if 'selected_syndromes' in file_content:
@@ -69,12 +71,17 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--case', help='path to convert file')
     parser.add_argument('-l', '--log', help='path to log file')
     parser.add_argument('-o', '--output', help='path to output file')
+    parser.add_argument('-j', '--json-check', help='path to json_check_failed.log')
     
     args = parser.parse_args()
     case_path = args.case
     log_file = open(args.log)
     log_data = json.load(log_file)
 
+    log_precheck_file = open(args.json_check)
+    log_precheck_data = json.load(log_precheck_file)
+
+    log_failed = [case for case in log_precheck_data if case["valid"] == False]
     output_filename = os.path.join(args.output, 'summary_cases.csv')
     
     # ['failed', 'benign_excluded', 'pathogenic_missing', 'vcf_failed', 'passed']
@@ -102,3 +109,10 @@ if __name__ == '__main__':
                 reason.append(data['type'])
             get_case_info(file_writer, file_content, reason, "Fail")
             
+        for case in log_failed:
+            file_content = json.load(open(os.path.join('process/aws_dir/cases/', case['case_id'] + '.json')))
+            fileName = case['case_id']
+            reason = []
+            for data in case['issues']:
+                reason.append(data)
+            get_case_info(file_writer, file_content, reason, "Fail")
