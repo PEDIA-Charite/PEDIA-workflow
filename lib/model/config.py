@@ -17,6 +17,10 @@ class Indexer:
     def __getitem__(self, key: Union[str, tuple, list]):
         return self._obj.get(self._section, key)
 
+    def getboolean(self, key: str):
+        '''Get boolean value of parameter.'''
+        return self._obj[self._section].getboolean(key)
+
 
 class ConfigManager:
     """Configuration for all steps in the pipeline.
@@ -40,7 +44,7 @@ class ConfigManager:
         If an iterable is given a dictionary containing key value pairs will be
         returned.
         '''
-        if isinstance(key, tuple) or isinstance(key, list):
+        if isinstance(key, (tuple, list)):
             return {k: self.get(section, k) for k in key}
         elif isinstance(key, str):
             return self._data[section][key]
