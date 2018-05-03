@@ -6,3 +6,4 @@ biopython
 ratelimit
 zeep
 filetype
+pyyaml
