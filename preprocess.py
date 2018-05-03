@@ -23,6 +23,8 @@ from lib.api import phenomizer, omim, mutalyzer
 
 
 def configure_logging(logger_name, logger_file: str = "preprocess.log"):
+    '''Set up logging devices for logging to screen and a separate file
+    with different log levels.'''
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.DEBUG)
     # visible screen printing
@@ -45,6 +47,7 @@ def configure_logging(logger_name, logger_file: str = "preprocess.log"):
 
 
 def parse_arguments():
+    '''Command line arguments affecting preprocess run behavior.'''
     parser = ArgumentParser(description=(
         "Process f2g provided jsons into a format processable by "
         "classification."))
@@ -154,11 +157,13 @@ def create_jsons(args, config_data):
     '''Create a list of new formatjson objects.'''
     print("== Process new json files ==")
     # get either from single file or from directory
-    json_files, corrected = ([args.single], config_data.preprocess['corrected_location']) \
-        if args.single else json_from_directory(config_data)
+    json_files, corrected = (
+        [args.single], config_data.preprocess['corrected_location']
+    ) if args.single else json_from_directory(config_data)
 
     @progress_bar("Process jsons")
     def yield_jsons(json_files, corrected):
+        '''Create json from file.'''
         for json_file in json_files:
             yield json_parser.NewJson.from_file(json_file, corrected)
 
@@ -221,7 +226,7 @@ def create_cases(args, config_data, jsons):
     mutalyzer.correct_reference_transcripts(case_objs)
 
     if config_data.general.getboolean('dump_intermediate') and not args.single:
-         pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
+        pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
 
     return case_objs
 
@@ -394,7 +399,7 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
             for pcase in cases:
                 old_js = old_jsons[pcase]
                 old_js.save_json(
-                    destination=config_data.quality["qc_output_path"]
+                    save_path=config_data.quality["qc_output_path"]
                 )
                 yield
 
