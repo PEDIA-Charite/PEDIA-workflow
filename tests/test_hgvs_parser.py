@@ -60,15 +60,15 @@ class HGVSTest(BaseMapping):
         tests = [
             (
                 "hgvs_bracket_name.json",
-                []
+                ["NM_080647.1:c.1253delA"]
             ),
             (
                 "hgvs_bracket_name_reversed.json",
-                []
+                ["NM_080647.1:c.1253delA"]
             ),
             (
                 "hgvs_double_bracket.json",
-                []
+                ["NM_080647.1:c.1253delA"]
             ),
         ]
         for test, correct in tests:

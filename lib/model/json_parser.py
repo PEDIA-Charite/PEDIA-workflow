@@ -106,7 +106,7 @@ class JsonFile:
         self._corrected_keys = corrected_keys
 
     @classmethod
-    def from_file(cls, path: str, corrected_location: str= '') -> 'JsonFile':
+    def from_file(cls, path: str, corrected_location: str = '') -> 'JsonFile':
         '''Load jSON from file.
         Args:
             path: Path to json file.
@@ -134,7 +134,6 @@ class JsonFile:
             if bool(override_data):
                 for key in override_data.keys():
                     json_data[key] = override_data[key]
-
 
         LOGGER.debug("Loading json %s", filename)
         # create the parent class
@@ -589,7 +588,7 @@ class NewJson(JsonFile):
         if case_id not in processed_vcfs:
             case_vcfs = [v for v in raw_vcfs if case_id in v]
             if not case_vcfs:
-                LOGGER.warn("Case %s, VCF file %s could not be found.",
+                LOGGER.info("Case %s, VCF file %s could not be found.",
                             case_id, vcfs[0])
                 return []
             vcf = case_vcfs[0]
