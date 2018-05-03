@@ -36,11 +36,17 @@ class HGVSTest(BaseMapping):
             var_strs = [str(v) for v in model.variants]
             self.assertListEqual(var_strs, correct)
 
-    def test_huge_hgvs(self):
+    def test_weird_hgvs(self):
+        '''More complicated hgvs variants beyond simple deletions and
+        substitutions.'''
         tests = [
             (
                 "huge_hgvs.json",
                 ["NM_003220.2:c.826_842delCTGCCTGCAGGGAGACGinsAGGAT"]
+            ),
+            (
+                "complex_pos_delins.json",
+                ["NM_021828.4(HPSE2):c.1099-4166_1320+840delins23"]
             )
         ]
 
