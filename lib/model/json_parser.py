@@ -50,6 +50,7 @@ class Directive:
     def __call__(self, entry):
         return self._func(entry)
 
+
 LOGGER = logging.getLogger(__name__)
 
 

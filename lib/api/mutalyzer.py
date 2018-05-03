@@ -10,7 +10,10 @@ import json
 import re
 from typing import Union, List
 import pandas
+import requests
+from requests.adapters import HTTPAdapter
 import zeep
+from zeep.transports import Transport
 
 from lib import visual
 from lib.constants import CACHE_DIR
@@ -54,7 +57,12 @@ class Mutalyzer(zeep.Client):
     wsdl_url = 'https://mutalyzer.nl/services/?wsdl'
 
     def __init__(self):
-        super().__init__(self.wsdl_url)
+        session = requests.Session()
+        session.mount('http', HTTPAdapter(max_retries=3))
+        session.mount('https', HTTPAdapter(max_retries=3))
+        transport = Transport(session=session)
+
+        super().__init__(self.wsdl_url, transport=transport)
 
         self._transcript_cache = self._load_cache()
 
@@ -110,9 +118,6 @@ class Mutalyzer(zeep.Client):
         '''
         # search in cache first
         all_variants = [v for l in transcripts.values() for v in l]
-        for variant in all_variants:
-            if str(variant) in self._transcript_cache:
-                variant
         remaining_transcripts = [
             v for v in all_variants if not self._modify_transcript_cached(v)
         ]
