@@ -7,39 +7,33 @@ import gzip
 import zipfile
 from typing import Callable
 
-
-def compress_gz(instr: bytes, outfile: str) -> None:
-    '''Gzip binary data to outfile.'''
-    os.makedirs(os.path.split(outfile)[0], exist_ok=True)
-    with gzip.open(outfile, "wb") as gzipped:
-        gzipped.write(instr)
+import filetype
 
 
-def handle_vcf(openfunc: Callable, infile: str, outfile: str) -> None:
+def read_bytes(openfunc: Callable, infile: str) -> None:
     '''Handle uncompressed vcf files, by validating basic vcf properties
     and gzipping them.'''
     with openfunc(infile) as vcf_file:
-        first_byte = vcf_file.readline()
-        first = first_byte.decode("utf-8")
+        first_line = vcf_file.readline()
+        first = first_line.decode("utf-8")
         if "VCF" not in first:
+            print(first)
             raise TypeError("Uncompressed text file is not vcf format.")
-        # reset pointer for gzipping to destination
-        rawdata = first_byte + vcf_file.read()
-
-        # create output folder
-    compress_gz(rawdata, outfile)
+        # not every archive format supports seeking correctly
+        rawdata = first_line + vcf_file.read()
+    return rawdata
 
 
-def handle_uncompressed(infile: str, outfile: str) -> None:
+def read_text(infile: str) -> bytes:
     '''Handle uncompressed files. Such as with ending vcf.  These do not
     have a matchable mimetype and are mapped to the text metaclass.
     '''
     def fopen(filepath):
         return open(filepath, "rb")
-    handle_vcf(fopen, infile, outfile)
+    return read_bytes(fopen, infile)
 
 
-def handle_zip(infile: str, outfile: str) -> None:
+def read_zip(infile: str) -> bytes:
     '''Handle zipped files by unzipping and checking vcf.'''
     with zipfile.ZipFile(infile, "r") as inzip:
         filename = inzip.namelist()
@@ -48,25 +42,47 @@ def handle_zip(infile: str, outfile: str) -> None:
         def fopen(filepath):
             return inzip.open(filepath)
 
-        handle_vcf(fopen, filename[0], outfile)
+        data = read_bytes(fopen, filename[0])
+    return data
 
 
-def handle_gzip(infile: str, outfile: str) -> None:
+def read_gzip(infile: str) -> bytes:
     '''Handle gzipped files by directly moving them to the destination.'''
     def fopen(filepath):
         return gzip.open(filepath, "rb")
-    return handle_vcf(fopen, infile, outfile)
+    return read_bytes(fopen, infile)
 
 
-MIMETYPES = {
-    'application/zip': handle_zip,
-    'application/gzip': handle_gzip,
-    'text': handle_uncompressed
-}
-
-
-def move_vcf(orig_path: str, new_path: str, mimetype: str) -> None:
-    '''Convert vcf file to vcf.gz and move to the new directory.'''
-    if mimetype not in MIMETYPES:
+def read_vcf(path: str) -> bytes:
+    '''Read vcf to raw bytestring.'''
+    # get mimetype
+    kind = filetype.guess(path)
+    mimetype = kind.mime if kind is not None else "text"
+    if mimetype == "application/zip":
+        data = read_zip(path)
+    elif mimetype == "application/gzip":
+        data = read_gzip(path)
+    elif mimetype == "text":
+        data = read_text(path)
+    else:
         raise TypeError("Not supported mime {}".format(mimetype))
-    MIMETYPES[mimetype](orig_path, new_path)
+
+    return data
+
+
+def compress_gz(instr: bytes, outfile: str) -> None:
+    '''Gzip binary data to outfile.'''
+    os.makedirs(os.path.split(outfile)[0], exist_ok=True)
+    with gzip.open(outfile, "wb") as gzipped:
+        gzipped.write(instr)
+
+
+def write_vcf(data: bytes, path: str) -> None:
+    '''Write VCF data to output path.'''
+    compress_gz(data, path)
+
+
+def move_vcf(orig_path: str, new_path: str) -> None:
+    '''Convert vcf file to vcf.gz and move to the new directory.'''
+    data = read_vcf(orig_path)
+    write_vcf(data, new_path)

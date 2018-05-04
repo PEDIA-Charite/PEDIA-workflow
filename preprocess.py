@@ -270,7 +270,7 @@ def save_vcfs(args, config_data, qc_cases):
     def yield_vcf(case_objs):
         '''Dump simulated vcf files.'''
         for case_obj in case_objs:
-            case_obj.dump_vcf(simulated)
+            case_obj.put_hgvs_vcf(simulated, recreate=False)
             yield
 
     yield_vcf([v[1] for v in qc_cases.values() if v[0][0]])
