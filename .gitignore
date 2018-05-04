@@ -6,6 +6,8 @@
 *.done
 *.log
 
+/.cache/
+
 *.tar.gz
 
 # clean root dir
