@@ -67,7 +67,7 @@ class PhenomizerService(requests_cache.CachedSession):
                     password, which will read the values from a config.ini
         '''
         os.makedirs(CACHE_DIR, exist_ok=True)
-        cache_name = os.path.join(CACHE_DIR, __name__+"cache.sqlite")
+        cache_name = os.path.join(CACHE_DIR, __name__)
         super().__init__(cache_name=cache_name, expire_after=None)
         if config:
             self.url = config.phenomizer['url']
