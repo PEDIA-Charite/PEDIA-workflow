@@ -17,7 +17,6 @@ from functools import reduce
 import os
 
 import pandas
-import filetype
 
 from lib.api import omim
 from lib.utils import explode_df_column
@@ -594,10 +593,7 @@ class NewJson(JsonFile):
                 return []
             vcf = case_vcfs[0]
             vcf_path = os.path.join(vcf_dir, vcf)
-            kind = filetype.guess(vcf_path)
-            # get mimetype
-            mime = kind.mime if kind is not None else "text"
-            move_vcf(vcf_path, destination_vcf, mime)
+            move_vcf(vcf_path, destination_vcf)
 
         return [destination_vcf]
 

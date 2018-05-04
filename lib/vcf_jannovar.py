@@ -5,17 +5,26 @@ import os
 import subprocess
 import csv
 import typing
+import io
+import re
 
 import tempfile
 import pandas
 
-from lib.vcf_operations import handle_uncompressed
+from lib import vcf_operations
 
 
 JANNOVAR_BINARY = "data/jannovar/jannovar_0.25/jannovar-cli-0.25-SNAPSHOT.jar"
 
 REFSEQ_SER = "data/jannovar/jannovar_0.25/data/hg19_refseq.ser"
 REF_FASTA = "data/referenceGenome/data/human_g1k_v37.fasta"
+
+ENCODING = "UTF-8"
+
+HGVS_COLS = [
+    '#CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER',
+    'INFO', 'FORMAT',
+]
 
 
 VCF_HEADER = (
@@ -79,8 +88,7 @@ def create_vcf(
                 )
             except subprocess.CalledProcessError as error:
                 return str(error)
-            columns = ['#CHROM', 'POS', 'ID', 'REF', 'ALT',
-                       'QUAL', 'FILTER', 'INFO', 'FORMAT', case_id]
+            columns = HGVS_COLS + [case_id]
             hgvs_data = pandas.read_table(
                 vcffile.name, sep='\t', comment='#', names=columns
             )
@@ -104,17 +112,41 @@ def create_vcf(
             return hgvs_data
 
 
-def write_vcf(data: pandas.DataFrame, path: str) -> None:
-    '''Writes pandas dataframe to vcf file.'''
-    # add header to vcf
-    with open(path, 'w') as outfile:
-        outfile.write(VCF_HEADER)
+RE_HGVS_INFO = re.compile(r'HGVS="([^"]*)"')
 
-    # append vcf data
-    data.to_csv(
-        path, mode='a', sep='\t', index=False,
-        header=True, quoting=csv.QUOTE_NONE
-    )
-    # compress to vcf.gz file
-    handle_uncompressed(path, path+'.gz')
-    os.remove(path)
+
+def get_hgvs_codes(data: pandas.DataFrame) -> [str]:
+    '''Get a list of hgvs strings from vcf table.'''
+    return [m[1] for m in [RE_HGVS_INFO.search(r) for r in data["INFO"]] if m]
+
+
+def vcfdf_to_bytes(data: pandas.DataFrame) -> bytes:
+    '''Writes pandas dataframe to vcf file'''
+    with io.StringIO() as str_data:
+        # add header to vcf
+        str_data.write(VCF_HEADER)
+
+        # append vcf data
+        data.to_csv(
+            str_data, mode='a', sep='\t', index=False,
+            header=True, quoting=csv.QUOTE_NONE
+        )
+
+        rawdata = str_data.getvalue().encode(ENCODING)
+    return rawdata
+
+
+def read_vcfdf(path: str) -> pandas.DataFrame:
+    '''Read vcf file to dataframe.'''
+    byte_str = vcf_operations.read_vcf(path).decode(ENCODING)
+    with io.StringIO(byte_str) as raw_str:
+        hgvs_data = pandas.read_table(
+            raw_str, sep='\t', comment='#', names=HGVS_COLS, index_col=False
+        )
+    return hgvs_data
+
+
+def write_vcfdf(data: pandas.DataFrame, path: str) -> None:
+    '''Write vcf dataframe to specified location.'''
+    rawdata = vcfdf_to_bytes(data)
+    vcf_operations.write_vcf(rawdata, path)
