@@ -58,6 +58,7 @@ class Mutalyzer(zeep.Client):
     wsdl_url = 'https://mutalyzer.nl/services/?wsdl'
 
     def __init__(self):
+        os.makedirs(CACHE_DIR, exist_ok=True)
         self.session = requests_cache.CachedSession(
             cache_name=os.path.join(CACHE_DIR, __name__),
             expire_after=None
