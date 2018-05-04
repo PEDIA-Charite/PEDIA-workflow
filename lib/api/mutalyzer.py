@@ -11,6 +11,7 @@ import re
 from typing import Union, List
 import pandas
 import requests
+import requests_cache
 from requests.adapters import HTTPAdapter
 import zeep
 from zeep.transports import Transport
@@ -57,10 +58,13 @@ class Mutalyzer(zeep.Client):
     wsdl_url = 'https://mutalyzer.nl/services/?wsdl'
 
     def __init__(self):
-        session = requests.Session()
-        session.mount('http', HTTPAdapter(max_retries=3))
-        session.mount('https', HTTPAdapter(max_retries=3))
-        transport = Transport(session=session)
+        self.session = requests_cache.CachedSession(
+            cache_name=os.path.join(CACHE_DIR, __name__),
+            expire_after=None
+        )
+        self.session.mount('http', HTTPAdapter(max_retries=3))
+        self.session.mount('https', HTTPAdapter(max_retries=3))
+        transport = Transport(session=self.session)
 
         super().__init__(self.wsdl_url, transport=transport)
 
@@ -78,15 +82,18 @@ class Mutalyzer(zeep.Client):
         # alternatively use GRCh37
         argument = 'GRCh37'
 
-        batch_id = self.service.submitBatchJob(
-            data=data, process=method, argument=argument)
+        with self.session.cache_disabled():
+            batch_id = self.service.submitBatchJob(
+                data=data, process=method, argument=argument
+            )
 
         # wait for the batch job to finish
         LOGGER.debug("Submitting batch job to mutalyzer.")
         max_obj = 0
         cur_obj = 0
         while True:
-            remaining_jobs = self.service.monitorBatchJob(batch_id)
+            with self.session.cache_disabled():
+                remaining_jobs = self.service.monitorBatchJob(batch_id)
             max_obj = max(remaining_jobs, max_obj)
             cur_obj = max_obj - remaining_jobs
             LOGGER.debug('Remaining %d', remaining_jobs)
@@ -97,9 +104,12 @@ class Mutalyzer(zeep.Client):
                 break
             time.sleep(1)
         LOGGER.debug("Finished batch job.")
+
         # get the batch job results
-        batch_result = self.service.getBatchJob(batch_id)
+        with self.session.cache_disabled():
+            batch_result = self.service.getBatchJob(batch_id)
         result_string = batch_result.decode('utf-8')
+
         # returned tsv file is really weird
         # first three columns are single entry, while the last col gets
         # all tsv cells until the next row
