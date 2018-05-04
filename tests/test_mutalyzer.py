@@ -4,32 +4,36 @@ import unittest
 
 import hgvs.parser
 
-from lib.model import case, json
+from lib.model import case, json_parser
 from lib.api import mutalyzer
 from lib.errorfixer import ErrorFixer
 
-
-INPUT_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    "data")
+from tests.test_json_loading import BaseMapping
 
 
-class MutalyzerTest(unittest.TestCase):
+class MutalyzerTest(BaseMapping):
     '''Testing mutalyzer API calls.'''
 
-    def setUp(self):
-        self.mutalyzer = mutalyzer.Mutalyzer()
-        input_file = os.path.join(INPUT_PATH, "cases", "normal.json")
-        loaded_correct = json.NewJson.from_file(input_file)
-        errors = ErrorFixer("", "", version=0)
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.mutalyzer = mutalyzer.Mutalyzer()
+        cls.hgvs = hgvs.parser.Parser()
 
-        self.cases = [case.Case(loaded_correct, errors)]
-        self.hgvs = hgvs.parser.Parser()
+    def create_case(self, name: str) -> case.Case:
+        js_data = json_parser.NewJson.from_file(self.get_case_path(name))
+        return case.Case(js_data, self.error_fixer, self.omim)
 
     def test_correct_reference_transcripts(self):
-        true = ['NM_004380.2:c.7302G>A', 'NM_004380.2:c.7302G>A']
-        mutalyzer.correct_reference_transcripts(self.cases)
-        processed_vars = [str(v) for c in self.cases for v in c.variants]
+        test_cases = [
+            "normal.json"
+        ]
+        cases = [self.create_case(n) for n in test_cases]
+        true = ['NM_004380.2:c.7302G>A']
+        mutalyzer.correct_reference_transcripts(cases)
+        processed_vars = [
+            str(v) for c in cases for v in c.get_variants()
+        ]
         self.assertListEqual(
             processed_vars, true,
             "Processed HGVS codes are not equal to reference.")
