@@ -44,9 +44,17 @@ References the filename of the genomic entry for the case. There might be more t
 
 ###selected_syndromes
 
-[has_mask, omim_id, syndrome_name]
+[has_mask, omim_id, syndrome_name, diagnosis]
 
 Syndrome as selected by the user in the Face2Gene interface.
+
+#### diagnosis
+
+Possible values: CLINICALLY_DIAGNOSED, MOLECULARLY_DIAGNOSED,
+DIFFERENTIAL_DIAGNOSIS
+
+Selected by user in the f2g interface. Multiple diagnosis with same value are
+possible.
 
 ###submitter
 
