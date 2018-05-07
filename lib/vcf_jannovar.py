@@ -58,6 +58,41 @@ VCF_HEADER = (
 )
 
 
+def jannovar_vcf_to_table(
+        readable,
+        case_id: str,
+        zygosity: str,
+        variants: [str],
+) -> typing.Union[str, pandas.DataFrame]:
+    '''Create pandas dataframe from readable jannovar generated vcf file.'''
+    columns = HGVS_COLS + [case_id]
+    hgvs_data = pandas.read_table(
+        readable, sep='\t', comment='#', names=columns
+    )
+    hgvs_data.ALT.fillna("NA", inplace=True)
+    if any(hgvs_data.ALT == '<ERROR>'):
+        error_data = hgvs_data.loc[
+            hgvs_data.ALT == "<ERROR>", ["FILTER", "INFO"]
+        ]
+        return "\n".join(error_data.apply(lambda x: ": ".join(x), axis=1))
+
+    if zygosity.lower() == 'hemizygous':
+        genotype = '1'
+    elif zygosity.lower() == 'homozygous':
+        genotype = '1/1'
+    elif zygosity.lower() in ['heterozygous', "compound heterozygous"]:
+        genotype = '0/1'
+    else:
+        genotype = '0/1'
+    hgvs_data[case_id] = genotype
+    hgvs_data['FORMAT'] = 'GT'
+    hgvs_data['INFO'] = ['HGVS="{}"'.format(v) for v in variants]
+    hgvs_data = hgvs_data.sort_values(by=['#CHROM', "POS"])
+    hgvs_data = hgvs_data.drop_duplicates()
+
+    return hgvs_data
+
+
 def create_vcf(
         variants: [str],
         zygosity: str,
@@ -88,27 +123,12 @@ def create_vcf(
                 )
             except subprocess.CalledProcessError as error:
                 return str(error)
-            columns = HGVS_COLS + [case_id]
-            hgvs_data = pandas.read_table(
-                vcffile.name, sep='\t', comment='#', names=columns
+            hgvs_data = jannovar_vcf_to_table(
+                vcffile, case_id, zygosity, variants
             )
-            hgvs_data.ALT.fillna("NA", inplace=True)
-            if any(hgvs_data.ALT == '<ERROR>'):
-                return process.stderr
-            if zygosity.lower() == 'hemizygous':
-                genotype = '1'
-            elif zygosity.lower() == 'homozygous':
-                genotype = '1/1'
-            elif (zygosity.lower() == 'heterozygous'
-                  or zygosity.lower() == 'compound heterozygous'):
-                genotype = '0/1'
-            else:
-                genotype = '0/1'
-            hgvs_data[case_id] = genotype
-            hgvs_data['FORMAT'] = 'GT'
-            hgvs_data['INFO'] = ['HGVS="{}"'.format(v) for v in variants]
-            hgvs_data = hgvs_data.sort_values(by=['#CHROM', "POS"])
-            hgvs_data = hgvs_data.drop_duplicates()
+            if isinstance(hgvs_data, str):
+                return hgvs_data
+                # return process.stderr
             return hgvs_data
 
 
