@@ -20,7 +20,7 @@ import yaml
 from lib import download, errorfixer, quality_check
 from lib.visual import progress_bar
 from lib.model import json_parser, case, config
-from lib.api import phenomizer, omim, mutalyzer
+from lib.api import phenomizer, omim, mutalyzer, jannovar
 
 
 def configure_logging(logger_name, logger_file: str = "preprocess.log"):
@@ -271,11 +271,21 @@ def save_vcfs(args, config_data, qc_cases):
     realvcf = config_data.vcf["realvcf"]
     config_path = config_data.vcf["config_file"]
 
+    server = jannovar.JannovarClient(config=config_data)
+    if not server.can_connect():
+        server = None
+        print(
+            (
+                "Jannovar cannot connect to server. Running per file. "
+                "This can be very slow."
+            )
+        )
+
     @progress_bar("Generate VCFs")
     def yield_vcf(case_objs):
         '''Dump simulated vcf files.'''
         for case_obj in case_objs:
-            case_obj.put_hgvs_vcf(simulated, recreate=False)
+            case_obj.put_hgvs_vcf(simulated, server, recreate=False)
             yield
 
     yield_vcf([v[1] for v in qc_cases.values() if v[0][0]])
