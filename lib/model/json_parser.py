@@ -24,6 +24,7 @@ from lib.vcf_operations import move_vcf
 # from lib.utils import optional_descent
 from lib.model.hgvs_parser import HGVSModel
 from lib.constants import CHROMOSOMAL_TESTS, POSITIVE_RESULTS
+from lib import constants
 
 
 class Directive:
@@ -521,7 +522,16 @@ class NewJson(JsonFile):
             # other information
             selected = explode_df_column(selected, 'omim_id')
             # add a confirmed diagnosis column
-            selected['confirmed'] = True
+            selected.loc[
+                selected["diagnosis"].isin(
+                    constants.CONFIRMED_DIAGNOSIS
+                ), 'confirmed'
+            ] = True
+            selected.loc[
+                selected["diagnosis"].isin(
+                    constants.DIFFERENTIAL_DIAGNOSIS
+                ), 'differential'
+            ] = True
 
             # outer join of the syndrome and the confirmed diagnosis
             # pandas.merge has to be used instead of join, because the latter
