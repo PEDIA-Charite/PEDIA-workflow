@@ -21,3 +21,12 @@ rule download_jannovar_25_ser:
 		java -jar jannovar-cli-0.25-SNAPSHOT.jar download -d hg19/refseq
 		"""
 
+rule download_jannovar_26_ser:
+	output:
+		file="jannovar_0.26/data/hg19_refseq.ser"
+	shell:
+		"""
+		cd jannovar_0.26
+		java -jar jannovar-cli-0.26-SNAPSHOT.jar download -d hg19/refseq
+		"""
+
