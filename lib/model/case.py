@@ -423,15 +423,19 @@ class Case:
             hgvs_strings: [str],
             vcf_path: str,
             tmp_path: str,
+            server: ["JannovarClient", None] = None,
     ) -> pandas.DataFrame:
         '''Generates vcf dataframe. If an error occurs the error message is
         returned.'''
-        vcf_data = vcf_jannovar.create_vcf(
-            hgvs_strings,
-            self.get_hgvs_models()[0].zygosity.lower(),
-            self.case_id,
-            tmp_path
-        )
+        zygosity = self.get_hgvs_models()[0].zygosity.lower()
+        if server:
+            vcf_data = server.create_vcf(
+                hgvs_strings, zygosity, self.case_id
+            )
+        else:
+            vcf_data = vcf_jannovar.create_vcf(
+                hgvs_strings, zygosity, self.case_id, tmp_path
+            )
 
         if isinstance(vcf_data, pandas.DataFrame):
             vcf_jannovar.write_vcfdf(vcf_data, vcf_path)
@@ -450,6 +454,7 @@ class Case:
     def put_hgvs_vcf(
             self,
             path: str,
+            server: Union[None, "JannovarClient"] = None,
             recreate: bool = False,
     ) -> None:
         '''Dumps vcf file to given path as <case_id>.vcf.gz.'''
@@ -473,6 +478,6 @@ class Case:
                 LOGGER.debug("%s: Use existing vcf.", self.case_id)
         else:
             vcf_data = self.create_vcf_from_hgvs(
-                hgvs_strings, vcf_path, path
+                hgvs_strings, vcf_path, path, server
             )
         self.vcf = vcf_data
