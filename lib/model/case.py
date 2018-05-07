@@ -94,6 +94,7 @@ class Case:
                 'boqa_score': 0.0,
                 'syndrome_name': '',
                 'confirmed': False,
+                'differential': False,
                 'has_mask': False,
                 'gene-symbol': '',
                 'gene-id': '',
