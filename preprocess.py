@@ -5,6 +5,7 @@ options.
 '''
 # standard libraries
 import os
+import shutil
 import logging
 import logging.config
 from typing import Tuple, List
@@ -16,7 +17,7 @@ import json
 import yaml
 
 # own libraries
-from lib import download, errorfixer
+from lib import download, errorfixer, quality_check
 from lib.visual import progress_bar
 from lib.model import json_parser, case, config
 from lib.api import phenomizer, omim, mutalyzer
@@ -156,15 +157,19 @@ def create_jsons(args, config_data):
 
     logpath = config_data.jsonparser["json_qc_log"]
     if logpath and not args.single:
-        qc_failed_results = [
-            {
-                "case_id": case_id,
-                "issues": issues,
-                "valid": valid
+        # move old log
+        if os.path.exists(logpath):
+            shutil.move(logpath, logpath+".old")
+        qc_failed_results = {
+            "json_check_failed": {
+                case_id: {
+                    "issues": issues,
+                }
+                for case_id, (valid, issues) in
+                [(j.get_case_id(), j.check()) for j in new_json_objs]
+                if not valid
             }
-            for case_id, (valid, issues) in
-            [(j.get_case_id(), j.check()) for j in new_json_objs]
-        ]
+        }
         with open(logpath, "w") as failedfile:
             json.dump(qc_failed_results, failedfile, indent=4)
 
@@ -335,14 +340,17 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
         "benign_excluded": qc_benign_passed,
         "pathogenic_missing": qc_pathongenic_passed,
         "vcf_failed": qc_vcf_failed,
-        "passed": list(qc_passed.keys())
+        "passed": {k: '' for k in qc_passed.keys()},
     }
 
     # save qc results in detailed log if needed
     print("Saving qc log")
-    if config_data.quality.getboolean("qc_detailed") \
-            and config_data.quality["qc_detailed_log"]:
-        with open(config_data.quality["qc_detailed_log"], "w") as qc_out:
+    log_path = config_data.quality["qc_detailed_log"]
+    if config_data.quality.getboolean("qc_detailed") and log_path:
+        # move old file to new location
+        if os.path.exists(log_path):
+            shutil.move(log_path, log_path+".old")
+        with open(log_path, "w") as qc_out:
             json.dump(qc_output, qc_out, indent=4)
 
     # move cases to qc directory
@@ -406,10 +414,13 @@ def main():
     stats, qc_cases = quality_check_cases(
         args, config_data, qc_cases, old_jsons
     )
+
     print(
         "== QC results ==\nPassed: {pass} Failed: {fail}".format(
             **stats)
     )
+
+    quality_check.diff_quality_check(config_data)
 
 
 if __name__ == '__main__':
