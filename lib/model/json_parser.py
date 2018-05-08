@@ -554,6 +554,7 @@ class NewJson(JsonFile):
         else:
             # if no syndromes selected, everything is false
             syndromes_df["confirmed"] = False
+            syndromes_df["differential"] = False
 
         syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
 
