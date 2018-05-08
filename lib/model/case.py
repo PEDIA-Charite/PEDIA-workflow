@@ -249,6 +249,10 @@ class Case:
             )
             valid = False
 
+        diagnosis = pandas.concat(
+            [diagnosis, self.syndromes.loc[self.syndromes["differential"]]]
+        )
+
         # check whether multiple diagnoses are in same phenotypic series
         if omim:
             ps_dict = {}
@@ -310,11 +314,14 @@ class Case:
                 )
             valid = False
         else:
-            # Check if there are multiple different disease-causing genes 
+            # Check if there are multiple different disease-causing genes
             raw_entries = self.data.get_genomic_entries()
             entries = self.get_hgvs_models()
             if len(entries) > 1:
-                genes = [entry.gene['gene_id'] for entry in entries if entry.gene['gene_id']]
+                genes = [
+                    entry.gene['gene_id']
+                    for entry in entries if entry.gene['gene_id']
+                ]
                 if len(set(genes)) > 1:
                     issues.append(
                         {
