@@ -27,19 +27,19 @@ if __name__ == '__main__':
     for row in reader:
         if row[0] == 'TEST_SAMPLES:':
             flag = False
-        if flag:
-            old_single.append(row[0][3:])
-        if row[0] == 'SINGLE_SAMPLES:':
+        if row[0] == 'SINGLE_SAMPLES:' or row[0] == 'VCF_SAMPLES:':
             flag = True
+        if flag and '-' in row[0]:
+            old_single.append(row[0][2:])
     flag = False
     reader2 = csv.reader(new_file)
     for row in reader2:
         if row[0] == "TEST_SAMPLES:":
             flag = False
-        if flag:
-            new_single.append(row[0][3:])
-        if row[0] == "SINGLE_SAMPLES:":
+        if row[0] == 'SINGLE_SAMPLES:' or row[0] == 'VCF_SAMPLES:':
             flag = True
+        if flag and '-' in row[0]:
+            new_single.append(row[0][2:])
     diff1 = diff(old_single, new_single)
     diff2 = diff(new_single, old_single)
     old_file.close()
