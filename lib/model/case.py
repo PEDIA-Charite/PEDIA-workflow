@@ -407,6 +407,13 @@ class Case:
         syndrome_list = self.syndromes.to_dict("records")
         return syndrome_list
 
+    def get_diagnosis(self, differential: bool = True):
+        '''Get list of diagnosis optionally with differential diagnosis.'''
+        diagnosis_list = self.syndromes.loc[
+            self.syndromes["confirmed"] | self.syndromes["differential"]
+        ].to_dict("records")
+        return diagnosis_list
+
     def eligible_training(self) -> bool:
         '''Eligibility of case for training.
         Exclusion criteria are:
