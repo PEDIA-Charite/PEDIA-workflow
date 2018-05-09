@@ -3,6 +3,8 @@ Utility functions for JSON Parsing
 and
 some pandas dataframe utilities implementing more exotic functions
 '''
+import os
+import json
 import re
 import hashlib
 from typing import Union
@@ -81,3 +83,18 @@ def get_file_hash(filepath: str) -> str:
             md5hash.update(bytestr)
     md5 = md5hash.hexdigest()
     return md5
+
+
+def load_json(
+        filepath: str,
+        default: Union[dict, list, None] = None
+) -> Union[dict, list, None]:
+    '''Load a json file or provide a default if it does not exists.'''
+
+    if os.path.exists(filepath):
+        with open(filepath, "r") as handle:
+            data = json.load(handle)
+    else:
+        data = default
+
+    return data

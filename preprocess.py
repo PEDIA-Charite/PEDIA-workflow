@@ -306,6 +306,13 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
     qc_failed_msg = {
         v[1].case_id: v[0] for v in qc_cases.values() if not v[0][0]
     }
+    # cases with multiple diagnosis
+    multi_no_omim = {
+        k: v for k, v in
+        [(v[1].case_id, v[1].get_diagnosis()) for v in qc_cases.values()]
+        if any(str(d["omim_id"]) == "0" for d in v) and len(v) > 1
+    }
+
     # Cases passing quality check
     qc_passed = {v[1].case_id: v[1] for v in qc_cases.values() if v[0][0]}
 
@@ -350,22 +357,24 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
         "benign_excluded": qc_benign_passed,
         "pathogenic_missing": qc_pathongenic_passed,
         "vcf_failed": qc_vcf_failed,
+        "multi_no_omim": multi_no_omim,
         "passed": {k: '' for k in qc_passed.keys()},
     }
 
     # save qc results in detailed log if needed
-    print("Saving qc log")
     log_path = config_data.quality["qc_detailed_log"]
-    if config_data.quality.getboolean("qc_detailed") and log_path:
+    if config_data.quality.getboolean("qc_detailed") \
+            and log_path and not args.single:
         # move old file to new location
         if os.path.exists(log_path):
             shutil.move(log_path, log_path+".old")
+        print("Saving qc log")
         with open(log_path, "w") as qc_out:
             json.dump(qc_output, qc_out, indent=4)
 
     # move cases to qc directory
-    print("Saving passing cases to new location")
     if config_data.quality["qc_output_path"] and old_jsons:
+        print("Saving passing cases to new location")
         # create output directory if needed
         os.makedirs(config_data.quality["qc_output_path"], exist_ok=True)
 
@@ -383,7 +392,13 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
 
         save_old_to_qc(qc_passed)
 
-    return {"pass": len(qc_passed), "fail": len(qc_failed_msg)}, qc_passed
+    if args.single:
+        print(json.dumps(qc_output, indent=4))
+
+    return {
+        "pass": len(qc_passed),
+        "fail": len(qc_failed_msg) + len(qc_vcf_failed)
+    }, qc_passed
 
 
 def main():
@@ -430,7 +445,8 @@ def main():
             **stats)
     )
 
-    quality_check.diff_quality_check(config_data)
+    if not args.single:
+        quality_check.diff_quality_check(config_data)
 
 
 if __name__ == '__main__':
