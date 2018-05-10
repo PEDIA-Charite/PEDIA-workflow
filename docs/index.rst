@@ -27,9 +27,9 @@ understanding and changing the source code.
    :maxdepth: 2
    :caption: Contents:
 
-             install
-             usage
-             implementation
+   install
+   usage
+   implementation
 
 
 
