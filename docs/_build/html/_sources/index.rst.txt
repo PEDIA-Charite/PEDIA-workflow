@@ -22,9 +22,14 @@ This document contains instructions for general installation and usage of the
 pipeline, but also deeper implementation details for those interested in
 understanding and changing the source code.
 
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+   install
+   usage
+   implementation
 
 
 
