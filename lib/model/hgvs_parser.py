@@ -234,7 +234,7 @@ class HGVSModel:
         failed = []
         for var in variants:
             checked = MUTALYZER.check_syntax(var)
-            if not checked['valid']:
+            if checked and not checked['valid']:
                 message = ["{}:{}".format(v['errorcode'], v['message']) for v
                            in checked['messages']['SoapMessage']]
                 failed.append(str(var))
