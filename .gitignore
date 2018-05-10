@@ -5,6 +5,7 @@
 .snakemake
 *.done
 *.log
+*.ini
 
 /.cache/
 
