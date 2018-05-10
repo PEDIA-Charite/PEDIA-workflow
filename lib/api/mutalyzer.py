@@ -24,6 +24,8 @@ LOGGER = logging.getLogger(__name__)
 # alternative hgvs transcript
 RE_VERSION_ALTERNATIVE = re.compile(r'We found these versions: ([\w.]+)')
 
+TRIES_LIMIT = 5
+
 
 def correct_reference_transcripts(case_objs: List['Case']) -> List['Case']:
     '''Check reference transcript number via batch call to mutalyzer.
@@ -195,8 +197,19 @@ class Mutalyzer(zeep.Client):
                 tries += 1
         return variants
 
-    def check_syntax(self, hgvs_string: str) -> dict:
+    def check_syntax(self, hgvs_string: str) -> Union[dict, None]:
         '''Check the syntax of an hgvs variant and return the validity and list
         of possible errors.
         '''
-        return self.service.checkSyntax(hgvs_string)
+        tries = 0
+        response = None
+
+        while tries < TRIES_LIMIT:
+            try:
+                response = self.service.checkSyntax(hgvs_string)
+                break
+            except requests.exceptions.ConnectionError:
+                tries += 1
+                time.sleep(1)
+
+        return response
