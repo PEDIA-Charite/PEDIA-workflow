@@ -22,7 +22,7 @@ class JannovarClient:
     def __init__(
             self,
             url: str = "localhost",
-            port: int = "8888",
+            port: int = 8888,
             config: typing.Union["ConfigManager", None] = None,
     ):
         if config:
