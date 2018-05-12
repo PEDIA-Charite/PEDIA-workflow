@@ -75,12 +75,22 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
                     final_syn.append(syn)
                     all_omim.append(syn)
 
+    # Fixed deprecated omim id
+    tmp_all_omim = []
+    for omim in all_omim: 
+        if str(omim) in deprecated_omim:
+            for new_id in deprecated_omim[str(omim)]:
+                tmp_all_omim.append(new_id)
+        else:
+            tmp_all_omim.append(omim)
+    all_omim = tmp_all_omim
     # Map phenotype to gene
     for omim in all_omim:
         if str(omim) in omim_dict:
-            gene = omim_dict[str(omim)]
-            if gene not in all_gene:
-                all_gene.append(gene)
+            genes = omim_dict[str(omim)]
+            for gene in genes:
+                if gene not in all_gene:
+                    all_gene.append(gene)
 
     # Syndrome has no omim id
     if len(all_omim) == 0:
@@ -90,7 +100,8 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
     if len(all_gene) == 0:
         all_gene = [gene for gene in ge_out]
         status = 'no gene mapped from omim'
-    
+    if ge_out[0] not in all_gene:
+        status = 'disease gene not in omim gene list'
 
     if syndrome_name not in tmp_syn:
         syn_cases = []
@@ -133,6 +144,12 @@ if __name__ == '__main__':
     case_path = args.case
     log_file = open(args.log)
     log_data = json.load(log_file)
+
+    deprecated_file = open('data/omim_deprecated_replacement.json', 'r')
+    deprecated_omim = json.load(deprecated_file)
+    
+
+    # Parse omim phenotype to gene mapping file
     omim_dict = {} 
     omim_file = open('data/morbidmap.txt', 'r')
     omim_reader = csv.reader(omim_file, delimiter='\t')
@@ -143,13 +160,17 @@ if __name__ == '__main__':
             omim = row[0].split(', ')[-1].split(' ')[0]
             gene = row[1].split(', ')[0]
             if omim not in omim_dict:
-                omim_dict.update({omim:gene})
+                omim_dict.update({omim:[gene]})
+            else:
+                if gene not in omim_dict[omim]:
+                    omim_dict[omim].append(gene)
 
     omim_file.close()
     output_filename = os.path.join(args.output, 'case_gene_phenotype_table.csv')
 
     not_mapped_file = open(os.path.join(args.output,'gene_not_mapped.csv'), 'w')
     not_mapped_writer = csv.writer(not_mapped_file, delimiter='\t')
+    not_mapped_writer.writerow(['case', 'has_mask_all_syndrome', 'has_mask', 'all genes', 'gene', 'omim', 'syndrome name', 'diagnosis', 'all omim', 'count'])
 
     syn_mapped_file = open(os.path.join(args.output,'phenotype_to_gene.csv'), 'w')
     syn_mapped_writer = csv.writer(syn_mapped_file, delimiter='\t')
@@ -157,6 +178,7 @@ if __name__ == '__main__':
 
     with open(output_filename, 'w') as csvfile:
         file_writer = csv.writer(csvfile, delimiter='\t')
+        file_writer.writerow(['case', 'has_mask_all_syndrome', 'has_mask', 'all genes', 'gene', 'omim', 'syndrome name', 'diagnosis', 'all omim', 'count'])
 
         for fileName in log_data["passed"].keys():
             test = fileName
