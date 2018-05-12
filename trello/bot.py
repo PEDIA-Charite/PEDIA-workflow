@@ -105,15 +105,40 @@ class CaseComment(Markdowner):
                     ("code", json.dumps(qc_info, indent=4)),
                 ]
 
-                ge_info = case.data.get_js()["genomic_entries"]
-                var_info = [str(v) for v in case.get_variants()]
-                model += [
-                    ("bold", "Genomic entry information"),
-                    ("text", "Raw json data:"),
-                    ("code", json.dumps(ge_info, indent=4)),
-                    ("text", "Parsed variants:"),
-                    ("code", json.dumps(var_info, indent=4)),
-                ]
+            ge_info = case.data.get_js()["genomic_entries"]
+            var_info = [str(v) for v in case.get_variants()]
+            model += [
+                ("bold", "Genomic entry information"),
+                ("text", "Raw json data:"),
+                ("code", json.dumps(ge_info, indent=4)),
+                ("text", "Parsed variants:"),
+                ("code", json.dumps(var_info, indent=4)),
+            ]
+
+            # diagnosis information
+            model += [
+                ("bold", "Diagnosis information"),
+                ("text", "Unparsed data:"),
+                ("code", json.dumps(
+                    case.data.get_js()["selected_syndromes"], indent=4
+                )),
+                ("text", "Parsed syndrome data:"),
+                ("code", json.dumps(
+                    case.get_diagnosis(), indent=4
+                ))
+            ]
+            # features information
+            model += [
+                ("bold", "Selected features"),
+                ("code", json.dumps(case.get_features(), indent=4))
+            ]
+
+            # score information
+            score_stats = case.
+            model += [
+                ("bold", "Scores overview"),
+                ("code", json.dumps(score_stats, indent=4))
+            ]
         else:
             model.append(("text", "Could not find {}".format(case_id)))
 

@@ -9,11 +9,12 @@ import typing
 from contextlib import contextmanager
 
 from lib.vcf_jannovar import jannovar_vcf_to_table
+from lib.singleton import LazyConfigure
 
 LOGGER = logging.getLogger(__name__)
 
 
-class JannovarClient:
+class JannovarClient(LazyConfigure):
     '''Implements a basic stream socket client.
     Built after simple toy implementation here:
     https://docs.python.org/3/howto/sockets.html
@@ -21,16 +22,19 @@ class JannovarClient:
 
     def __init__(
             self,
+    ):
+        super().__init__()
+        self.url = None
+        self.port = None
+
+    def configure(
+            self,
             url: str = "localhost",
             port: int = 8888,
-            config: typing.Union["ConfigManager", None] = None,
     ):
-        if config:
-            self.url = config.jannovar["url"]
-            self.port = int(config.jannovar["port"])
-        else:
-            self.url = url
-            self.port = port
+        super().configure()
+        self.url = url
+        self.port = port
 
     def create_vcf(
             self,
