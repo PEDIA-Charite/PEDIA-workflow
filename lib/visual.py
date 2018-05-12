@@ -1,4 +1,5 @@
-from functools import wraps
+import multiprocessing
+from functools import wraps, partial
 
 
 def print_status(label, width, cur, size):
@@ -20,19 +21,37 @@ def print_status(label, width, cur, size):
 
 def progress_bar(label, width=20):
     '''Build progressbar around yielding function.'''
-    def progress_decorator(iter_func):
-        @wraps(iter_func)
-        def progress_wrapper(*args, **kwds):
+    def progress_decorator(mapped_func):
+        @wraps(mapped_func)
+        def progress_wrapper(iterable, *args, **kwds):
             result = []
-            size = len(args[0])
-            for i, res in enumerate(iter_func(*args, **kwds)):
+            size = len(iterable)
+
+            for i, item in enumerate(iterable):
                 print_status(label, width, i+1, size)
-                result.append(res)
+                result.append(mapped_func(item, *args, **kwds))
             print("")
             return result
         return progress_wrapper
 
     return progress_decorator
+
+
+def multiprocess(
+        label, map_func, iterable, *args, **kwargs
+):
+    with multiprocessing.Pool() as pool:
+        result = []
+        size = len(iterable)
+        for i, res in enumerate(
+                pool.imap_unordered(
+                    partial(map_func, *args, **kwargs), iterable
+                )
+        ):
+            print_status(label, 20, i+1, size)
+            result.append(res)
+        print("")
+    return result
 
 
 if __name__ == '__main__':

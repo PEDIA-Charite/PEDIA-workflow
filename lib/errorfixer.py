@@ -7,20 +7,29 @@ import os
 import json
 from typing import Union, Tuple
 from lib.constants import HGVS_ERRORDICT_VERSION
+from lib.singleton import LazyConfigure
 
 # Typing definitions for clearer type hints
 ENTRY_ID = Union[str, int]
 ERROR_ENTRY = Tuple[list, list, list]
 
 
-class ErrorFixer:
+class ErrorFixer(LazyConfigure):
     '''Map erroneous variant information to correct hgvs strings.
     '''
-    def __init__(self,
-                 hgvs_error_file: str = 'hgvs_errors.json',
-                 hgvs_new_errors: str = 'hgvs_new_errors.json',
-                 config: Union[None, "ConfigManager"] = None,
-                 version: Union[None, int] = None):
+    def __init__(self):
+        super().__init__()
+        self._error_path = None
+        self._new_error_path = None
+        self._error = None
+        self._new = None
+
+    def configure(
+            self,
+            hgvs_error_file: str = 'hgvs_errors.json',
+            hgvs_new_errors: str = 'hgvs_new_errors.json',
+            version: Union[None, int] = None
+    ):
         '''
         Params:
             hgvs_error_file: Location to load the error-checking info from.
@@ -30,12 +39,9 @@ class ErrorFixer:
             config: config object to directly load options
             version: override library internal version check
         '''
-        if config:
-            self._error_path = config.errorfixer["error_path"]
-            self._new_error_path = config.errorfixer["new_error_path"]
-        else:
-            self._error_path = hgvs_error_file
-            self._new_error_path = hgvs_new_errors
+        super().configure()
+        self._error_path = hgvs_error_file
+        self._new_error_path = hgvs_new_errors
 
         self._error = self.load(self._error_path)
         latest_error_version = HGVS_ERRORDICT_VERSION \

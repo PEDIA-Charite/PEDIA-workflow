@@ -10,17 +10,19 @@ import logging
 import logging.config
 from typing import Tuple, List
 
-import pickle
 from argparse import ArgumentParser
 import json
 
 import yaml
 
 # own libraries
-from lib import download, errorfixer, quality_check
-from lib.visual import progress_bar
+from lib import errorfixer, quality_check, pickler
+from lib.processor import Processor
+from lib.visual import progress_bar, multiprocess
 from lib.model import json_parser, case, config
-from lib.api import phenomizer, omim, mutalyzer, jannovar
+from lib.api import omim, mutalyzer, jannovar
+
+from lib.global_singletons import AWS_INST, MUTALYZER_INST
 
 
 def configure_logging(logger_name, logger_file: str = "preprocess.log"):
@@ -79,31 +81,6 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def json_from_directory(config_data: config.ConfigManager) \
-        -> Tuple[List[str], str]:
-    '''Get a list of json file paths.'''
-    # Download new files from AWS Bucket
-    if config_data.general.getboolean("download"):
-        download.backup_s3_folder(config=config_data)
-
-    # Initial Quality check of new json
-    unprocessed_jsons = os.path.join(
-        config_data.aws['download_location'], 'cases'
-    )
-    json_files = [
-        os.path.join(unprocessed_jsons, x)
-        for x in os.listdir(unprocessed_jsons)
-        if os.path.splitext(x)[1] == '.json'
-    ]
-    # corrected is a directory which can contain manually edited case jsons
-    # that should differ from the original only in content, not in overall
-    # structure.
-    # this should make resolving some exotic errors a lot easier
-    corrected = config_data.preprocess['corrected_location']
-
-    return json_files, corrected
-
-
 def create_config(
         config_path: str = "config.yml",
         simvcffolder: str = "data/PEDIA/mutations",
@@ -137,184 +114,145 @@ def create_config(
         yaml.dump(config_data, configfile, default_flow_style=False)
 
 
-def create_jsons(args, config_data):
+def create_jsons(config_data):
     '''Create a list of new formatjson objects.'''
     print("== Process new json files ==")
     # get either from single file or from directory
-    json_files, corrected = (
-        [args.single], config_data.preprocess['corrected_location']
-    ) if args.single else json_from_directory(config_data)
+    corrected = config_data.input["corrected_path"]
+    if config_data.input["input_files"]:
+        json_files = config_data.input["input_files"]
+    else:
+        json_folder = config_data.input["download_path"]
+        if config_data.input["download"]:
+            AWS_INST.backup_s3_folder(json_folder)
 
-    @progress_bar("Process jsons")
-    def yield_jsons(json_files, corrected):
-        '''Create json from file.'''
-        for json_file in json_files:
-            yield json_parser.NewJson.from_file(json_file, corrected)
+        unprocessed_jsons = os.path.join(json_folder, 'cases')
 
-    new_json_objs = yield_jsons(json_files, corrected)
+        json_files = [
+            os.path.join(unprocessed_jsons, x)
+            for x in os.listdir(unprocessed_jsons)
+            if os.path.splitext(x)[1] == '.json'
+        ]
+
+    new_json_objs = progress_bar("Process jsons")(
+        lambda x, y: json_parser.NewJson.from_file(x, y)
+    )(json_files, corrected)
 
     print('Unfiltered', len(new_json_objs))
-
-    logpath = config_data.jsonparser["json_qc_log"]
-    if logpath and not args.single:
-        # move old log
-        if os.path.exists(logpath):
-            shutil.move(logpath, logpath+".old")
-        qc_failed_results = {
-            "json_check_failed": {
-                case_id: {
-                    "issues": issues,
-                }
-                for case_id, (valid, issues) in
-                [(j.get_case_id(), j.check()) for j in new_json_objs]
-                if not valid
+    json_failed_data = {
+        "json_check_failed": {
+            case_id: {
+                "issues": issues,
             }
+            for case_id, (valid, issues) in
+            [(j.get_case_id(), j.check()) for j in new_json_objs]
+            if not valid
         }
-        with open(logpath, "w") as failedfile:
-            json.dump(qc_failed_results, failedfile, indent=4)
+    }
 
     filtered_new = [j for j in new_json_objs if j.check()[0]]
     print('Filtered rough criteria', len(filtered_new))
-    return filtered_new
+    return filtered_new, json_failed_data
 
 
-def create_cases(args, config_data, jsons):
+def touch_hgvs(case):
+    case.hgvs_models
+    return case
+
+
+def create_cases(config_data, jsons):
     '''Create cases from list of jsons.'''
     print("== Create cases from new json format ==")
-    error_fixer = errorfixer.ErrorFixer(config=config_data)
-    omim_obj = omim.Omim(config=config_data)
 
-    @progress_bar("Create cases")
-    def yield_cases(json_files, error_fixer, omim_obj, exclusion):
-        '''Create case from json objects.'''
-        for json_file in json_files:
-            yield case.Case(
-                json_file,
-                error_fixer=error_fixer,
-                omim_obj=omim_obj,
-                exclude_benign_variants=exclusion
-            )
+    case_objs = progress_bar("Create cases")(
+        lambda json_file: case.Case(json_file)
+    )(jsons)
 
-    case_objs = yield_cases(
-        jsons,
-        error_fixer,
-        omim_obj,
-        config_data.preprocess.getboolean("exclude_normal_variants")
-    )
+    print("Correcting transcripts with mutalyzer")
 
-    mutalyzer.correct_reference_transcripts(case_objs)
+    case_objs = multiprocess("Fetch hgvs", touch_hgvs, case_objs)
 
-    if config_data.general.getboolean('dump_intermediate') \
-            and not args.single:
-        pickle.dump(case_objs, open('case_cleaned.p', 'wb'))
+    MUTALYZER_INST.correct_reference_transcripts(case_objs)
+
+    print("Creating pickle.")
+    if config_data.dump_intermediate:
+        with open('case_cleaned.p', 'wb') as pfile:
+            pickler.CasePickler(pfile).dump(case_objs,)
 
     return case_objs
 
 
-def phenomize(args, config_data, cases):
-    '''Phenomization using charite phenomization service.'''
-    print("== Phenomization of cases ==")
-    if "phenomizer" in config_data and config_data.phenomizer["url"]:
-
-        @progress_bar("Phenomization")
-        def yield_phenomized(case_objs, phen):
-            '''Phenomize a single case. Modifications are inplace.'''
-            for case_obj in case_objs:
-                case_obj.phenomize(phen)
-                yield
-
-        phen = phenomizer.PhenomizerService(config=config_data)
-        yield_phenomized(cases, phen)
-
-        if config_data.general.getboolean('dump_intermediate') \
-                and not args.single:
-            pickle.dump(cases, open('case_phenomized.p', 'wb'))
-    else:
-        print("No config found. Phenomization will be skipped.")
-
-    return cases
+def create_old_json(case_obj, destination):
+    '''Create an old case object.'''
+    old = json_parser.OldJson.from_case_object(case_obj, destination)
+    old.save_json()
+    return old, case_obj
 
 
-def convert_to_old_format(args, config_data, cases):
+def convert_to_old_format(config_data, cases):
     '''Convert case files to old json format objects.'''
     print("== Mapping to old json format ==")
-    destination = args.output or config_data.conversion["output_path"]
+    result = multiprocess(
+        "Create old", create_old_json, cases,
+        destination=config_data.output["converted_path"]
+    )
+    old_jsons = [old for old, _ in result]
+    cases = [c for _, c in result]
+    return old_jsons, cases
 
-    omim_obj = omim.Omim(config=config_data)
 
-    @progress_bar("Convert old")
-    def yield_old_json(case_objs, destination, omim_obj):
-        '''Create an old case object.'''
-        for case_obj in case_objs:
-            old = json_parser.OldJson.from_case_object(
-                case_obj,
-                destination,
-                omim_obj
-            )
-            old.save_json()
-            yield old
-
-    return yield_old_json(cases, destination, omim_obj)
+def create_qc_case(case):
+    return case.check(), case
 
 
 def get_qc_cases(config_data, cases):
     '''Get qc results for all cases.'''
-    omim_obj = omim.Omim(config=config_data)
-    return {c.case_id: (c.check(omim_obj), c) for c in cases}
+    print("== Get QC results for cases ==")
+    return multiprocess("QC cases", create_qc_case, cases)
 
 
-def save_vcfs(args, config_data, qc_cases):
+def save_vcfs(config_data, qc_cases):
     '''Create VCF files from genetic information and create a config.yml
     listing all vcf files.
     '''
-    simulated = config_data.vcf["simulated"]
-    realvcf = config_data.vcf["realvcf"]
-    config_path = config_data.vcf["config_file"]
+    simulated = config_data.output["simulated_vcf_path"]
+    realvcf = config_data.output["real_vcf_path"]
+    config_path = config_data.output["vcf_config_file"]
 
-    server = jannovar.JannovarClient(config=config_data)
-    if not server.can_connect():
-        server = None
-        print(
-            (
-                "Jannovar cannot connect to server. Running per file. "
-                "This can be very slow."
-            )
-        )
+    progress_bar("Generate VCF")(
+        lambda x: x.put_hgvs_vcf(simulated)
+    )([case for (valid, _), case in qc_cases if valid])
 
-    @progress_bar("Generate VCFs")
-    def yield_vcf(case_objs):
-        '''Dump simulated vcf files.'''
-        for case_obj in case_objs:
-            case_obj.put_hgvs_vcf(simulated, server, recreate=False)
-            yield
-
-    yield_vcf([v[1] for v in qc_cases.values() if v[0][0]])
-
-    if config_data.general.getboolean('dump_intermediate') and not args.single:
-        pickle.dump(qc_cases, open('qc_case_with_simulated_vcf.p', 'wb'))
+    print("Pickling vcf cases")
+    if config_data.dump_intermediate:
+        with open('qc_case_with_simulated_vcf.p', 'wb') as pfile:
+            pickler.CasePickler(pfile).dump(qc_cases)
 
     create_config(config_path, simulated, realvcf)
 
     return qc_cases
 
 
-def quality_check_cases(args, config_data, qc_cases, old_jsons):
+def quality_check_cases(config_data, qc_cases, old_jsons, json_log):
     '''Output quality check summaries.'''
     print("== Quality check ==")
 
     # Cases failing qc altogether
     qc_failed_msg = {
-        v[1].case_id: v[0] for v in qc_cases.values() if not v[0][0]
+        case.case_id: (valid, issues)
+        for (valid, issues), case in qc_cases if not valid
     }
     # cases with multiple diagnosis
     multi_no_omim = {
         k: v for k, v in
-        [(v[1].case_id, v[1].get_diagnosis()) for v in qc_cases.values()]
+        [
+            (case.case_id, case.get_diagnosis()) for _, case in qc_cases
+        ]
         if any(str(d["omim_id"]) == "0" for d in v) and len(v) > 1
     }
 
     # Cases passing quality check
-    qc_passed = {v[1].case_id: v[1] for v in qc_cases.values() if v[0][0]}
+    qc_passed = {case.case_id: case for (valid, _), case in qc_cases if valid}
 
     qc_vcf = {
         case_id: case.check_vcf() for case_id, case in qc_passed.items()
@@ -337,18 +275,11 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
         if v > 0
     }
 
-    omim_obj = omim.Omim(config=config_data)
-
     # Cases where pathogenic diagnosed mutation is not in geneList
-    @progress_bar("Get pathogenic genes in geneList")
-    def pathogenic_genes_process(cases):
-        '''Get boolean value, whether pathogenic gene is contained in
-        genes converted from detected syndromes.'''
-        for case_id, case_obj in cases.items():
-            yield case_id, case_obj.pathogenic_gene_in_gene_list(omim_obj)
-
     qc_pathongenic_passed = dict(
-        c for c in pathogenic_genes_process(qc_passed) if not c[1][0]
+        (cid, x) for (cid, x) in progress_bar("Pathogenic genes in gene list")(
+            lambda c: (c[0], c[1].pathogenic_gene_in_gene_list())
+        )(qc_passed.items()) if not x[0]
     )
 
     # Compiled stats to be dumped into a json file
@@ -361,10 +292,11 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
         "passed": {k: '' for k in qc_passed.keys()},
     }
 
+    qc_output = {**qc_output, **json_log}
+
     # save qc results in detailed log if needed
-    log_path = config_data.quality["qc_detailed_log"]
-    if config_data.quality.getboolean("qc_detailed") \
-            and log_path and not args.single:
+    log_path = config_data.output["quality_check_log"]
+    if config_data.output["create_log"]:
         # move old file to new location
         if os.path.exists(log_path):
             shutil.move(log_path, log_path+".old")
@@ -373,26 +305,22 @@ def quality_check_cases(args, config_data, qc_cases, old_jsons):
             json.dump(qc_output, qc_out, indent=4)
 
     # move cases to qc directory
-    if config_data.quality["qc_output_path"] and old_jsons:
+    if old_jsons:
         print("Saving passing cases to new location")
         # create output directory if needed
-        os.makedirs(config_data.quality["qc_output_path"], exist_ok=True)
+        os.makedirs(config_data.output["valid_case_path"], exist_ok=True)
 
         old_jsons = {j.get_case_id(): j for j in old_jsons}
 
         @progress_bar("Save passing qc")
-        def save_old_to_qc(cases):
+        def save_old_to_qc(case_obj):
             '''Save old jsons passing QC to a new location.'''
-            for pcase in cases:
-                old_js = old_jsons[pcase]
-                old_js.save_json(
-                    save_path=config_data.quality["qc_output_path"]
-                )
-                yield
+            old_js = old_jsons[case_obj]
+            old_js.save_json(save_path=config_data.output["valid_case_path"])
 
         save_old_to_qc(qc_passed)
 
-    if args.single:
+    if not config_data.output["create_log"]:
         print(json.dumps(qc_output, indent=4))
 
     return {
@@ -407,21 +335,21 @@ def main():
     '''
 
     configure_logging("lib")
-    config_data = config.ConfigManager()
-
     args = parse_arguments()
+
+    config_data = config.PEDIAConfig(args)
+
+    json_log = {}
+
     if not args.pickle:
-        jsons = create_jsons(args, config_data)
-        cases = create_cases(args, config_data, jsons)
+        jsons, json_log = create_jsons(config_data)
+        cases = create_cases(config_data, jsons)
     else:
         with open(args.pickle, "rb") as pickled_file:
-            cases = pickle.load(pickled_file)
-
-    if args.entry == "pheno":
-        cases = phenomize(args, config_data, cases)
+            cases = pickler.CaseUnpickler(pickled_file).load()
 
     if args.entry == "pheno" or args.entry == "convert":
-        old_jsons = convert_to_old_format(args, config_data, cases)
+        old_jsons, cases = convert_to_old_format(config_data, cases)
     else:
         old_jsons = None
 
@@ -431,13 +359,13 @@ def main():
 
         if not args.skip_vcf:
             # VCF Generation
-            qc_cases = save_vcfs(args, config_data, qc_cases)
+            qc_cases = save_vcfs(config_data, qc_cases)
     else:
         qc_cases = cases
 
     # Quality check
     stats, qc_cases = quality_check_cases(
-        args, config_data, qc_cases, old_jsons
+        config_data, qc_cases, old_jsons, json_log
     )
 
     print(
@@ -446,7 +374,9 @@ def main():
     )
 
     if not args.single:
-        quality_check.diff_quality_check(config_data)
+        quality_check.diff_quality_check(
+            config_data.output["quality_check_log"]
+        )
 
 
 if __name__ == '__main__':

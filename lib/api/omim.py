@@ -16,6 +16,7 @@ import typing
 import pandas
 
 from lib.utils import get_file_hash
+from lib.singleton import LazyConfigure
 
 RE_OMIM_PHEN = re.compile(r'.* (\d{6}) \((\d)\)')
 
@@ -58,7 +59,7 @@ def omim_list(func):
     return checker
 
 
-class Omim:
+class Omim(LazyConfigure):
     '''
     Download omim files from official website resources or get them locally
     if they already exist
@@ -118,33 +119,31 @@ class Omim:
         }
     }
 
-    def __init__(
+    def __init__(self):
+        super().__init__()
+        self._mimdir = None
+        self.files = None
+        self.indexes = None
+
+    def configure(
             self,
             mimdir: str = 'data',
-            config: 'ConfigManager' = None
+            morbidmap_hash: str = "",
+            mim2gene_hash: str = "",
     ):
         '''
-        Omim API requires an API key for the download of the morbidmap.
+        Configure the OMIM instance.
 
         Args:
             mimdir: Directory where omim files are saved and retrieved,
                     defaults to the current working directory
 
-            api_key: OMIM API key retrieve it from the official omim website
-
         Returns:
             Data stucture with mim2gene and morbidmap
         '''
+        super().configure()
         # use config object to get parameters
         self._mimdir = mimdir
-
-        mim2gene_hash = ''
-        morbidmap_hash = ''
-
-        if config:
-            self._mimdir = config.omim['mimdir']
-            mim2gene_hash = config.omim['mim2gene_hash']
-            morbidmap_hash = config.omim['morbidmap_hash']
 
         # save hashes to object for usage as stamp
         hashes = {

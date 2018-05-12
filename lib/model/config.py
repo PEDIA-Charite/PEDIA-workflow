@@ -6,53 +6,130 @@ This is mainly used to define download directories and API access.
 from typing import Union, Iterable, Dict
 from configparser import ConfigParser
 
+from lib import errorfixer
+from lib.api import mutalyzer, omim, jannovar, phenomizer
 
-class Indexer:
-    '''Implement config sections as class attributes.
+from lib.global_singletons import (
+    ERRORFIXER_INST, JANNOVAR_INST, OMIM_INST, PHENOMIZER_INST, AWS_INST
+)
+
+
+class PEDIAConfig(ConfigParser):
     '''
-    def __init__(self, obj: 'ConfigManager', section: str):
-        self._obj = obj
-        self._section = section
+    Implement configuration options for objects needed in the PEDIA pipeline.
+    '''
 
-    def __getitem__(self, key: Union[str, tuple, list]):
-        return self._obj.get(self._section, key)
+    def __init__(
+            self,
+            args: Union["Namespace", None] = None,
+            conf_file: str = "config.ini"
+    ):
+        self.path = conf_file
+        super().__init__()
+        self.read(self.path)
 
-    def getboolean(self, key: str):
-        '''Get boolean value of parameter.'''
-        return self._obj[self._section].getboolean(key)
+        self.logfile_path = self["general"]["logfile"]
+        self.dump_intermediate = self["general"].getboolean(
+            "dump_intermediate"
+        )
 
+        self.input = self.parse_input(args)
 
-class ConfigManager:
-    """Configuration for all steps in the pipeline.
-    """
-    def __init__(self, conf_file: str = 'config.ini'):
-        self._load_config(conf_file)
+        self.output = self.parse_output(args)
 
-        # adding each section as an attribute to the class
-        for section in self._data.sections():
-            setattr(self, section, Indexer(self, section))
+        if args.single:
+            self.dump_intermediate = False
 
-    def _load_config(self, conf_file: str):
-        """Load necessary vars from config file.
-        """
-        self._data = ConfigParser()
-        self._data.read(conf_file)
+        # configure api components
+        ERRORFIXER_INST.configure(**self.errorfixer_options)
+        JANNOVAR_INST.configure(**self.jannovar_options)
+        OMIM_INST.configure(**self.omim_options)
+        PHENOMIZER_INST.configure(**self.phenomizer_options)
+        AWS_INST.configure(**self.aws_options)
 
-    def get(self, section: str, key: Union[str, Iterable[str]]) \
-            -> Union[Dict[str, str], str, int, bool]:
-        '''Get a single parameter or a list of parameters by name.
-        If an iterable is given a dictionary containing key value pairs will be
-        returned.
-        '''
-        if isinstance(key, (tuple, list)):
-            return {k: self.get(section, k) for k in key}
-        elif isinstance(key, str):
-            return self._data[section][key]
-        else:
-            raise TypeError
+    @property
+    def errorfixer_options(self):
+        return {
+            "hgvs_error_file": self["errorfixer"]["error_path"],
+            "hgvs_new_errors": self["errorfixer"]["new_error_path"],
+            "version": None,
+        }
 
-    def __getitem__(self, key):
-        return self._data[key]
+    @property
+    def jannovar_options(self):
+        return {
+            "url": self["jannovar"]["url"],
+            "port": int(self["jannovar"]["port"]),
+        }
 
-    def __contains__(self, key):
-        return key in self._data
+    @property
+    def omim_options(self):
+        return {
+            "mimdir": self["omim"]["mimdir"],
+            "mim2gene_hash": self["omim"]["mim2gene_hash"],
+            "morbidmap_hash": self["omim"]["morbidmap_hash"],
+        }
+
+    @property
+    def phenomizer_options(self):
+        return {
+            "url": self["phenomizer"]["url"],
+            "user": self["phenomizer"]["user"],
+            "password": self["phenomizer"]["password"],
+        }
+
+    @property
+    def aws_options(self):
+        return {
+            "aws_access_key": self["aws"]["access_key"],
+            "aws_secret_key": self["aws"]["secret_key"],
+        }
+
+    @property
+    def download(self):
+        return self._download
+
+    def parse_input(self, args: "Namespace"):
+        download = self["input"].getboolean(
+            "download"
+        )
+        corrected_path = self["input"]["corrected_path"]
+        download_path = self["input"]["download_path"]
+        input_files = []
+
+        if args.single:
+            download = False
+            input_files = [args.single]
+        if args.pickle:
+            self._picklefiles = args.pickle
+        return {
+            "download": download,
+            "corrected_path": corrected_path,
+            "download_path": download_path,
+            "input_files": input_files
+        }
+
+    def parse_output(self, args: "Namespace"):
+        simulated_vcf_path = self["output"]["simulated_vcf_path"]
+        real_vcf_path = self["output"]["real_vcf_path"]
+        vcf_config_file = self["output"]["vcf_config_file"]
+        converted_path = self["output"]["converted_path"]
+
+        valid_case_path = self["output"]["valid_case_path"]
+        quality_check_log = self["output"]["quality_check_log"]
+
+        create_log = True
+
+        if args.single:
+            create_log = False
+        if args.output:
+            self._output_base_dir = args.output
+        return {
+            "simulated_vcf_path": simulated_vcf_path,
+            "real_vcf_path": real_vcf_path,
+            "vcf_config_file": vcf_config_file,
+            "converted_path": converted_path,
+            "valid_case_path": valid_case_path,
+            "quality_check_log": quality_check_log,
+            "create_log": create_log
+        }
