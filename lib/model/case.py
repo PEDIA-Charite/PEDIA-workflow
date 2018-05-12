@@ -16,6 +16,10 @@ from lib.vcf_operations import move_vcf
 from lib import vcf_jannovar
 from lib import constants
 
+from lib.global_singletons import (
+    ERRORFIXER_INST, JANNOVAR_INST, OMIM_INST, PHENOMIZER_INST
+)
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,50 +37,98 @@ class Case:
     '''
 
     def __init__(
-            self, data: Union[OldJson, NewJson],
-            error_fixer: "ErrorFixer",
-            omim_obj: "Omim",
-            exclude_benign_variants: bool = True
+            self, data: NewJson, exclude_benign_variants: bool = True
     ):
-        self.algo_version = data.get_algo_version()
-        self.case_id = data.get_case_id()
-
-        # get both the list of hgvs variants and the hgvs models used in the
-        # parsing
-        self.hgvs_models = data.get_variants(error_fixer)
-        self.syndromes = data.get_syndrome_suggestions_and_diagnosis(omim_obj)
-        self.features = data.get_features()
-        self.submitter = data.get_submitter()
-        self.realvcf = data.get_vcf()
-        self.gene_scores = None
         # also save the json object to easier extract information from the
         # new format
         self.data = data
+        # query settings
+        self._exclude_benign_variants = exclude_benign_variants
+
+        self.algo_version = self.data.get_algo_version()
+        self.case_id = self.data.get_case_id()
+        self.features = self.data.get_features()
+        self.submitter = self.data.get_submitter()
+        self.real_vcf_paths = self.data.get_vcf()
+
+        self.simulated_vcf = None
+
+        self._hgvs_models = None
+        self._syndromes = None
+        self._gene_list = None
+        self._simulated_vcf_paths = None
+        self._phenomized = None
+
         LOGGER.debug("Creating case %s", self.case_id)
 
-        self.vcf = None
+    @property
+    def hgvs_models(self):
+        if self._hgvs_models is None:
+            self._hgvs_models = self.data.get_variants()
+        return self._hgvs_models
 
-        # query settings
-        self.exclude_benign_variants = exclude_benign_variants
+    @property
+    def syndromes(self):
+        if self._syndromes is None:
+            self._syndromes = self.data.get_syndrome_suggestions_and_diagnosis(
+            )
+        return self._syndromes
 
-    def phenomize(self, pheno: 'PhenomizerService') -> bool:
+    @property
+    def gene_list(self):
+        if self._gene_list is None:
+            self._gene_list = self._create_gene_list()
+        return self._gene_list
+
+    @property
+    def phenomized(self):
+        if self._phenomized is None:
+            self._phenomized = self._phenomize()
+        return self._phenomized
+
+    def get_syndrome_list(self):
+        '''Get list of syndromes from syndrome table'''
+        syndrome_list = self.syndromes.to_dict("records")
+        return syndrome_list
+
+    def get_phenomized_list(self):
+        '''Get list of syndromes from syndrome table after phenomization'''
+        syndrome_list = self.phenomized.to_dict("records")
+        return syndrome_list
+
+    def get_simulated_vcf_paths(self, outputpath):
+        if not self._simulated_vcf_paths:
+            self._simulated_vcf_paths = self.put_hgvs_vcf(outputpath)
+        return self._simulated_vcf_paths
+
+    def get_diagnosis(self, differential: bool = True):
+        '''Get list of diagnosis optionally with differential diagnosis.'''
+        if differential:
+            select = self.phenomized["confirmed"] \
+                | self.phenomized["differential"]
+        else:
+            select = self.phenomized["confirmed"]
+
+        diagnosis_list = self.phenomized.loc[select].to_dict("records")
+
+        return diagnosis_list
+
+    def _phenomize(self) -> pandas.DataFrame:
         '''Add phenomization information to genes from boqa and phenomizer.
-        Args:
-            omim: Omim object to handle id translation.
-            pheno: PhenomizerService to handle API calls for phenomizer and
-                   boqa.
         '''
-        pheno_boqa = pheno.disease_boqa_phenomize(self.get_features())
+        pheno_boqa = PHENOMIZER_INST.disease_boqa_phenomize(self.features)
 
         pheno_boqa.index = pheno_boqa.index.astype(int)
         # merge pheno and boqa scores dataframe with our current syndromes
         # dataframe which contains face2gene scores
-        self.syndromes["omim_id"] = self.syndromes["omim_id"].astype(int)
-        self.syndromes = self.syndromes.merge(
-            pheno_boqa, left_on='omim_id', how='outer', right_index=True)
-        self.syndromes.reset_index(drop=True, inplace=True)
+        syndromes = self.syndromes
+        syndromes["omim_id"] = syndromes["omim_id"].astype(int)
+        syndromes = syndromes.merge(
+            pheno_boqa, left_on='omim_id', how='outer', right_index=True
+        )
+        syndromes.reset_index(drop=True, inplace=True)
 
-        self.syndromes.rename(
+        syndromes.rename(
             columns={
                 "value_pheno": "pheno_score",
                 "value_boqa": "boqa_score",
@@ -85,7 +137,7 @@ class Case:
         )
 
         # fill nans created by merge
-        self.syndromes.fillna(
+        syndromes.fillna(
             {
                 'combined_score': 0.0,
                 'feature_score': 0.0,
@@ -107,21 +159,20 @@ class Case:
         )
 
         LOGGER.debug("Phenomization case %s success", self.case_id)
+        return syndromes
 
-        return True
-
-    def get_gene_list(self, omim: "Omim") -> [dict]:
+    def _create_gene_list(self) -> [dict]:
         '''Get a list of genes from the detected syndrome by inferring
         gene phenotype mappings from the phenomizer and OMIM.
         '''
-        syndromes = self.syndromes.to_dict("records")
+        syndromes = self.phenomized.to_dict("records")
 
         phenotypic_series_mapping = {}
         for syndrome in syndromes:
 
             disease_id = syndrome["omim_id"]
 
-            phenotypic_series = omim.omim_id_to_phenotypic_series(
+            phenotypic_series = OMIM_INST.omim_id_to_phenotypic_series(
                 str(disease_id)
             ) or str(disease_id)
 
@@ -131,13 +182,13 @@ class Case:
                 or syndrome["disease-name_boqa"]
             )
 
-            genes = list(omim.mim_pheno_to_gene(disease_id).values())
+            genes = list(OMIM_INST.mim_pheno_to_gene(disease_id).values())
             if "gene-id" in syndrome and syndrome["gene-id"]:
                 genes += [
                     {
                         "gene_id": eid,
-                        "gene_symbol": omim.entrez_id_to_symbol(eid),
-                        "gene_omim_id": omim.entrez_id_to_mim_gene(eid)
+                        "gene_symbol": OMIM_INST.entrez_id_to_symbol(eid),
+                        "gene_omim_id": OMIM_INST.entrez_id_to_mim_gene(eid)
                     }
                     for eid in syndrome["gene-id"].split(", ")
                     if eid not in [g["gene_id"] for g in genes]
@@ -182,21 +233,19 @@ class Case:
 
     def pathogenic_gene_in_gene_list(
             self,
-            omim: Union[None, "Omim"] = None
     ) -> (bool, list):
         '''Check whether diagnosed genetic mutation is pathogenic gene.'''
         variant_gene_names = [
-            v.gene["gene_id"] for v in self.get_hgvs_models()
+            v.gene["gene_id"] for v in self.hgvs_models
         ]
-        gene_list = self.get_gene_list(omim=omim)
-        gene_list_ids = [g["gene_id"] for g in gene_list]
+        gene_list_ids = [g["gene_id"] for g in self.gene_list]
         status = [
             (v in gene_list_ids, v)
             for v in variant_gene_names
         ]
         return status
 
-    def check(self, omim: Union[None, "Omim"] = None) -> bool:
+    def check(self) -> bool:
         '''Check whether Case fulfills all provided criteria.
 
         The criteria are:
@@ -226,7 +275,7 @@ class Case:
         scores = [
             "gestalt_score"
         ]
-        max_scores = {s: max(self.syndromes[s]) for s in scores}
+        max_scores = {s: max(self.phenomized[s]) for s in scores}
         zero_scores = [s for s, n in max_scores.items() if n <= 0]
 
         # check maximum gestalt score
@@ -240,7 +289,7 @@ class Case:
             valid = False
 
         # check that only one syndrome has been selected
-        diagnosis = self.syndromes.loc[self.syndromes['confirmed']]
+        diagnosis = self.phenomized.loc[self.phenomized['confirmed']]
         if len(diagnosis) < 1:
             issues.append(
                 {
@@ -250,52 +299,49 @@ class Case:
             valid = False
 
         diagnosis = pandas.concat(
-            [diagnosis, self.syndromes.loc[self.syndromes["differential"]]]
+            [diagnosis, self.phenomized.loc[self.phenomized["differential"]]]
         )
 
         # check whether multiple diagnoses are in same phenotypic series
-        if omim:
-            ps_dict = {}
-            for _, diag in diagnosis.iterrows():
-                ps_res = omim.omim_id_to_phenotypic_series(
-                    str(diag["omim_id"])
-                ) or str(diag["omim_id"])
-                # ignore entries without omim id
-                if ps_res == '0':
+        ps_dict = {}
+        for _, diag in diagnosis.iterrows():
+            ps_res = OMIM_INST.omim_id_to_phenotypic_series(
+                str(diag["omim_id"])
+            ) or str(diag["omim_id"])
+            # ignore entries without omim id
+            if ps_res == '0':
+                continue
+            if diag["syndrome_name"] in ps_dict:
+                ps_dict[diag["syndrome_name"]].add(ps_res)
+            else:
+                ps_dict[diag["syndrome_name"]] = set([ps_res])
+        # compact ps_dict based on omim ids
+        reduced_ps_dict = {}
+
+        for key, series in ps_dict.items():
+            contained = False
+            for other_key, other_series in ps_dict.items():
+                if other_key == key:
                     continue
-                if diag["syndrome_name"] in ps_dict:
-                    ps_dict[diag["syndrome_name"]].add(ps_res)
-                else:
-                    ps_dict[diag["syndrome_name"]] = set([ps_res])
-            # compact ps_dict based on omim ids
-            reduced_ps_dict = {}
+                if series <= other_series:
+                    contained = True
+            if not contained:
+                reduced_ps_dict[key] = series
 
-            for key, series in ps_dict.items():
-                contained = False
-                for other_key, other_series in ps_dict.items():
-                    if other_key == key:
-                        continue
-                    if series <= other_series:
-                        contained = True
-                if not contained:
-                    reduced_ps_dict[key] = series
-
-            if len(reduced_ps_dict) > 1:
-                issues.append(
-                    {
-                        "type": "MULTI_DIAGNOSIS",
-                        "data": {
-                            "orig": list(diagnosis["omim_id"]),
-                            'names': list(reduced_ps_dict.keys()),
-                            "converted_ids": [
-                                e for v in reduced_ps_dict.values() for e in v
-                            ]
-                        }
+        if len(reduced_ps_dict) > 1:
+            issues.append(
+                {
+                    "type": "MULTI_DIAGNOSIS",
+                    "data": {
+                        "orig": list(diagnosis["omim_id"]),
+                        'names': list(reduced_ps_dict.keys()),
+                        "converted_ids": [
+                            e for v in reduced_ps_dict.values() for e in v
+                        ]
                     }
-                )
-                valid = False
-        else:
-            LOGGER.warning("No omim object. Some checks will not run.")
+                }
+            )
+            valid = False
 
         if not self.get_variants():
             raw_entries = self.data.get_genomic_entries()
@@ -316,7 +362,7 @@ class Case:
         else:
             # Check if there are multiple different disease-causing genes
             raw_entries = self.data.get_genomic_entries()
-            entries = self.get_hgvs_models()
+            entries = self.hgvs_models
             if len(entries) > 1:
                 genes = [
                     entry.gene['gene_id']
@@ -337,12 +383,12 @@ class Case:
         issues = []
         valid = True
         # check simulated vcf is correct
-        if hasattr(self, "vcf"):
-            if isinstance(self.vcf, str):
+        if self.simulated_vcf is not None:
+            if isinstance(self.simulated_vcf, str):
                 issues.append(
                     {
                         "type": "VCF_ERROR",
-                        "data": self.vcf
+                        "data": self.simulated_vcf
                     }
                 )
                 valid = False
@@ -360,7 +406,7 @@ class Case:
             normal are excluded from the returned list.
         '''
         variants = [
-            v for m in self.get_hgvs_models(exclusion=exclusion)
+            v for m in self.filter_hgvs_models(exclusion=exclusion)
             for v in m.variants
         ]
         return variants
@@ -370,14 +416,14 @@ class Case:
         return len(self.get_variants(exclusion=False)) \
             - len(self.get_variants(exclusion=True))
 
-    def get_hgvs_models(
+    def filter_hgvs_models(
             self,
             exclusion: Union[bool, None] = None
     ) -> ["HGVSModel"]:
         '''Get list of hgvs models, containing all processed information
         on hgvs variants.'''
         exclusion = exclusion if exclusion is not None \
-            else self.exclude_benign_variants
+            else self._exclude_benign_variants
         # return all models if no exclusion parameter
         if not exclusion:
             return self.hgvs_models
@@ -393,78 +439,34 @@ class Case:
                 models.append(model)
         return models
 
-    def get_features(self):
-        '''
-        Get list of features. Exclude illegal HPO terms for the phenomizer.
-        '''
-        return [
-            h for h in self.features
-            if h not in constants.ILLEGAL_HPO
-        ]
-
-    def get_syndrome_list(self):
-        '''Get list of syndromes from syndrome table'''
-        syndrome_list = self.syndromes.to_dict("records")
-        return syndrome_list
-
-    def get_diagnosis(self, differential: bool = True):
-        '''Get list of diagnosis optionally with differential diagnosis.'''
-        diagnosis_list = self.syndromes.loc[
-            self.syndromes["confirmed"] | self.syndromes["differential"]
-        ].to_dict("records")
-        return diagnosis_list
-
-    def eligible_training(self) -> bool:
-        '''Eligibility of case for training.
-        Exclusion criteria are:
-            available real vcf
-        '''
-        return not self.realvcf
-
-    def get_vcf(self) -> list:
-        '''Return vcf files. Does not include generated vcf files.'''
-        return self.realvcf
-
-    def create_vcf_from_hgvs(
+    def _create_vcf_from_hgvs(
             self,
             hgvs_strings: [str],
-            vcf_path: str,
             tmp_path: str,
-            server: ["JannovarClient", None] = None,
     ) -> pandas.DataFrame:
         '''Generates vcf dataframe. If an error occurs the error message is
         returned.'''
-        zygosity = self.get_hgvs_models()[0].zygosity.lower()
-        if server:
-            vcf_data = server.create_vcf(
+        zygosity = self.hgvs_models[0].zygosity.lower()
+        if JANNOVAR_INST.can_connect():
+            vcf_data = JANNOVAR_INST.create_vcf(
                 hgvs_strings, zygosity, self.case_id
             )
         else:
             vcf_data = vcf_jannovar.create_vcf(
                 hgvs_strings, zygosity, self.case_id, tmp_path
             )
-
-        if isinstance(vcf_data, pandas.DataFrame):
-            vcf_jannovar.write_vcfdf(vcf_data, vcf_path)
-        elif isinstance(vcf_data, str):
-            LOGGER.debug(
-                "%s: VCF generation failed. Error: %s",
-                self.case_id, vcf_data
-            )
-        else:
-            LOGGER.debug(
-                "%s: No vcf generated yet.",
-                self.case_id
-            )
         return vcf_data
 
     def put_hgvs_vcf(
             self,
-            path: str,
-            server: Union[None, "JannovarClient"] = None,
+            outputpath: str,
+            temppath: Union[None, str] = None,
             recreate: bool = False,
     ) -> None:
         '''Dumps vcf file to given path as <case_id>.vcf.gz.'''
+        if temppath is None:
+            temppath = outputpath
+
         if not self.get_variants():
             LOGGER.debug(
                 '%s: VCF generation impossible. Error: No variants',
@@ -473,7 +475,7 @@ class Case:
             return
 
         hgvs_strings = [str(v) for v in self.get_variants()]
-        vcf_path = os.path.join(path, self.case_id + ".vcf.gz")
+        vcf_path = os.path.join(outputpath, self.case_id + ".vcf.gz")
 
         if not recreate and os.path.exists(vcf_path):
             vcf_data = vcf_jannovar.read_vcfdf(vcf_path)
@@ -484,7 +486,20 @@ class Case:
                     and all(h in hgvs_strings for h in vcf_hgvs):
                 LOGGER.debug("%s: Use existing vcf.", self.case_id)
         else:
-            vcf_data = self.create_vcf_from_hgvs(
-                hgvs_strings, vcf_path, path, server
+            vcf_data = self._create_vcf_from_hgvs(
+                hgvs_strings, temppath
             )
-        self.vcf = vcf_data
+            if isinstance(vcf_data, pandas.DataFrame):
+                vcf_jannovar.write_vcfdf(vcf_data, vcf_path)
+            elif isinstance(vcf_data, str):
+                LOGGER.debug(
+                    "%s: VCF generation failed. Error: %s",
+                    self.case_id, vcf_data
+                )
+            else:
+                LOGGER.debug(
+                    "%s: No vcf generated yet.",
+                    self.case_id
+                )
+        self.simulated_vcf = vcf_data
+        return [vcf_path]

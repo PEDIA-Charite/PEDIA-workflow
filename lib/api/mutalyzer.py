@@ -9,6 +9,7 @@ import os
 import json
 import re
 from typing import Union, List
+
 import pandas
 import requests
 import requests_cache
@@ -25,21 +26,6 @@ LOGGER = logging.getLogger(__name__)
 RE_VERSION_ALTERNATIVE = re.compile(r'We found these versions: ([\w.]+)')
 
 TRIES_LIMIT = 5
-
-
-def correct_reference_transcripts(case_objs: List['Case']) -> List['Case']:
-    '''Check reference transcript number via batch call to mutalyzer.
-    This will edit the hgvs objects in-place.
-    '''
-    case_dict = {
-        v.case_id: [
-            vv for m in v.get_hgvs_models() if not m.corrected
-            for vv in m.variants
-        ]
-        for v in case_objs
-    }
-    mutalyzer = Mutalyzer()
-    mutalyzer.correct_transcripts(case_dict)
 
 
 def check_errors(errordata) -> Union[str, None]:
@@ -213,3 +199,15 @@ class Mutalyzer(zeep.Client):
                 time.sleep(1)
 
         return response
+
+    def correct_reference_transcripts(self, case_objs: List['Case']) -> None:
+        '''Check reference transcript number via batch call to mutalyzer.
+        This will edit the hgvs objects in-place.
+        '''
+        case_dict = {
+            c.case_id: [
+                vv for m in c.hgvs_models
+                if not m.corrected for vv in m.variants
+            ] for c in case_objs
+        }
+        self.correct_transcripts(case_dict)

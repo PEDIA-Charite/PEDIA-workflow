@@ -13,8 +13,7 @@ import hgvs.assemblymapper
 import hgvs.config
 
 
-from lib.errorfixer import ErrorFixer
-from lib.api.mutalyzer import Mutalyzer
+from lib.global_singletons import ERRORFIXER_INST, MUTALYZER_INST
 from lib.constants import HGVS_OPS, HGVS_PREFIX
 
 
@@ -25,8 +24,6 @@ LOGGER = logging.getLogger("lib")
 hgvs.config.global_config.formatting.max_ref_length = None
 
 
-# external API for hgvs string checking and RS number resolution
-MUTALYZER = Mutalyzer()
 # creation of hgvs objects from hgvs strings
 HGVS_PARSER = hgvs.parser.Parser()
 # validation of created hgvs objects
@@ -195,7 +192,6 @@ class HGVSModel:
     def __init__(
             self,
             entry_dict: dict,
-            error_fixer: ErrorFixer
     ):
         '''New gene entry format contains:
         entry_id - entry id of gene entry json file
@@ -207,8 +203,6 @@ class HGVSModel:
         See doc/genomic_entry.md for reference on the format of genomic
         entries.
         '''
-        self.error_fixer = error_fixer
-
         self.corrected = False
 
         self._js = entry_dict
@@ -227,13 +221,13 @@ class HGVSModel:
         self.variant_type = entry_dict['variant_type'] or 'UNKNOWN'
 
         # fix incorrect gene name
-        if self.entry_id in self.error_fixer:
+        if self.entry_id in ERRORFIXER_INST:
             self._correct_gene_name()
 
         variants = self._parse_variants(entry_dict['variants'])
         failed = []
         for var in variants:
-            checked = MUTALYZER.check_syntax(var)
+            checked = MUTALYZER_INST.check_syntax(var)
             if checked and not checked['valid']:
                 message = ["{}:{}".format(v['errorcode'], v['message']) for v
                            in checked['messages']['SoapMessage']]
@@ -242,7 +236,7 @@ class HGVSModel:
         if failed:
             info = [dict(self._js, message=message)]
             valid_variants = [str(v) for v in variants]
-            self.error_fixer[self.entry_id] = (
+            ERRORFIXER_INST[self.entry_id] = (
                 info, valid_variants, failed)
         self.variants = variants
 
@@ -250,8 +244,8 @@ class HGVSModel:
         return self._js
 
     def _correct_gene_name(self):
-        if 'correct_gene' in self.error_fixer.get_data(self.entry_id):
-            self.gene = self.error_fixer.get_data(
+        if 'correct_gene' in ERRORFIXER_INST.get_data(self.entry_id):
+            self.gene = ERRORFIXER_INST.get_data(
                 self.entry_id
             )['correct_gene']
 
@@ -280,9 +274,9 @@ class HGVSModel:
 
         # get information necessary for hgvs assembly
         # this step can be skipped if we already have an override
-        if self.entry_id in self.error_fixer:
-            if len(self.error_fixer[self.entry_id]) > 0:
-                variants = self.error_fixer[self.entry_id]
+        if self.entry_id in ERRORFIXER_INST:
+            if len(ERRORFIXER_INST[self.entry_id]) > 0:
+                variants = ERRORFIXER_INST[self.entry_id]
                 variants = [
                     HGVS_PARSER.parse_hgvs_variant(v) for v in variants
                 ]
@@ -329,7 +323,7 @@ class HGVSModel:
         # add failed and partial failues to error dictionaries
         if failures > 0:
             success = [str(v) for v in variants]
-            self.error_fixer[self.entry_id] = ([self._js], success, failed)
+            ERRORFIXER_INST[self.entry_id] = ([self._js], success, failed)
         return variants
 
     def _get_mutations(self, data: dict) -> [dict]:
@@ -365,7 +359,7 @@ class HGVSModel:
 
         rs_number = 'rs_number' in mutation and mutation['rs_number'] or ''
         if rs_number:
-            j = MUTALYZER.get_db_snp_descriptions(rs_number)
+            j = MUTALYZER_INST.get_db_snp_descriptions(rs_number)
             # add the first entry, since we will have a much too large number
             # of entries
             if j:

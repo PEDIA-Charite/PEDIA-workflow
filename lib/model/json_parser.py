@@ -18,12 +18,11 @@ import os
 
 import pandas
 
-from lib.api import omim
+from lib.global_singletons import OMIM_INST
 from lib.utils import explode_df_column
 from lib.vcf_operations import move_vcf
 # from lib.utils import optional_descent
 from lib.model.hgvs_parser import HGVSModel
-from lib.constants import CHROMOSOMAL_TESTS, POSITIVE_RESULTS
 from lib import constants
 
 
@@ -240,7 +239,7 @@ class JsonFile:
             else:
                 return (False, "No value")
 
-    def _load_json(self, directory, entry_id):
+    def _load_json(self, directory, entry_id, default={}):
         '''Load a json file based on id from specified intermediary directory.
         '''
         filename = '{}.json'.format(entry_id)
@@ -251,10 +250,12 @@ class JsonFile:
                 self._override_dir, directory, filename)
             if os.path.exists(corrected_path):
                 entries_path = corrected_path
-        if not os.path.exists(entries_path):
-            raise OSError("File {} not found".format(entry_id))
-        with open(entries_path, "r") as entry_file:
-            json_data = json.load(entry_file)
+        if os.path.exists(entries_path):
+            with open(entries_path, "r") as entry_file:
+                json_data = json.load(entry_file)
+        else:
+            LOGGER.warning("File %s in %s not found", entry_id, directory)
+            json_data = default
         return json_data
 
     def load_linked(self, directive:
@@ -318,7 +319,7 @@ class OldJson(JsonFile):
         super().__init__(data, save_path=save_path, file_name=file_name)
 
     @classmethod
-    def from_case_object(cls, case: 'Case', path: str, omim: 'Omim') \
+    def from_case_object(cls, case: 'Case', path: str) \
             -> 'OldJson':
         '''Create an old json object from a case entity. This is an alternative
         constructor.
@@ -326,7 +327,7 @@ class OldJson(JsonFile):
 
         LOGGER.debug("Creating OldJson from Case for %s.", case.case_id)
         genomic_data = []
-        for model in case.get_hgvs_models():
+        for model in case.hgvs_models:
             data = {
                 'Test Information': {
                     'Molecular Test': model.test_type,
@@ -358,15 +359,11 @@ class OldJson(JsonFile):
                 'user_team': case.submitter['team'],
                 'user_name': case.submitter['name']
             },
-            'vcf': case.get_vcf(),
-            'features': case.get_features(),
-            # maybe disable
-            # 'ranks': case.syndromes.to_dict('records'),
-            'geneList': case.get_gene_list(omim),
-            # 'detected_syndromes': case.data.get_detected_syndromes(),
-            'detected_syndromes': case.get_syndrome_list(),
+            'vcf': case.real_vcf_paths,
+            'features': case.features,
+            'geneList': case.gene_list,
+            'detected_syndromes': case.get_phenomized_list(),
             'genomicData': genomic_data,
-            # directly passing structures from new json for debugging
             'genomic_entries': case.data.get_js()['genomic_entries'],
             'selected_syndromes': case.data.get_js()['selected_syndromes']
         }
@@ -405,7 +402,6 @@ class NewJson(JsonFile):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # super().from_file(path, *args, **kwargs)
         # specifiy which fields contain filenames, that have to be loaded
         # afterwards
         directive = {
@@ -447,8 +443,8 @@ class NewJson(JsonFile):
 
         # check that no structural abnormalities have been detected
         for entry in self._js['genomic_entries']:
-            if entry['test_type'] in CHROMOSOMAL_TESTS:
-                if entry['result'] in POSITIVE_RESULTS:
+            if entry['test_type'] in constants.CHROMOSOMAL_TESTS:
+                if entry['result'] in constants.POSITIVE_RESULTS:
                     issues.append(
                         ('Chromosomal abnormality detected in {} with result '
                          '{}').format(entry['test_type'], entry['result']))
@@ -468,16 +464,14 @@ class NewJson(JsonFile):
     def get_genomic_entries(self) -> list:
         return self._js["genomic_entries"]
 
-    def get_variants(self, error_fixer: "ErrorFixer") -> ['HGVSModel']:
+    def get_variants(self) -> ['HGVSModel']:
         '''Get a list of hgvs objects for variants.
         '''
-        models = [HGVSModel(entry, error_fixer)
+        models = [HGVSModel(entry)
                   for entry in self._js['genomic_entries']]
         return models
 
-    def get_syndrome_suggestions_and_diagnosis(
-            self, omim_obj: omim.Omim
-    ) -> pandas.DataFrame:
+    def get_syndrome_suggestions_and_diagnosis(self) -> pandas.DataFrame:
         '''Return a pandas dataframe containing all suggested syndromes and the
         selected syndroms, which is joined on the table with the confirmed
         column marking the specific entry.
@@ -497,7 +491,7 @@ class NewJson(JsonFile):
 
         # force omim_id to always be a list, required for exploding the df
         syndromes_df['omim_id'] = syndromes_df['omim_id'].apply(
-            omim_obj.replace_deprecated_all
+            OMIM_INST.replace_deprecated_all
         )
         # turn omim_list into multiple rows with other properties duplicated
         syndromes_df = explode_df_column(syndromes_df, 'omim_id')
@@ -509,7 +503,7 @@ class NewJson(JsonFile):
             selected_syndromes = [
                 dict(
                     s,
-                    omim_id=omim_obj.replace_deprecated_all(s["omim_id"])
+                    omim_id=OMIM_INST.replace_deprecated_all(s["omim_id"])
                     or ["0"]
                 )
                 for s in self._js["selected_syndromes"]
@@ -564,7 +558,9 @@ class NewJson(JsonFile):
         '''Return a list of HPO IDs correponding to entered phenotypic
         features.
         '''
-        return self._js['features']
+        return [
+            h for h in self._js['features'] if h not in constants.ILLEGAL_HPO
+        ]
 
     def get_submitter(self) -> {str: str}:
         '''Return a dictionary containing the submitter name, team and email.
