@@ -220,7 +220,7 @@ def save_vcfs(config_data, qc_cases):
     config_path = config_data.output["vcf_config_file"]
 
     progress_bar("Generate VCF")(
-        lambda x: x.put_hgvs_vcf(simulated)
+        lambda x: x.put_hgvs_vcf(simulated, recreate=False)
     )([case for (valid, _), case in qc_cases if valid])
 
     print("Pickling vcf cases")
