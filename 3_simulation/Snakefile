@@ -179,6 +179,26 @@ rule jsonRealTrainData:
 		"""
 		ln {input} {output}
 		"""
+#################################################################
+# Copy the simulated JSON files of cases with real exome to
+# real/test_{backgound} as testing set
+# The goal is to compare the performace bewteen using simulated
+# and real exome
+#################################################################
+
+rule jsonRealTrainiSimData:
+	input:
+		"json_simulation/{background}/CV/{sample}.json"
+	output:
+		"json_simulation/real/test_{background}/{sample}.json"
+	shell:
+		"""
+		ln {input} {output}
+		"""
+
+#################################################################
+# Generate the JSON file of case with unknown diagnosis
+#################################################################
 
 rule jsonRealUnknownTestData:
 	input:
@@ -194,7 +214,11 @@ rule jsonRealUnknownTestData:
 		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
 		"""
 
-## performance evaluation
+
+#################################################################
+# performance evaluation
+# Generate all JSON files for CV on three background
+#################################################################
 
 rule createCsvTrain:
 	input:
@@ -209,6 +233,10 @@ rule createCsvTrain:
 		python {input.script} -i {params.folder} -o {output}
 		"""
 
+#################################################################
+# Generate all JSON files of cases with real exome as test set
+#################################################################
+
 rule createCsvRealTest:
 	input:
 		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES),
@@ -221,6 +249,31 @@ rule createCsvRealTest:
 		"""
 		python {input.script} -i {params.folder} -o {output}
 		"""
+
+#################################################################
+# Generate all JSON files of cases with real exome as test set
+# using simulated exome instead of real exomes to compare the 
+# performance between simulated and real exome
+#################################################################
+
+rule createCsvRealSimTest:
+	input:
+		expand("json_simulation/real/test_{background}/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/test_simulated_{background}.csv"
+	params:
+		folder="json_simulation/real/test_{background}"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
+#################################################################
+# Generate all JSON files of cases with simulated exome as 
+# training set
+#################################################################
+
 rule createCsvRealTrain:
 	input:
 		expand("json_simulation/real/train/{{background}}/{sample}.json", sample=SINGLE_SAMPLES),
