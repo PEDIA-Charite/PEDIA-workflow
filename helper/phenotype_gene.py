@@ -21,7 +21,6 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
     syndrome_name = "" 
     syndrome = {} 
     has_mask = ''
-
     if 'genomicData' in file_content:
         genomic = file_content['genomicData']
         ge_out = [ge_entry['Test Information']['Gene Name'] for ge_entry in genomic]
@@ -121,6 +120,7 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
 
     # Output results to csv
     tmp_out.append(fileName.split('.')[0])
+    tmp_out.append(status)
     tmp_out.append(has_mask_out)
     tmp_out.append(1 if 1 in has_mask_out else 0)
     tmp_out.append(all_gene)
@@ -170,7 +170,7 @@ if __name__ == '__main__':
 
     not_mapped_file = open(os.path.join(args.output,'gene_not_mapped.csv'), 'w')
     not_mapped_writer = csv.writer(not_mapped_file, delimiter='\t')
-    not_mapped_writer.writerow(['case', 'has_mask_all_syndrome', 'has_mask', 'all genes', 'gene', 'omim', 'syndrome name', 'diagnosis', 'all omim', 'count'])
+    not_mapped_writer.writerow(['case', 'status', 'has_mask_all_syndrome', 'has_mask', 'all genes', 'gene', 'omim', 'syndrome name', 'diagnosis', 'all omim', 'count'])
 
     syn_mapped_file = open(os.path.join(args.output,'phenotype_to_gene.csv'), 'w')
     syn_mapped_writer = csv.writer(syn_mapped_file, delimiter='\t')
@@ -178,7 +178,7 @@ if __name__ == '__main__':
 
     with open(output_filename, 'w') as csvfile:
         file_writer = csv.writer(csvfile, delimiter='\t')
-        file_writer.writerow(['case', 'has_mask_all_syndrome', 'has_mask', 'all genes', 'gene', 'omim', 'syndrome name', 'diagnosis', 'all omim', 'count'])
+        file_writer.writerow(['case', 'status','has_mask_all_syndrome', 'has_mask', 'all genes', 'gene', 'omim', 'syndrome name', 'diagnosis', 'all omim'])
 
         for fileName in log_data["passed"].keys():
             test = fileName
@@ -204,8 +204,19 @@ if __name__ == '__main__':
             if not found:
                 final_syn.update({syn:tmp_syn[syn]})
 
+    all_genes = []
     syn_mapped_writer.writerow(['name', 'has_mask', 'gene', 'omim', 'cases', 'count'])
     for syn in final_syn:
         syn_mapped_writer.writerow([syn, tmp_syn[syn]['has_mask'], tmp_syn[syn]['gene'], tmp_syn[syn]['omim'], tmp_syn[syn]['cases'], tmp_syn[syn]['count']])
+        for gene in tmp_syn[syn]['gene']:
+            if gene not in all_genes:
+                all_genes.append(gene)
+
+    gene_mapped_file = open(os.path.join(args.output,'gene_mapped_table.csv'), 'w')
+    gene_mapped_writer = csv.writer(gene_mapped_file, delimiter='\t')
+    for gene in all_genes:
+        gene_mapped_writer.writerow([gene])
+
+    gene_mapped_file.close()
     not_mapped_file.close()
     syn_mapped_file.close()

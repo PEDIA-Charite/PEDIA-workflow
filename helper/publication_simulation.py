@@ -282,7 +282,7 @@ if __name__ == '__main__':
                 cmd = ("python3 preprocess.py -s " + os.path.join(out_case_path, str(case_id) + '_' + str(f2g_id) + '.json') + " -o " + out_simulated_path + ' --skip-vcf')
                 logger.debug("Command: %s", cmd)
                 os.system(cmd)
-                yml_file.write(" - " + str(case_id) + "_" + str(f2g_id) + "\n")
+                yml_file.write(" - '" + str(case_id) + "_" + str(f2g_id) + "'\n")
 
                 mutation_list = os.listdir(mutation_path)
 
