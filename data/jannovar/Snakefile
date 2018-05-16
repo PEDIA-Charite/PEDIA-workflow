@@ -2,7 +2,8 @@
 rule all:
 	input:
 		"data/hg19_refseq.ser",
-		"jannovar_0.25/data/hg19_refseq.ser"
+		"jannovar_0.25/data/hg19_refseq.ser",
+		"jannovar_0.26/data/hg19_refseq.ser"
 
 rule download_jannovar_ser:
 	output:
