@@ -76,6 +76,9 @@ class PhenomizerService(requests_cache.CachedSession, LazyConfigure):
             self, cache_name=cache_name, expire_after=None
         )
 
+        if url == "":
+            LOGGER.info("No Phenomization config in config.ini. Skip Phenomization!")
+
         self.url = url
         self.user = user
         self.password = password
@@ -92,7 +95,8 @@ class PhenomizerService(requests_cache.CachedSession, LazyConfigure):
         '''Get phenomizer and boqa scorings for the list of hpo ids. A datafame
         joined on the syndrome omim id will be returned.
         '''
-        if not hpo_ids:
+
+        if not hpo_ids or self.url == "":
             scaffold = {
                 'disease-id_pheno': "int",
                 'disease-id_boqa': "int",
