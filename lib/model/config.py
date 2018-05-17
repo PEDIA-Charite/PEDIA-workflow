@@ -113,7 +113,7 @@ class PEDIAConfig(ConfigParser):
         simulated_vcf_path = self["output"]["simulated_vcf_path"]
         real_vcf_path = self["output"]["real_vcf_path"]
         vcf_config_file = self["output"]["vcf_config_file"]
-        converted_path = self["output"]["converted_path"]
+        converted_path = args.output if args.output else self["output"]["converted_path"]
 
         valid_case_path = self["output"]["valid_case_path"]
         quality_check_log = self["output"]["quality_check_log"]
