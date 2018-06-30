@@ -346,3 +346,41 @@ rule plottingData:
 		{input.iran_pred} {input.iran_arff} '{params.iran}' \
 		{params.data}
 		"""
+
+#################################################################
+# Copy the JSON files of cases with gestalt support
+#################################################################
+
+rule jsonTrainGestaltData:
+	input:
+		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
+		omim="OMIM/genemap2.txt",
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+	output:
+		"json_simulation/{background}/CV_gestalt/{sample}.json"
+	shell:
+		"java -jar {input.simulator} extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
+
+#################################################################
+# performance evaluation
+# Generate all JSON files with gestalt for CV on three background
+#################################################################
+
+def get_train_sample(wc):
+	configfile: "../config_gestalt.yml"
+	samples = config['GESTALT_SAMPLES']
+	return expand("json_simulation/{background}/CV_gestalt/{sample}.json", background=wc.background, sample=samples)
+
+rule createCsvTrainGestalt:
+	input:
+		sample = get_train_sample,
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/CV_gestalt/{background}.csv"
+	params:
+		folder="json_simulation/{background}/CV_gestalt"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
