@@ -50,6 +50,10 @@ simulation/background/data/refseq/
 
 3_simulation/background/data/refseq/
 
+3_simulation/publication_simulation/REP_*
+
+3_simulation/performanceEvaluation/data/
+
 data/pathogenicityScores/whole_genome_SNVs\.tsv\.gz\.tbi
 
 data/pathogenicityScores/whole_genome_SNVs\.tsv\.gz
