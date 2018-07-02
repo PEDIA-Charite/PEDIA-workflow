@@ -21,6 +21,19 @@ SAMPLES = allSamples(SINGLE_SAMPLES, VCF_SAMPLES)
 BACKGROUNDS=["1KG","ExAC","IRAN"]
 PLOTS=['ROC','percentile','PRC','balanced-accuracy','recall','precision','f-score']
 
+def get_real_gestalt_sample():
+	configfile: "../config_gestalt.yml"
+	vcf_samples = config['VCF_SAMPLES']
+	single_samples = config['SINGLE_SAMPLES']
+	samples = []
+	samples.extend(single_samples)
+	samples.extend(vcf_samples)
+
+	return [single_samples, vcf_samples, samples]
+
+GESTALT_SINGLE_SAMPLES = get_real_gestalt_sample()[0]
+GESTALT_VCF_SAMPLES = get_real_gestalt_sample()[1]
+GESTALT_SAMPLES = get_real_gestalt_sample()[2]
 
 
 rule all:
@@ -313,6 +326,7 @@ rule trainSimTestReal:
 		"""
 		python {input.script} --train {input.train} --test {input.test} --prediction {output} --repetitions {params.repetitons}
 		"""
+
 rule createArffFromPredictions:
 	input:
 		"performanceEvaluation/results/{type}.{background}.tsv.gz"
@@ -367,14 +381,9 @@ rule jsonTrainGestaltData:
 # Generate all JSON files with gestalt for CV on three background
 #################################################################
 
-def get_train_sample(wc):
-	configfile: "../config_gestalt.yml"
-	samples = config['GESTALT_SAMPLES']
-	return expand("json_simulation/{background}/CV_gestalt/{sample}.json", background=wc.background, sample=samples)
-
 rule createCsvTrainGestalt:
 	input:
-		sample = get_train_sample,
+		sample = expand("json_simulation/{{background}}/CV_gestalt/{sample}.json", sample=GESTALT_SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
 		"performanceEvaluation/data/CV_gestalt/{background}.csv"
@@ -384,3 +393,95 @@ rule createCsvTrainGestalt:
 		"""
 		python {input.script} -i {params.folder} -o {output}
 		"""
+
+#################################################################
+# Generate all JSON files of cases with real exome as test set
+#################################################################
+
+rule jsonRealGestaltTestData:
+	input:
+		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
+		omim="OMIM/genemap2.txt",
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+	output:
+		"json_simulation/real/gestalt/test/{sample}.json"
+	shell:
+		"""
+		java -jar -Xmx20g {input.simulator} extendjson \
+		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
+		"""
+
+
+rule createCsvRealGestaltTest:
+	input:
+		expand("json_simulation/real/gestalt/test/{sample}.json", sample=GESTALT_VCF_SAMPLES),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/gestalt/test_real.csv"
+	params:
+		folder="json_simulation/real/test"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
+rule jsonRealGestaltTrainData:
+	input:
+		"json_simulation/{background}/CV_gestalt/{sample}.json"
+	output:
+		"json_simulation/real/gestalt/train/{background}/{sample}.json"
+	shell:
+		"""
+		ln {input} {output}
+		"""
+
+rule createCsvRealGestaltTrain:
+	input:
+		sample = expand("json_simulation/real/gestalt/train/{{background}}/{sample}.json", sample=GESTALT_SINGLE_SAMPLES),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/gestalt/train_{background}.csv"
+	params:
+		folder="json_simulation/real/gestalt/train/{background}"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
+#################################################################
+# Copy the simulated JSON files of cases with real exome to
+# real/test_{backgound} as testing set
+# The goal is to compare the performace bewteen using simulated
+# and real exome
+#################################################################
+
+rule jsonRealTrainiSimGestaltData:
+	input:
+		"json_simulation/{background}/CV_gestalt/{sample}.json"
+	output:
+		"json_simulation/real/gestalt/test_{background}/{sample}.json"
+	shell:
+		"""
+		ln {input} {output}
+		"""
+
+#################################################################
+# Generate all JSON files of cases with real exome as test set
+# using simulated exome instead of real exomes to compare the 
+# performance between simulated and real exome
+#################################################################
+
+rule createCsvRealSimiGestaltTest:
+	input:
+		expand("json_simulation/real/gestalt/test_{background}/{sample}.json", sample=GESTALT_VCF_SAMPLES, background=BACKGROUNDS),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/gestalt/test_simulated_{background}.csv"
+	params:
+		folder="json_simulation/real/gestalt/test_{background}"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+

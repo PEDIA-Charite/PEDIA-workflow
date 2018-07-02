@@ -1,4 +1,4 @@
-configfile: "../../config.yml"
+configfile: "../../config_gestalt.yml"
 #BACKGROUNDS=["1KG"]
 BACKGROUNDS=["1KG","ExAC","IRAN"]
 
@@ -67,7 +67,7 @@ rule jsonRunAllBack:
 		touch("run.log")
 
 def get_prefix(wc):
-	return "../json_simulation/" + wc.background + "/CV/" + wc.sample.split('_')[0] + ".json"
+	return "../json_simulation/" + wc.background + "/CV_gestalt/" + wc.sample.split('_')[0] + ".json"
 
 rule copyTrain:
 	input:
