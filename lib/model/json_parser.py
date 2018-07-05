@@ -415,7 +415,7 @@ class NewJson(JsonFile):
         # load fields according to directives
         self.load_linked(directive)
 
-    def check(self) -> bool:
+    def check(self, convert_failed: bool) -> bool:
         '''Check whether Json fulfills all provided criteria.
         The criteria are:
             picture has been provided - gestalt_score in detected_syndromes
@@ -449,6 +449,9 @@ class NewJson(JsonFile):
                         ('Chromosomal abnormality detected in {} with result '
                          '{}').format(entry['test_type'], entry['result']))
                     valid = False
+                    if convert_failed:
+                        self._js['genomic_entries'] = []
+
 
         return valid, issues
 
@@ -508,13 +511,14 @@ class NewJson(JsonFile):
                 )
                 for s in self._js["selected_syndromes"]
             ]
-            selected = pandas.DataFrame.from_dict(selected_syndromes)
 
+            selected = pandas.DataFrame.from_dict(selected_syndromes)
             syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
 
             # create multiple rows from list of omim_id entries duplicating
             # other information
             selected = explode_df_column(selected, 'omim_id')
+            selected['omim_id'] = selected['omim_id'].astype(int)
             # add a confirmed diagnosis column
             selected.loc[
                 selected["diagnosis"].isin(
@@ -551,7 +555,6 @@ class NewJson(JsonFile):
             syndromes_df["differential"] = False
 
         syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
-
         return syndromes_df
 
     def get_features(self) -> [str]:
