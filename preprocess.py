@@ -77,6 +77,10 @@ def parse_arguments():
         "--skip-vcf", action='store_true',
         help="Skip vcf convertion."
     )
+    parser.add_argument(
+        "-c", "--convert-failed", action='store_true',
+        help="Convert cases that failed the first part of quality control."
+    )
 
     return parser.parse_args()
 
@@ -114,7 +118,7 @@ def create_config(
         yaml.dump(config_data, configfile, default_flow_style=False)
 
 
-def create_jsons(config_data):
+def create_jsons(config_data, convert_failed):
     '''Create a list of new formatjson objects.'''
     print("== Process new json files ==")
     # get either from single file or from directory
@@ -145,14 +149,20 @@ def create_jsons(config_data):
                 "issues": issues,
             }
             for case_id, (valid, issues) in
-            [(j.get_case_id(), j.check()) for j in new_json_objs]
+            [(j.get_case_id(), j.check(convert_failed)) for j in new_json_objs]
             if not valid
         }
     }
 
-    filtered_new = [j for j in new_json_objs if j.check()[0]]
+    filtered_new = [j for j in new_json_objs if j.check(convert_failed)[0]]
+
+    if convert_failed:
+        failed_jsons = [j for j in new_json_objs if not j.check(convert_failed)[0]]
+    else:
+        failed_jsons = []
+
     print('Filtered rough criteria', len(filtered_new))
-    return filtered_new, json_failed_data
+    return filtered_new, failed_jsons, json_failed_data
 
 
 def touch_hgvs(case):
@@ -200,6 +210,13 @@ def convert_to_old_format(config_data, cases):
     cases = [c for _, c in result]
     return old_jsons, cases
 
+def convert_failed_cases(config_data, jsons):
+    '''Convert failed cases to old json format objects'''
+    cases = create_cases(config_data, jsons)
+    result = multiprocess(
+        "Create old", create_old_json, cases,
+        destination=config_data.output["converted_path"]
+    )
 
 def create_qc_case(case):
     return case.check(), case
@@ -339,14 +356,25 @@ def main():
 
     config_data = config.PEDIAConfig(args)
 
+    print(config_data.output)
+
     json_log = {}
 
     if not args.pickle:
-        jsons, json_log = create_jsons(config_data)
+        jsons, failed_jsons, json_log = create_jsons(config_data, args.convert_failed)
+
+        with open("failed_cases.json","w") as failed_log:
+            json.dump(json_log,failed_log)
+
         cases = create_cases(config_data, jsons)
     else:
         with open(args.pickle, "rb") as pickled_file:
             cases = pickler.CaseUnpickler(pickled_file).load()
+
+    if args.convert_failed:
+        print("== Convert failed cases == ")
+        convert_failed_cases(config_data,failed_jsons)
+
 
     if args.entry == "pheno" or args.entry == "convert":
         old_jsons, cases = convert_to_old_format(config_data, cases)
