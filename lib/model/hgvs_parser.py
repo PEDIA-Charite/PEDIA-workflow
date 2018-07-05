@@ -212,6 +212,18 @@ class HGVSModel:
         self.result = 'result' in entry_dict and entry_dict['result'] or \
             'UNKNOWN'
 
+
+        if len(entry_dict['variants']) == 1:
+            entry_dict['variants'] = entry_dict['variants'].pop()
+            variants = self._parse_variants(entry_dict['variants'])
+        elif len(entry_dict['variants']) > 1:
+            variants = []
+            for variant in entry_dict['variants']:
+                variants.extend(self._parse_variants(variant))
+        else:
+            variants = self._parse_variants(entry_dict['variants'])
+
+
         gene_top = 'gene' in entry_dict and entry_dict['gene'] or {}
         gene_variant = 'gene' in entry_dict['variants'] \
             and entry_dict['variants']['gene'] or {}
