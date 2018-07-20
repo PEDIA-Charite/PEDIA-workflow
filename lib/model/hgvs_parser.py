@@ -212,7 +212,6 @@ class HGVSModel:
         self.result = 'result' in entry_dict and entry_dict['result'] or \
             'UNKNOWN'
 
-
         if len(entry_dict['variants']) == 1:
             entry_dict['variants'] = entry_dict['variants'].pop()
             variants = self._parse_variants(entry_dict['variants'])
@@ -222,7 +221,6 @@ class HGVSModel:
                 variants.extend(self._parse_variants(variant))
         else:
             variants = self._parse_variants(entry_dict['variants'])
-
 
         gene_top = 'gene' in entry_dict and entry_dict['gene'] or {}
         gene_variant = 'gene' in entry_dict['variants'] \
@@ -236,7 +234,8 @@ class HGVSModel:
         if self.entry_id in ERRORFIXER_INST:
             self._correct_gene_name()
 
-        variants = self._parse_variants(entry_dict['variants'])
+
+
         failed = []
         for var in variants:
             checked = MUTALYZER_INST.check_syntax(var)
@@ -420,7 +419,6 @@ class HGVSModel:
                     sub=entry2)
 
         candidates.append(hgvs_string)
-
         return candidates
 
     def _build_hgvs(self,
