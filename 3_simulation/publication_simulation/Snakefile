@@ -1,0 +1,109 @@
+configfile: "../../config_gestalt.yml"
+#BACKGROUNDS=["1KG"]
+BACKGROUNDS=["1KG","ExAC","IRAN"]
+
+def allSamples(a,b):
+	samples = []
+	samples.extend(a)
+	samples.extend(b)
+	return samples
+
+SINGLE_SAMPLES = config['SINGLE_SAMPLES']
+VCF_SAMPLES = config['VCF_SAMPLES']
+SAMPLES = allSamples(SINGLE_SAMPLES, VCF_SAMPLES)
+
+RUN = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+
+
+
+rule all:
+	input:
+		#expand("REP_{run}/json_simulation/{background}/CV/{sample}.json", run=RUN, sample=config[0], background=BACKGROUNDS)
+		#expand("performanceEvaluation/data/CV/{background}.csv", background=BACKGROUNDS),
+		#expand("performanceEvaluation/data/Real/train_{background}.csv", background=BACKGROUNDS),
+
+
+def get_vcf(wc):
+	return "../vcf_simulation/" + wc.background + "/" + wc.sample.split('_')[0] + ".vcf.gz",
+
+rule json:
+	input:
+		vcf=get_vcf,
+		#vcf="../vcf_simulation/{background}/" + {{sample}}.split('_')[0] + ".vcf.gz",
+		omim="../OMIM/genemap2.txt",
+		json="REP_{run}/simulated_case/{sample}.json",
+		simulator="../simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+	output:
+		"REP_{run}/json_simulation/{background}/CV/{sample}.json"
+	shell:
+		"java -jar {input.simulator} extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
+
+
+def get_sample(wc):
+	configfile: "REP_%s/config.yml" % wc.run
+	return expand("REP_{run}/json_simulation/{background}/CV/{sample}.json",run=wc.run, background=wc.background, sample=config['SIMULATE_SAMPLES'])
+
+rule jsonRun:
+	input:
+		get_sample
+	output:
+		"{background}_{run}_test.log"
+	shell:
+		"touch {output}"
+
+rule jsonRunAll:
+	input:
+		expand("{{background}}_{run}_test.log", run=RUN)
+		#lambda wildcards: expand("{background}_{run}.log", background=wildcards.background, run=RUN)
+	output:
+		"{background}_out.log"
+	shell:
+		"touch {output}"
+
+rule jsonRunAllBack:
+	input:
+		expand("{background}_out.log", background= BACKGROUNDS)
+	output:
+		touch("run.log")
+
+def get_prefix(wc):
+	return "../json_simulation/" + wc.background + "/CV_gestalt/" + wc.sample.split('_')[0] + ".json"
+
+rule copyTrain:
+	input:
+		get_prefix
+		#"../json_simulation/{background}/CV/" + get_prefix + ".json"
+	output:
+		"REP_{run}/json_simulation/{background}/train/{sample}.json"
+	shell:
+		"ln {input} {output}"
+
+def get_train_sample(wc):
+	configfile: "REP_%s/config.yml" % wc.run
+	test_sample = config['SIMULATE_SAMPLES']
+	
+	prefix_test_sample = [int(s.split('_')[0]) for s in test_sample]
+	train = [sample for sample in SAMPLES if sample not in prefix_test_sample]
+	return expand("REP_{run}/json_simulation/{background}/train/{sample}.json",run=wc.run, background=wc.background, sample=train)
+
+rule copyTrainRun:
+	input:
+		get_train_sample
+	output:
+		"{background}_{run}_train.log"
+	shell:
+		"touch {output}"
+		
+rule jsonTrainBack:
+	input:
+		expand("{{background}}_{run}_train.log", run=RUN)
+	output:
+		"{background}_train_out.log"
+	shell:
+		"touch {output}"
+
+rule jsonTrainAllBack:
+	input:
+		expand("{background}_train_out.log", background= BACKGROUNDS)
+	output:
+		touch("run_train.log")

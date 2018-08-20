@@ -44,15 +44,8 @@ for filename in glob.glob(inputfile+'/*.json'):
 	r = open(filename,'r',encoding='ISO-8859-1')
 	data = json.loads(r.read())
 	case = data['case_id']
+	print(case)
 	gene = data["genomicData"][0]["Test Information"]["Gene Name"]
-	if gene == 'MLL2':
-		gene = 'KMT2D'
-	elif gene == 'MLL':
-		gene = 'KMT2A'
-	elif gene == 'B3GALTL':
-		gene = 'B3GLCT'
-	elif gene == 'CASKIN1':
-		gene = 'KIAA1306'
 	for entry in data['geneList']:
 		if entry["gene_symbol"] == gene:
 			label = 1

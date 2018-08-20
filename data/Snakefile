@@ -1,0 +1,38 @@
+subworkflow patho_workflow: 
+    workdir: "pathogenicityScores"
+    snakefile: "pathogenicityScores/Snakefile"
+
+subworkflow population_workflow: 
+    workdir: "populationDBs"
+    snakefile: "populationDBs/Snakefile"
+
+subworkflow reference_workflow: 
+    workdir: "referenceGenome"
+    snakefile: "referenceGenome/Snakefile"
+
+subworkflow jannovar_workflow: 
+    workdir: "jannovar"
+    snakefile: "jannovar/Snakefile"
+
+# download the data!
+rule all:
+    input:
+        patho_workflow("InDels.tsv.gz"),
+        patho_workflow("InDels.tsv.gz.tbi"),
+        patho_workflow("whole_genome_SNVs.tsv.gz"),
+        patho_workflow("whole_genome_SNVs.tsv.gz.tbi"),
+        population_workflow("ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz"),
+        population_workflow("ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz.tbi"),
+        population_workflow("ExAC.r1.sites.vep.vcf.gz"),
+        population_workflow("ExAC.r1.sites.vep.vcf.gz.tbi"),
+        population_workflow("UK10K_COHORT.20160215.sites.vcf.gz"),
+        population_workflow("UK10K_COHORT.20160215.sites.vcf.gz.tbi"),
+        reference_workflow("data/hg19.fa"),
+        reference_workflow("data/hg19.fa.fai"),
+        reference_workflow("data/hg19.fa.dict"),
+        reference_workflow("data/human_g1k_v37.fasta"),
+        reference_workflow("data/human_g1k_v37.fasta.fai"),
+        reference_workflow("data/human_g1k_v37.fasta.dict"),
+        jannovar_workflow("data/hg19_refseq.ser"),
+        jannovar_workflow("jannovar_0.25/data/hg19_refseq.ser"),
+        jannovar_workflow("jannovar_0.26/data/hg19_refseq.ser")

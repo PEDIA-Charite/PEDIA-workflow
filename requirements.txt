@@ -1,0 +1,10 @@
+pandas
+requests
+requests_cache
+boto3
+hgvs
+biopython
+ratelimit
+zeep
+filetype
+pyyaml
