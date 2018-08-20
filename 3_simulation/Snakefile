@@ -1,4 +1,12 @@
-configfile: "../data/PEDIA/jsons/config.yml"
+configfile: "../config.yml"
+
+subworkflow vcfs_workflow: 
+	workdir: "../data/PEDIA/vcfs"
+	snakefile: "../data/PEDIA/vcfs/Snakefile"
+
+subworkflow background_workflow: 
+	workdir: "background"
+	snakefile: "background/Snakefile"
 
 def allSamples(a,b):
 	samples = []
@@ -13,16 +21,25 @@ SAMPLES = allSamples(SINGLE_SAMPLES, VCF_SAMPLES)
 BACKGROUNDS=["1KG","ExAC","IRAN"]
 PLOTS=['ROC','percentile','PRC','balanced-accuracy','recall','precision','f-score']
 
+def get_real_gestalt_sample():
+	configfile: "../config_gestalt.yml"
+	vcf_samples = config['VCF_SAMPLES']
+	single_samples = config['SINGLE_SAMPLES']
+	samples = []
+	samples.extend(single_samples)
+	samples.extend(vcf_samples)
+
+	return [single_samples, vcf_samples, samples]
+
+GESTALT_SINGLE_SAMPLES = get_real_gestalt_sample()[0]
+GESTALT_VCF_SAMPLES = get_real_gestalt_sample()[1]
+GESTALT_SAMPLES = get_real_gestalt_sample()[2]
 
 
 rule all:
 	input:
-		"mutations/JsonsVCF_annotated.vcf.gz",
-		"mutations/JsonsVCF_annotated.vcf.gz.tbi",
 		expand("vcf_simulation/{background}/{sample}.vcf.gz", sample=SAMPLES, background=BACKGROUNDS),
 		expand("json_simulation/{background}/CV/{sample}.json", sample=SAMPLES, background=BACKGROUNDS),
-		#expand("vcf_annotation/{sample}.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
-		#expand("vcf_annotation/{sample}.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
 		expand("vcf_annotation/{sample}.annotation.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
 		expand("vcf_annotation/{sample}.annotation.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
 		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
@@ -41,16 +58,16 @@ rule all:
 
 rule annotate:
 	input:
-		vcf="../data/PEDIA/mutations/variants.vcf.gz",
+		vcf="../data/PEDIA/mutations/{sample}.vcf.gz",
 		db="../data/jannovar/data/hg19_refseq.ser",
-		exac="../data/populationDBs/ExAC.r0.3.sites.vep.vcf.gz",
+		exac="../data/populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../data/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
 		kg="../data/populationDBs/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
 		caddsnv="../data/pathogenicityScores/whole_genome_SNVs.tsv.gz",
 		caddindel="../data/pathogenicityScores/InDels.tsv.gz",
-		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
+		ref="../data/referenceGenome/data/human_g1k_v37.fasta"
 	output:
-		"mutations/JsonsVCF_annotated.vcf.gz"
+		"mutations/{sample}_JsonsVCF_annotated.vcf.gz"
 	shell:
 		"""
 		java -jar ../data/jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} \
@@ -63,49 +80,50 @@ rule annotate:
 
 rule index:
 	input:
-		"mutations/JsonsVCF_annotated.vcf.gz"
+		"mutations/{sample}_JsonsVCF_annotated.vcf.gz"
 	output:
-		"mutations/JsonsVCF_annotated.vcf.gz.tbi"
+		"mutations/{sample}_JsonsVCF_annotated.vcf.gz.tbi"
 	shell:
-		"module load htslib/1.3.1 && "
 		"tabix '{input}'"
 
 
 
 rule ExAC_genotypes:
 	input:
-		"background/results/ExAC/ExAC.refSeq105.AF.vcf.gz"
+		vcf = background_workflow("results/ExAC/ExAC.refSeq105.AF.vcf.gz"),
+		index = background_workflow("results/ExAC/ExAC.refSeq105.AF.vcf.gz.tbi")
 	output:
 		"background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz"
 	shell:
 		"""
-		java -jar simdrom/simdrom-cli-0.0.3-SNAPSHOT.jar -b {input} -bAChom Hom_NFE -bAChet Het_NFE -bAChemi Hemi_NFE -bAN AN_NFE -n NFE.{wildcards.sample} --output {output}
+		java -jar simdrom/simdrom-cli-0.0.3-SNAPSHOT.jar -b {input.vcf} -bAChom Hom_NFE -bAChet Het_NFE -bAChemi Hemi_NFE -bAN AN_NFE -n NFE.{wildcards.sample} --output {output}
 		"""
 
 def getBackground(wc):
 	if wc.background == "1KG":
-		return "background/results/1KG/1KG.refSeq105.AF.vcf.gz"
+		return [background_workflow("results/1KG/1KG.refSeq105.AF.vcf.gz"), background_workflow("results/1KG/1KG.refSeq105.AF.vcf.gz.tbi")]
 	elif wc.background == "ExAC":
 		return expand("background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz", sample=[wc.sample])
 	elif wc.background == "IRAN":
-		return "background/results/IRAN/IRAN.refSeq105.AF.vcf.gz"
+		return [background_workflow("results/IRAN/IRAN.refSeq105.AF.vcf.gz"), background_workflow("results/IRAN/IRAN.refSeq105.AF.vcf.gz.tbi")]
 
 
 rule spikein:
 	input:
-		index="mutations/JsonsVCF_annotated.vcf.gz.tbi",
-		vcf="mutations/JsonsVCF_annotated.vcf.gz",
+		index="mutations/{sample}_JsonsVCF_annotated.vcf.gz.tbi",
+		vcf="mutations/{sample}_JsonsVCF_annotated.vcf.gz",
 		omim="OMIM/genemap2.txt",
 		back=getBackground,
-		back_1kg="background/results/1KG/1KG.refSeq105.AF.vcf.gz",
-		back_exac="background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz",
-		back_iran="background/results/IRAN/IRAN.refSeq105.AF.vcf.gz"
+		#back_1kg="background/results/1KG/1KG.refSeq105.AF.vcf.gz",
+		#back_exac="background/results/ExAC/genotypes/ExAC.refSeq105.AF.NFE.{sample}.vcf.gz",
+		#back_iran="background/results/IRAN/IRAN.refSeq105.AF.vcf.gz"
 	output:
 		"vcf_simulation/{background}/{sample}.vcf.gz"
-	shell:
-		"""
-		java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v {input.back} -m {input.vcf} --sample {wildcards.sample}
-		"""
+	run:
+		if wildcards.background == "ExAC":
+			shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back}' -m '{input.vcf}' --sample '{wildcards.sample}'")
+		else:
+			shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back[0]}' -m '{input.vcf}' --sample '{wildcards.sample}'")
 	'''
 		if not containsVcf(wildcards):
 			if wildcards.background == "1KG":
@@ -133,8 +151,10 @@ rule json:
 
 def getRealVCF(wc):
 	configfile: "../data/PEDIA/jsons/phenomized/%s.json" % wc.sample
-	filename = config['vcf']['original_filename'].replace(" ", "_").replace("(", "").replace(")", "",1).replace(")", "_").replace(",", "").replace("..", ".").replace("..", ".").replace(".", "_")
-	return ("../data/PEDIA/vcfs/annotated_vcfs/%s_annotated.vcf.gz" % filename[0:-7])
+	filename = config['vcf'][0].split('/')[-1]
+	vcf_index = "annotated_vcfs/%s_annotated.vcf.gz.tbi" % filename[0:-7]
+	vcf = vcf_index[0:-4] 
+	return [vcfs_workflow(vcf), vcfs_workflow(vcf_index)]
 
 rule copyReal:
 	input:
@@ -145,61 +165,9 @@ rule copyReal:
 		index="vcf_annotation/{sample}.annotation.vcf.gz.tbi"
 	shell:
 		"""
-		cp {input.vcf} {output.vcf};
-		cp {input.vcf} {output.index}
+		cp {input.vcf[0]} {output.vcf}
+		cp {input.vcf[1]} {output.index}
 		"""
-'''
-rule bgZipRealVCF:
-	input:
-		vcf=getRealVCF,
-		json="../data/PEDIA/jsons/phenomized/{sample}.json"
-	output:
-		vcf="vcf_annotation/{sample}.vcf.gz",
-		index="vcf_annotation/{sample}.vcf.gz.tbi"
-	shell:
-		"""
-		module load vcflib/v1.0.0-rc1;
-		module load htslib/1.3.1;
-		cat {input.vcf} | vcfstreamsort |  bgzip -c  > {output.vcf};
-		tabix {output.vcf}
-		"""
-
-
-rule annotateRealVCF:
-	input:
-		vcf="vcf_annotation/{sample}.vcf.gz",
-		index="vcf_annotation/{sample}.vcf.gz.tbi",
-		db="jannovar/data/hg19_refseq.ser",
-		exac="../data/ExAC.r0.3.sites.vep.vcf.gz",
-		uk="../data/UK10K_COHORT.20160215.sites.vcf.gz",
-		kg="../../data/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
-		caddsnv="../data/whole_genome_SNVs.tsv.gz",
-		caddindel="../data/InDels.tsv.gz",
-		ref="/home/ngsknecht/Resource/hg19/human_g1k_v37.fasta"
-	output:
-		"vcf_annotation/{sample}.annotation.vcf.gz"
-	shell:
-		"""
-		java -jar jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db}
-		--exac-vcf {input.exac} --uk10k-vcf {input.uk} --1kg-vcf {input.kg}
-		--tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_
-		--ref-fasta {input.ref}
-		-o '{output}' -i '{input.vcf}'
-		"""
-
-
-rule indexRealVCF:
-	input:
-		"vcf_annotation/{sample}.annotation.vcf.gz"
-	output:
-		"vcf_annotation/{sample}.annotation.vcf.gz.tbi"
-	shell:
-		"""
-		module load htslib/1.3.1;
-		tabix '{input}'
-		"""
-
-'''
 
 rule jsonRealTestData:
 	input:
@@ -211,7 +179,7 @@ rule jsonRealTestData:
 		"json_simulation/real/test/{sample}.json"
 	shell:
 		"""
-		java -jar -Xmx50g {input.simulator} extendjson \
+		java -jar -Xmx20g {input.simulator} extendjson \
 		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
 		"""
 
@@ -224,8 +192,46 @@ rule jsonRealTrainData:
 		"""
 		ln {input} {output}
 		"""
+#################################################################
+# Copy the simulated JSON files of cases with real exome to
+# real/test_{backgound} as testing set
+# The goal is to compare the performace bewteen using simulated
+# and real exome
+#################################################################
 
-## performance evaluation
+rule jsonRealTrainiSimData:
+	input:
+		"json_simulation/{background}/CV/{sample}.json"
+	output:
+		"json_simulation/real/test_{background}/{sample}.json"
+	shell:
+		"""
+		ln {input} {output}
+		"""
+
+#################################################################
+# Generate the JSON file of case with unknown diagnosis
+#################################################################
+
+rule jsonRealUnknownTestData:
+	input:
+		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
+		omim="OMIM/genemap2.txt",
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+	output:
+		"json_simulation/real/unknown_test/{sample}.json"
+	shell:
+		"""
+		java -jar -Xmx20g {input.simulator} extendjson \
+		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
+		"""
+
+
+#################################################################
+# performance evaluation
+# Generate all JSON files for CV on three background
+#################################################################
 
 rule createCsvTrain:
 	input:
@@ -240,6 +246,10 @@ rule createCsvTrain:
 		python {input.script} -i {params.folder} -o {output}
 		"""
 
+#################################################################
+# Generate all JSON files of cases with real exome as test set
+#################################################################
+
 rule createCsvRealTest:
 	input:
 		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES),
@@ -252,6 +262,31 @@ rule createCsvRealTest:
 		"""
 		python {input.script} -i {params.folder} -o {output}
 		"""
+
+#################################################################
+# Generate all JSON files of cases with real exome as test set
+# using simulated exome instead of real exomes to compare the 
+# performance between simulated and real exome
+#################################################################
+
+rule createCsvRealSimTest:
+	input:
+		expand("json_simulation/real/test_{background}/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/test_simulated_{background}.csv"
+	params:
+		folder="json_simulation/real/test_{background}"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
+#################################################################
+# Generate all JSON files of cases with simulated exome as 
+# training set
+#################################################################
+
 rule createCsvRealTrain:
 	input:
 		expand("json_simulation/real/train/{{background}}/{sample}.json", sample=SINGLE_SAMPLES),
@@ -291,6 +326,7 @@ rule trainSimTestReal:
 		"""
 		python {input.script} --train {input.train} --test {input.test} --prediction {output} --repetitions {params.repetitons}
 		"""
+
 rule createArffFromPredictions:
 	input:
 		"performanceEvaluation/results/{type}.{background}.tsv.gz"
@@ -324,3 +360,128 @@ rule plottingData:
 		{input.iran_pred} {input.iran_arff} '{params.iran}' \
 		{params.data}
 		"""
+
+#################################################################
+# Copy the JSON files of cases with gestalt support
+#################################################################
+
+rule jsonTrainGestaltData:
+	input:
+		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
+		omim="OMIM/genemap2.txt",
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+	output:
+		"json_simulation/{background}/CV_gestalt/{sample}.json"
+	shell:
+		"java -jar {input.simulator} extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
+
+#################################################################
+# performance evaluation
+# Generate all JSON files with gestalt for CV on three background
+#################################################################
+
+rule createCsvTrainGestalt:
+	input:
+		sample = expand("json_simulation/{{background}}/CV_gestalt/{sample}.json", sample=GESTALT_SAMPLES),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/CV_gestalt/{background}.csv"
+	params:
+		folder="json_simulation/{background}/CV_gestalt"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
+#################################################################
+# Generate all JSON files of cases with real exome as test set
+#################################################################
+
+rule jsonRealGestaltTestData:
+	input:
+		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
+		omim="OMIM/genemap2.txt",
+		json="../data/PEDIA/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+	output:
+		"json_simulation/real/gestalt/test/{sample}.json"
+	shell:
+		"""
+		java -jar -Xmx20g {input.simulator} extendjson \
+		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
+		"""
+
+
+rule createCsvRealGestaltTest:
+	input:
+		expand("json_simulation/real/gestalt/test/{sample}.json", sample=GESTALT_VCF_SAMPLES),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/gestalt/test_real.csv"
+	params:
+		folder="json_simulation/real/test"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
+rule jsonRealGestaltTrainData:
+	input:
+		"json_simulation/{background}/CV_gestalt/{sample}.json"
+	output:
+		"json_simulation/real/gestalt/train/{background}/{sample}.json"
+	shell:
+		"""
+		ln {input} {output}
+		"""
+
+rule createCsvRealGestaltTrain:
+	input:
+		sample = expand("json_simulation/real/gestalt/train/{{background}}/{sample}.json", sample=GESTALT_SINGLE_SAMPLES),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/gestalt/train_{background}.csv"
+	params:
+		folder="json_simulation/real/gestalt/train/{background}"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
+#################################################################
+# Copy the simulated JSON files of cases with real exome to
+# real/test_{backgound} as testing set
+# The goal is to compare the performace bewteen using simulated
+# and real exome
+#################################################################
+
+rule jsonRealTrainiSimGestaltData:
+	input:
+		"json_simulation/{background}/CV_gestalt/{sample}.json"
+	output:
+		"json_simulation/real/gestalt/test_{background}/{sample}.json"
+	shell:
+		"""
+		ln {input} {output}
+		"""
+
+#################################################################
+# Generate all JSON files of cases with real exome as test set
+# using simulated exome instead of real exomes to compare the 
+# performance between simulated and real exome
+#################################################################
+
+rule createCsvRealSimiGestaltTest:
+	input:
+		expand("json_simulation/real/gestalt/test_{background}/{sample}.json", sample=GESTALT_VCF_SAMPLES, background=BACKGROUNDS),
+		script="scripts/jsonToTable.py"
+	output:
+		"performanceEvaluation/data/Real/gestalt/test_simulated_{background}.csv"
+	params:
+		folder="json_simulation/real/gestalt/test_{background}"
+	shell:
+		"""
+		python {input.script} -i {params.folder} -o {output}
+		"""
+
