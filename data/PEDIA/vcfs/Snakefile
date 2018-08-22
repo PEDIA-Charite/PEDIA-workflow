@@ -46,10 +46,30 @@ rule index_sorted:
 	shell:
 		"tabix '{input}'"
 
+rule filter:
+	input:
+		"sorted/{sample}.vcf.gz"
+	output:
+		"filtered_vcfs/{sample}.vcf.gz"
+	shell:
+		"""
+		bcftools view -e 'QUAL<100||GT="./."||GT="0/0"||GT=".|."||GT="."' {input} | sed -e 's/nan/NaN/g' | bgzip -c > {output}
+		"""
+
+rule index_filter:
+	input:
+		"filtered_vcfs/{sample}.vcf.gz"
+	output:
+		"filtered_vcfs/{sample}.vcf.gz.tbi"
+	shell:
+		"""
+		tabix {input}
+		"""
+
 rule annotate:
 	input:
-		vcf="sorted/{sample}.vcf.gz",
-		vcf_index="sorted/{sample}.vcf.gz.tbi",
+		vcf="filtered_vcfs/{sample}.vcf.gz",
+		vcf_index="filtered_vcfs/{sample}.vcf.gz.tbi",
 		db="../../jannovar/data/hg19_refseq.ser",
 		exac="../../populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../../populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
@@ -70,22 +90,3 @@ rule index_annotated:
 	shell:
 		"tabix '{input}'"
 
-rule filter:
-	input:
-		"annotated_vcfs/{sample}_annotated.vcf.gz"
-	output:
-		"filtered_vcfs/{sample}_annotated.vcf.gz"
-	shell:
-		"""
-		bcftools view -e 'INFO/EXAC_HOM_ALL>2' {input} | sed -e 's/nan/NaN/g' | bgzip -c > {output}
-		"""
-
-rule index_filter:
-	input:
-		"filtered_vcfs/{sample}_annotated.vcf.gz"
-	output:
-		"filtered_vcfs/{sample}_annotated.vcf.gz.tbi"
-	shell:
-		"""
-		tabix {input}
-		"""
