@@ -17,7 +17,12 @@ def get_case_info(file_writer, file_content, reason, original_file_content, stat
     pub_out = []
 
     if 'publications' in original_file_content:
-        pub_out = original_file_content['publications']
+        pubs = original_file_content['publications']
+        for val in pubs:
+            if 'PMID:' in val:
+                pub_out.append(val.strip().split('PMID:')[1])
+            else:
+                pub_out.append(val.strip())
 
     # Submitter
     submitter = file_content["submitter"]
@@ -30,6 +35,11 @@ def get_case_info(file_writer, file_content, reason, original_file_content, stat
         if type(entry) != int and 'variants' in entry:
             if 'notes' in entry['variants']:
                 info.append(entry['variants']['notes'])
+        if 'pmid' in entry:
+            pmid = entry['pmid'].strip()
+            if pmid not in pub_out and pmid:
+                pub_out.append(pmid) 
+
     if 'genomicData' in file_content:
         genomic = file_content['genomicData']
         ge_out = [ge_entry['Test Information']['Gene Name'] for ge_entry in genomic]

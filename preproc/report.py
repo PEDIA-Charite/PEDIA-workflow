@@ -8,13 +8,22 @@ import getopt
 import sys
 import argparse
 
-def get_case_info(file_writer, file_content, reason, status="Pass"):
+def get_case_info(file_writer, file_content, reason, original_file_content, status="Pass"):
     out = []
     tmp_out = []
     info = []
     ge_out = []
     hgvs_out = []
+    pub_out = []
    
+    if 'publications' in original_file_content:
+        pubs = original_file_content['publications']
+        for val in pubs:
+            if 'PMID:' in val:
+                pub_out.append(val.strip().split('PMID:')[1])
+            else:
+                pub_out.append(val.strip())
+
     # Submitter
     submitter = file_content["submitter"]
     name = submitter["user_name"]
@@ -26,6 +35,11 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
         if type(entry) != int and 'variants' in entry:
             if 'notes' in entry['variants']:
                 info.append(entry['variants']['notes'])
+        if 'pmid' in entry:
+            pmid = entry['pmid'].strip()
+            if pmid not in pub_out and pmid:
+                pub_out.append(pmid)
+
     if 'genomicData' in file_content:
         genomic = file_content['genomicData']
         ge_out = [ge_entry['Test Information']['Gene Name'] for ge_entry in genomic]
@@ -63,6 +77,7 @@ def get_case_info(file_writer, file_content, reason, status="Pass"):
     tmp_out.append(status)
     tmp_out.append(str(reason)[1:-1])
     tmp_out.append(str(ge_out)[1:-1])
+    tmp_out.append(pub_out)
     tmp_out.append(name)
     tmp_out.append(email)
     tmp_out.append(team)
@@ -78,9 +93,11 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--case', help='path to convert file')
     parser.add_argument('-l', '--log', help='path to log file')
     parser.add_argument('-o', '--output', help='path to output file')
+    parser.add_argument('-a', '--aws', help='path to aws folder')
     
     args = parser.parse_args()
     case_path = args.case
+    aws_path = args.aws
     log_file = open(args.log)
     log_data = json.load(log_file)
 
@@ -102,5 +119,6 @@ if __name__ == '__main__':
                 continue
             test = fileName
             file_content = json.load(open(os.path.join(case_path, fileName + '.json')))
-            get_case_info(file_writer, file_content, [])
+            original_file_content = json.load(open(os.path.join(aws_path, "cases", fileName + '.json')))
+            get_case_info(file_writer, file_content, [], original_file_content)
 
