@@ -12,6 +12,7 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--f2g', help='path to f2g dgfm file')
     parser.add_argument('-s', '--syn-omim', help='path to f2g dgfm file')
     parser.add_argument('-o', '--output', help='path to output file')
+    parser.add_argument('-l', '--list', help='path to config_gestalt.csv')
 
     # -s 216_gestalt_syn_to_omim_final.csv
 
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     case_path = args.case
     dgfm_path = args.f2g
     omim_path = args.syn_omim
-    name = 'config_gestalt.csv'
+    name = args.list
     g_file = open(name, 'r')
     reader = csv.reader(g_file)
     file_list = []
@@ -85,6 +86,8 @@ if __name__ == '__main__':
             selected_syn[0]['omim_id'] = [176670]
             pedia_content['selected_syndromes'] = selected_syn
 
+        if not os.path.exists(args.output):
+            os.makedirs(args.output)
         out_name = os.path.join(args.output, case)
         with open(out_name, 'w') as outfile:
             json.dump(pedia_content, outfile)

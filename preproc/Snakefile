@@ -1,0 +1,19 @@
+rule all:
+	input:
+		"merge.done"
+
+rule merge:
+	input:
+		cases = "aws_dir/cases",
+		syn = "216_gestalt_syn_to_omim_final.csv",
+		f2g = "final_json_per_case_280618",
+		list = "config_gestalt.csv"
+	output:
+		touch("merge.done")
+	params:
+		output = "merged_test"
+	shell:
+		"""
+		python merge_pedia_dgfm.py -l {input.list} -o {params.output} -s {input.syn} -f {input.f2g} -i {input.cases}
+		"""
+
