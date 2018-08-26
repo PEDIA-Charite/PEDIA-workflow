@@ -8,13 +8,16 @@ import json
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate summary file')
-    parser.add_argument('-i', '--case', help='path to convert file')
+    parser.add_argument('-i', '--case', help='path to original patient JSON file')
     parser.add_argument('-f', '--f2g', help='path to f2g dgfm file')
     parser.add_argument('-s', '--syn-omim', help='path to f2g dgfm file')
     parser.add_argument('-o', '--output', help='path to output file')
     parser.add_argument('-l', '--list', help='path to config_gestalt.csv')
 
     # -s 216_gestalt_syn_to_omim_final.csv
+    # -i original_json
+    # -f final_json_per_case_280618
+    # -l config_gestalt.csv 
 
     args = parser.parse_args()
     case_path = args.case
