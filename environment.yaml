@@ -26,3 +26,4 @@ dependencies:
    - hgvs==1.2.0
    - ratelimit==2.2.0
    - zeep==3.0.0
+   - requests_cache==0.4.13
