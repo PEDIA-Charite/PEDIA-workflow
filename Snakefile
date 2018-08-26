@@ -32,10 +32,11 @@ rule merge:
 	params:
 		output = merged_cases_dir,
 		input_dir = preproc_dir + "original_json/",
-		f2g = preproc_dir + "final_json_per_case_280618"
+		f2g = preproc_dir + "final_json_per_case_280618",
+		script = preproc_dir + "merge_pedia_dgfm.py" 
 	shell:
 		"""
-		python merge_pedia_dgfm.py -l {input.list} -o {params.output} -s {input.syn} -f {params.f2g} -i {params.input_dir}
+		python {params.script} -l {input.list} -o {params.output} -s {input.syn} -f {params.f2g} -i {params.input_dir}
 		"""
 
 rule convert:
@@ -47,6 +48,6 @@ rule convert:
 		output = converted_json_dir
 	shell:
 		"""
-		python preprocessing.py -s {input.cases} -o {params.output} 
+		python preprocess.py -s {input.cases} -o {params.output} 
 		"""
 
