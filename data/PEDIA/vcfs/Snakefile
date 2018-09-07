@@ -74,13 +74,13 @@ rule annotate:
 		exac="../../populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../../populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
 		dbsnp="../../dbSNPs/b147/All_20160601.vcf.gz",
-		caddsnv="../../pathogenicityScores/whole_genome_SNVs.tsv.gz",
-		caddindel="../../pathogenicityScores/InDels.tsv.gz",
+		caddsnv="../../pathogenicityScores/cadd_snv_exon.tsv.gz",
+		caddindel="../../pathogenicityScores/cadd_indel_exon.tsv.gz",
 		ref="../../referenceGenome/data/human_g1k_v37.fasta"
 	output:
 		"annotated_vcfs/{sample}_annotated.vcf.gz"
 	shell:
-	    "java -jar ../../jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --dbsnp-vcf {input.dbsnp} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}'"
+		"java -jar ../../jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --dbsnp-vcf {input.dbsnp} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}'"
 
 rule index_annotated:
 	input:

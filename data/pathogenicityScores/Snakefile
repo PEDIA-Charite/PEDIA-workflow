@@ -6,7 +6,11 @@ rule all:
 		"InDels.tsv.gz",
 		"InDels.tsv.gz.tbi",
 		"whole_genome_SNVs.tsv.gz",
-		"whole_genome_SNVs.tsv.gz.tbi"
+		"whole_genome_SNVs.tsv.gz.tbi",
+		"cadd_snv_exon.tsv.gz",
+		"cadd_snv_exon.tsv.gz.tbi",
+		"cadd_indel_exon.tsv.gz",
+		"cadd_indel_exon.tsv.gz.tbi"
 
 rule download_CADD_indels:
 	output:
@@ -26,4 +30,24 @@ rule download_CADD_SNVs:
 		"""
 		wget http://krishna.gs.washington.edu/download/CADD/v1.3/{output.file};
 		wget http://krishna.gs.washington.edu/download/CADD/v1.3/{output.index};
+		"""
+
+rule download_CADD_exon_SNVs:
+	output:
+		file="cadd_snv_exon.tsv.gz",
+		index="cadd_snv_exon.tsv.gz.tbi"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/7iiYkjzDE8manvI/download -O {output.file};
+		wget https://uni-bonn.sciebo.de/s/kzudjfak1TNiTKq/download -O {output.index};
+		"""
+
+rule download_CADD_exon_indel:
+	output:
+		file="cadd_indel_exon.tsv.gz",
+		index="cadd_indel_exon.tsv.gz.tbi"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/89uU10R1vmTR3Gm/download -O {output.file};
+		wget https://uni-bonn.sciebo.de/s/Mq7kbeO3T1izmEc/download -O {output.index};
 		"""
