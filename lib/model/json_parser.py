@@ -595,15 +595,14 @@ class NewJson(JsonFile):
         case_id = self.get_case_id()
         destination_vcf = os.path.join(processed_dir, case_id + ".vcf.gz")
 
-        if case_id not in processed_vcfs:
-            case_vcfs = [v for v in raw_vcfs if case_id in v]
-            if not case_vcfs:
-                LOGGER.info("Case %s, VCF file %s could not be found.",
-                            case_id, vcfs[0])
-                return []
-            vcf = case_vcfs[0]
-            vcf_path = os.path.join(vcf_dir, vcf)
-            move_vcf(vcf_path, destination_vcf)
+        case_vcfs = [v for v in raw_vcfs if case_id in v]
+        if not case_vcfs:
+            LOGGER.info("Case %s, VCF file %s could not be found.",
+                        case_id, vcfs[0])
+            return []
+        vcf = case_vcfs[0]
+        vcf_path = os.path.join(vcf_dir, vcf)
+        move_vcf(vcf_path, destination_vcf)
 
         return [destination_vcf]
 
