@@ -86,10 +86,11 @@ def move_vcf(orig_path: str, new_path: str) -> None:
     '''Convert vcf file to vcf.gz and move to the new directory.'''
     move_flag = True
     data = read_vcf(orig_path)
-    if os.path.isfile(new_path):
+    if os.path.exists(new_path):
         new_data = read_vcf(new_path)
         move_flag = False if new_data == data else True
     if move_flag:
+        print("\nCopy VCF file to data/PEDIA/vcfs/original")
         write_vcf(data, new_path)
     else:
-        print("VCF file is existed and identical.")
+        print("\nVCF file is existed and identical.")
