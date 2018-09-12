@@ -1,0 +1,68 @@
+# download the data!
+
+
+rule all:
+	input:
+		"genemap2.txt",
+		"mim2gene.txt",
+		"mim_to_ps.json",
+		"mimTitles.txt",
+		"morbidmap.txt",
+		"omim_deprecated_replacement.json",
+		"phenotypicSeries.txt"
+
+rule download_genemap:
+	output:
+		file="genemap2.txt"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/M2YEfEHAGNRSnH5/download -O {output.file};
+		"""
+
+rule download_mim2gene:
+	output:
+		file="mim2gene.txt"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/WlaDSVtVMG7mCCm/download -O {output.file};
+		"""
+
+rule download_mim_to_ps:
+	output:
+		file="mim_to_ps.json"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/nE7IOU81MCtrTRL/download -O {output.file};
+		"""
+
+rule download_mimTitles:
+	output:
+		file="mimTitles.txt"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/iMzQhFBii7nGz9d/download -O {output.file};
+		"""
+
+rule download_morbidmap:
+	output:
+		file="morbidmap.txt"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/vV2zVJuBvndpl4z/download -O {output.file};
+		"""
+
+rule download_mim_deprecated:
+	output:
+		file="omim_deprecated_replacement.json"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/sc6Cuwv9X2UFG8L/download -O {output.file};
+		"""
+
+rule download_ps:
+	output:
+		file="phenotypicSeries.txt"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/yNO09POHXO00LNy/download -O {output.file};
+		"""
