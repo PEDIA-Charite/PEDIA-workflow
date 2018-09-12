@@ -17,10 +17,6 @@ subworkflow jannovar_workflow:
 # download the data!
 rule all:
     input:
-        patho_workflow("InDels.tsv.gz"),
-        patho_workflow("InDels.tsv.gz.tbi"),
-        patho_workflow("whole_genome_SNVs.tsv.gz"),
-        patho_workflow("whole_genome_SNVs.tsv.gz.tbi"),
         patho_workflow("cadd_snv_exon.tsv.gz"),
         patho_workflow("cadd_snv_exon.tsv.gz.tbi"),
         patho_workflow("cadd_indel_exon.tsv.gz"),
