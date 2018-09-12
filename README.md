@@ -24,67 +24,33 @@ Go have a look at the [miniconda website](https://conda.io/miniconda.html). Be s
  python --version
 ```
 ### Install necessary software via conda
-
-Let's go into the data folder to download external files.
-
-```
-cd data
-```
-
 Now we will generate a shell environment with all necessary programs for downloading and process files. The software needed for the downloading is in the `environment.yaml` file. Conda can read it:
 
 ```
 conda env create -f environment.yaml
 ```
 
-Now we created an enviroment called `pedia_download`. We can activate it and we should have snakemake installed.
+Now we created an enviroment called `pedia`. We can activate it and we should have snakemake installed.
 
 ```
-source activate pedia_download
+source activate pedia
 snakemake -h
 ```
 We can deactivate the environment using `source deactivate`. The command `conda env list` will list you all environments.
 
 Now lets run the pedia download workflow. We can make a "dry run" using `snakemake -n` to see what snakemake would probably do.
-
-## Setup for preprocessing
-
-* Create a python virtualenv preferably using the venv module
 ```
-python3 -m venv <dir of choice, eg env>
-./<env>/bin/activate (command can vary depending on used shell)
+de data
+snakemake -p -n all
 ```
-* Install dependencies
-  * Python 3.6 is currently the only tested version
 
+### Setup classifier submodule
+classifier is the submodule, so we have to clone it by the following command.
 ```
-pip install -r requirements.txt
+git submodule update --recursive
 ```
-* Optional: Run tests
-    * Populate the tests/data directory. The case with the specified case ID and the specified genomic entry is needed.
-        ```
-        tests/data/cases/51702.json
-        tests/data/genomics_entries/2669.json
-        tests/data/config.ini -- necessary for API keys
-        ```
-    * Run tests
-        ```
-        python3 -m unittest discover
-        ```
-
-* Obtain additional data files - put them into the specified locations
-  * `data/mim2gene.txt` - publicly available on omim.org
-    * [https://omim.org/downloads/][OMIM download page]
-  * `data/morbidmap.txt` - requires API-key access to download
-  * note that if new versions of the files are obtained MD5 checksums might have
-    to be regenerated
 
 ## Usage instructions
-
-Files inside `scripts/` can be used for inspiration for own usecases. All
-scripts should be run from the project base directory to automatically include
-the lib package containing the actual program code.
-
 ### Configuration
 
 Most configuration options are in a `config.ini` file, with options commented.
@@ -105,13 +71,10 @@ A version of 0 will accept no hgvs_errors file.
 
 ### Required external files
    * Go to data folder, and run 'snakemake all' to download all necessary files such as reference genome, population data.
-   * Copy dbsnp files to data/dbSNP/b147
    * Copy IRAN_trio files to 3_simulation/background/data/IRAN_trio/
-   * Copy mim_to_ps.json, mim2gene.txt, mimTitles.txt, morbidmap.txt, omim_deprecated_replacement.json, phenoptypicSeries.txt to data/
    * Copy corrected JSON files to process/correct/
    * Copy hgvs_errors.json to project folder
    * Copy config.ini to project folder
-   * Copy genemap2.txt to 3_simulation/OMIM/ folder
 
 ### Running preprocessing
 
@@ -137,21 +100,31 @@ conversion of new json files into the old format necessary for conversion.
 ./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER
 ```
 
+* Optional: Run tests
+    * Populate the tests/data directory. The case with the specified case ID and the specified genomic entry is needed.
+        ```
+        tests/data/cases/51702.json
+        tests/data/genomics_entries/2669.json
+        tests/data/config.ini -- necessary for API keys
+        ```
+    * Run tests
+        ```
+        python3 -m unittest discover
+        ```
+	
 ### Run PEDIA pipeline
 There are three steps to run pipeline.
 1. Environment setup
    * Go to data folder, and run 'snakemake all' to download all necessary files such as reference genome, population data.
    ```
-   source activate pedia_download
+   cd data
+   source activate pedia
    snakemake all
    ```
-   * Copy dbsnp files to data/dbSNP/b147
    * Copy IRAN_trio files to 3_simulation/background/data/IRAN_trio/
-   * Copy mim_to_ps.json, mim2gene.txt, mimTitles.txt, morbidmap.txt, omim_deprecated_replacement.json, phenoptypicSeries.txt to data/
    * Copy corrected JSON files to process/correct/
    * Copy hgvs_errors.json to project folder
    * Copy config.ini to project folder
-   * Copy genemap2.txt to 3_simulation/OMIM/ folder
 
 1. Download cases and perform preprocessing
 
@@ -161,7 +134,7 @@ There are three steps to run pipeline.
    * config.yml contains the cases passed quality check. SIMPLE_SAMPLES is the case with disease-causing mutation but without real VCF file. VCF_SAMPLES is the case with real VCF file. TEST_SAMPLE is the case with real VCF but without disease-causing mutation.
    * process/aws_dir is the folder of cases downloaded via aws.
    * data/PEDIA/jsons/phenomized is the folder which contains the JSON files passed QC.
-   * data/PEDIA/mutations/variants.vcf.gz  is the VCF file which contains disease-causing mutations of all cases.
+   * data/PEDIA/mutations/case_id.vcf.gz  is the VCF file which contains disease-causing mutations of all cases.
    * data/PEDIA/vcfs/original is the folder which contains the VCF files. In mapping.py, we rename the filename of VCF files to case_id.vcf.gz and store to ../data/PEDIA/vcfs/original/. The new filename is added in vcf field of the JSON file. For example,
    ```
    "vcf": [
@@ -199,7 +172,12 @@ There are three steps to run pipeline.
         * 3_simulation/json_simulation/IRAN is the folder for all cases simulated by IRAN.
         * 3_simulation/json_simulation/real/train is the folder for the cases without simulated by 1KG, ExAC or IRAN. We also have three folder under this folder.
         * 3_simulation/json_simulation/real/test is the folder for the cases with real VCF file.
-      
+ 
+1. Train with all cases and test on patient with **unknown diagnosis**. You will find the results in output/test/1KG/case_id/
+   ```
+   snakemake ../output/test/1KG/21147/run.out
+   ```
+   
 1. Cross-validation evaluation
    * Go to classifier folder.  Run 'source activate classifier' to enable the environment. If you haven't created the environment, please execute 'conda env create -f environment.ymal'.
    * Perform 10 times 10 fold cross-validation on all 3 simulation population by running 'snakemake CV_all'. You can add --cores 3 to run it on parallel. The output will be in output/cv/CV_1KG, output/cv/CV_ExAC and output/cv/CV_IRAN. The classifier will trigger the simulation and phenomization if the files haven't been generated. It takes a long time for running the first time due to the process of simulation population data.
@@ -218,11 +196,6 @@ There are three steps to run pipeline.
    * Testing set is in 3_simulation/json_simulation/real/test
    ```
    snakemake ../output/real_test/1KG/run.log
-   ```
-
-1. Train with all cases and test on patient with unknown diagnosis
-   ```
-   snakemake ../output/test/1KG/21147/21147.log
    ```
 
 1. How to read the PEDIA results?
