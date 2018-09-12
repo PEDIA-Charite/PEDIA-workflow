@@ -14,6 +14,14 @@ subworkflow jannovar_workflow:
     workdir: "jannovar"
     snakefile: "jannovar/Snakefile"
 
+subworkflow omim_workflow: 
+    workdir: "omim"
+    snakefile: "omim/Snakefile"
+
+subworkflow dbsnp_workflow: 
+    workdir: "dbSNPs"
+    snakefile: "dbSNPs/Snakefile"
+
 # download the data!
 rule all:
     input:
@@ -35,4 +43,14 @@ rule all:
         reference_workflow("data/human_g1k_v37.fasta.dict"),
         jannovar_workflow("data/hg19_refseq.ser"),
         jannovar_workflow("jannovar_0.25/data/hg19_refseq.ser"),
-        jannovar_workflow("jannovar_0.26/data/hg19_refseq.ser")
+        jannovar_workflow("jannovar_0.26/data/hg19_refseq.ser"),
+        omim_workflow("genemap2.txt"),
+        omim_workflow("mim2gene.txt"),
+        omim_workflow("mim_to_ps.json"),
+        omim_workflow("mimTitles.txt"),
+        omim_workflow("morbidmap.txt"),
+        omim_workflow("omim_deprecated_replacement.json"),
+        omim_workflow("phenotypicSeries.txt"),
+        dbsnp_workflow("b147/All_20160601.vcf.gz"),
+        dbsnp_workflow("b147/All_20160601.vcf.gz.tbi")
+
