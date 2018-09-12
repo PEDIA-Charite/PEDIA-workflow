@@ -1,0 +1,30 @@
+subworkflow vcfs_workflow: 
+	workdir: "../../data/PEDIA/vcfs"
+	snakefile: "../../data/PEDIA/vcfs/Snakefile"
+
+BACKGROUNDS=["1KG","ExAC","IRAN"]
+
+################### REAL VCFS################################
+
+def getRealVCF(wc):
+	vcf_index = "annotated_vcfs/%s_annotated.vcf.gz.tbi" % wc.sample
+	vcf = vcf_index[0:-4] 
+	return [vcfs_workflow(vcf), vcfs_workflow(vcf_index)]
+
+#################################################################
+# Generate the JSON file of case with unknown diagnosis
+#################################################################
+
+rule jsonRealUnknownTestData:
+	input:
+		json = "../../data/PEDIA/jsons/phenomized/{sample}.json",
+		vcf = getRealVCF,
+		omim = "../../data/genemap2.txt",
+		simulator = "../simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+	output:
+		"json_real/unknown_test/{sample}.json"
+	shell:
+		"""
+		java -jar -Xmx20g {input.simulator} extendjson \
+		-j {input.json} -v {input.vcf[0]} -o {input.omim} -out {output}
+		"""
