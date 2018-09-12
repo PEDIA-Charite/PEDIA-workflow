@@ -1,0 +1,18 @@
+# download the data!
+
+
+rule all:
+	input:
+		"b147/All_20160601.vcf.gz",
+		"b147/All_20160601.vcf.gz.tbi"
+
+rule download_genemap:
+	output:
+		file="b147/All_20160601.vcf.gz",
+		index="b147/All_20160601.vcf.gz.tbi"
+	shell:
+		"""
+		wget https://uni-bonn.sciebo.de/s/j0dx1FDKIVEK1z0/download -O {output.file};
+		wget https://uni-bonn.sciebo.de/s/onZjo7alyuWlQWo/download -O {output.index};
+		"""
+

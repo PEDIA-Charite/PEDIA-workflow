@@ -107,7 +107,7 @@ rule spikein:
 	input:
 		index="mutations/{sample}_JsonsVCF_annotated.vcf.gz.tbi",
 		vcf="mutations/{sample}_JsonsVCF_annotated.vcf.gz",
-		omim="../data/genemap2.txt",
+		omim="../data/omim/genemap2.txt",
 		back=getBackground,
 	output:
 		"vcf_simulation/{background}/{sample}.vcf.gz"
@@ -120,7 +120,7 @@ rule spikein:
 rule json:
 	input:
 		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
-		omim="../data/genemap2.txt",
+		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
@@ -141,7 +141,7 @@ def getRealVCF(wc):
 rule jsonRealTestData:
 	input:
 		vcf=getRealVCF,
-		omim="../data/genemap2.txt",
+		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
@@ -186,7 +186,7 @@ rule jsonRealTrainiSimData:
 rule jsonRealUnknownTestData:
 	input:
 		vcf=getRealVCF,
-		omim="../data/genemap2.txt",
+		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
@@ -338,7 +338,7 @@ rule plottingData:
 rule jsonTrainGestaltData:
 	input:
 		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
-		omim="../data/genemap2.txt",
+		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
@@ -371,7 +371,7 @@ rule createCsvTrainGestalt:
 rule jsonRealGestaltTestData:
 	input:
 		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
-		omim="../data/genemap2.txt",
+		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:

@@ -30,7 +30,7 @@ rule json:
 	input:
 		vcf=get_vcf,
 		#vcf="../vcf_simulation/{background}/" + {{sample}}.split('_')[0] + ".vcf.gz",
-		omim="../OMIM/genemap2.txt",
+		omim="../data/omim/genemap2.txt",
 		json="REP_{run}/simulated_case/{sample}.json",
 		simulator="../simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:

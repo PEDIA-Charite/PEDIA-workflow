@@ -35,14 +35,14 @@ morbidmap.txt
 
 # static data, such as genomic data for exome simulation
 # /data/
-/data/f2g_library_dump.json
-/data/mim2gene.txt
-/data/morbidmap.txt
-/data/mimTitles.txt
-/data/phenotypicSeries.txt
-/data/omim_deprecated_replacement.json
-/data/mim_to_ps.json
-/data/genemap2.txt
+/data/omim/f2g_library_dump.json
+/data/omim/mim2gene.txt
+/data/omim/morbidmap.txt
+/data/omim/mimTitles.txt
+/data/omim/phenotypicSeries.txt
+/data/omim/omim_deprecated_replacement.json
+/data/omim/mim_to_ps.json
+/data/omim/genemap2.txt
 
 # dynamic data, such as json files
 /process
