@@ -39,11 +39,11 @@ GESTALT_SAMPLES = get_real_gestalt_sample()[2]
 rule all:
 	input:
 		expand("vcf_simulation/{background}/{sample}.vcf.gz", sample=SAMPLES, background=BACKGROUNDS),
-		expand("json_simulation/{background}/CV/{sample}.json", sample=SAMPLES, background=BACKGROUNDS),
+		expand("jsons/{background}/CV/{sample}.json", sample=SAMPLES, background=BACKGROUNDS),
 		expand("vcf_annotation/{sample}.annotation.vcf.gz", sample=VCF_SAMPLES, background=BACKGROUNDS),
 		expand("vcf_annotation/{sample}.annotation.vcf.gz.tbi", sample=VCF_SAMPLES, background=BACKGROUNDS),
-		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
-		expand("json_simulation/real/train/{background}/{sample}.json", sample=SINGLE_SAMPLES, background=BACKGROUNDS),
+		expand("jsons/real/test/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("jsons/real/train/{background}/{sample}.json", sample=SINGLE_SAMPLES, background=BACKGROUNDS),
 		expand("performanceEvaluation/data/CV/{background}.csv", background=BACKGROUNDS),
 		expand("performanceEvaluation/data/Real/train_{background}.csv", background=BACKGROUNDS),
 		"performanceEvaluation/data/Real/test_real.csv",
@@ -51,10 +51,6 @@ rule all:
 		expand("performanceEvaluation/results/real.{background}.tsv.gz", background=BACKGROUNDS),
 		expand("performanceEvaluation/results/{type}.{background}.arff.gz",background=BACKGROUNDS,type=["CV","real"]),
 		expand("performanceEvaluation/plots/{type}/{plot}.ExAC.1KG.IRN.pdf",type=["CV","real"],plot=PLOTS)
-
-
-
-
 
 rule annotate:
 	input:
@@ -76,7 +72,6 @@ rule annotate:
 		--ref-fasta {input.ref} \
 		-o '{output}' -i '{input.vcf}'
 		"""
-
 
 rule index:
 	input:
@@ -129,7 +124,7 @@ rule json:
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
-		"json_simulation/{background}/CV/{sample}.json"
+		"jsons/{background}/CV/{sample}.json"
 	shell:
 		"java -jar {input.simulator} extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
 
@@ -143,27 +138,14 @@ def getRealVCF(wc):
 	vcf = vcf_index[0:-4] 
 	return [vcfs_workflow(vcf), vcfs_workflow(vcf_index)]
 
-rule copyReal:
-	input:
-		vcf=getRealVCF,
-		json="../data/PEDIA/jsons/phenomized/{sample}.json"
-	output:
-		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
-		index="vcf_annotation/{sample}.annotation.vcf.gz.tbi"
-	shell:
-		"""
-		cp {input.vcf[0]} {output.vcf}
-		cp {input.vcf[1]} {output.index}
-		"""
-
 rule jsonRealTestData:
 	input:
-		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
+		vcf=getRealVCF[0],
 		omim="../data/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
-		"json_simulation/real/test/{sample}.json"
+		"jsons/real/test/{sample}.json"
 	shell:
 		"""
 		java -jar -Xmx20g {input.simulator} extendjson \
@@ -172,13 +154,14 @@ rule jsonRealTestData:
 
 rule jsonRealTrainData:
 	input:
-		"json_simulation/{background}/CV/{sample}.json"
+		"jsons/{background}/CV/{sample}.json"
 	output:
-		"json_simulation/real/train/{background}/{sample}.json"
+		"jsons/real/train/{background}/{sample}.json"
 	shell:
 		"""
 		ln {input} {output}
 		"""
+
 #################################################################
 # Copy the simulated JSON files of cases with real exome to
 # real/test_{backgound} as testing set
@@ -188,9 +171,9 @@ rule jsonRealTrainData:
 
 rule jsonRealTrainiSimData:
 	input:
-		"json_simulation/{background}/CV/{sample}.json"
+		"jsons/{background}/CV/{sample}.json"
 	output:
-		"json_simulation/real/test_{background}/{sample}.json"
+		"jsons/real/test_{background}/{sample}.json"
 	shell:
 		"""
 		ln {input} {output}
@@ -207,7 +190,7 @@ rule jsonRealUnknownTestData:
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
-		"json_simulation/real/unknown_test/{sample}.json"
+		"jsons/real/unknown_test/{sample}.json"
 	shell:
 		"""
 		java -jar -Xmx20g {input.simulator} extendjson \
@@ -222,12 +205,12 @@ rule jsonRealUnknownTestData:
 
 rule createCsvTrain:
 	input:
-		expand("json_simulation/{{background}}/CV/{sample}.json", sample=SAMPLES),
+		expand("jsons/{{background}}/CV/{sample}.json", sample=SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
 		"performanceEvaluation/data/CV/{background}.csv"
 	params:
-		folder="json_simulation/{background}/CV"
+		folder="jsons/{background}/CV"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -239,12 +222,12 @@ rule createCsvTrain:
 
 rule createCsvRealTest:
 	input:
-		expand("json_simulation/real/test/{sample}.json", sample=VCF_SAMPLES),
+		expand("jsons/real/test/{sample}.json", sample=VCF_SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
 		"performanceEvaluation/data/Real/test_real.csv"
 	params:
-		folder="json_simulation/real/test"
+		folder="jsons/real/test"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -258,12 +241,12 @@ rule createCsvRealTest:
 
 rule createCsvRealSimTest:
 	input:
-		expand("json_simulation/real/test_{background}/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
+		expand("jsons/real/test_{background}/{sample}.json", sample=VCF_SAMPLES, background=BACKGROUNDS),
 		script="scripts/jsonToTable.py"
 	output:
 		"performanceEvaluation/data/Real/test_simulated_{background}.csv"
 	params:
-		folder="json_simulation/real/test_{background}"
+		folder="jsons/real/test_{background}"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -276,12 +259,12 @@ rule createCsvRealSimTest:
 
 rule createCsvRealTrain:
 	input:
-		expand("json_simulation/real/train/{{background}}/{sample}.json", sample=SINGLE_SAMPLES),
+		expand("jsons/real/train/{{background}}/{sample}.json", sample=SINGLE_SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
 		"performanceEvaluation/data/Real/train_{background}.csv"
 	params:
-		folder="json_simulation/real/train/{background}"
+		folder="jsons/real/train/{background}"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -359,7 +342,7 @@ rule jsonTrainGestaltData:
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
-		"json_simulation/{background}/CV_gestalt/{sample}.json"
+		"jsons/{background}/CV_gestalt/{sample}.json"
 	shell:
 		"java -jar {input.simulator} extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
 
@@ -370,12 +353,12 @@ rule jsonTrainGestaltData:
 
 rule createCsvTrainGestalt:
 	input:
-		sample = expand("json_simulation/{{background}}/CV_gestalt/{sample}.json", sample=GESTALT_SAMPLES),
+		sample = expand("jsons/{{background}}/CV_gestalt/{sample}.json", sample=GESTALT_SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
 		"performanceEvaluation/data/CV_gestalt/{background}.csv"
 	params:
-		folder="json_simulation/{background}/CV_gestalt"
+		folder="jsons/{background}/CV_gestalt"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -392,7 +375,7 @@ rule jsonRealGestaltTestData:
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
-		"json_simulation/real/gestalt/test/{sample}.json"
+		"jsons/real/gestalt/test/{sample}.json"
 	shell:
 		"""
 		java -jar -Xmx20g {input.simulator} extendjson \
@@ -402,12 +385,12 @@ rule jsonRealGestaltTestData:
 
 rule createCsvRealGestaltTest:
 	input:
-		expand("json_simulation/real/gestalt/test/{sample}.json", sample=GESTALT_VCF_SAMPLES),
+		expand("jsons/real/gestalt/test/{sample}.json", sample=GESTALT_VCF_SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
 		"performanceEvaluation/data/Real/gestalt/test_real.csv"
 	params:
-		folder="json_simulation/real/test"
+		folder="jsons/real/test"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -415,9 +398,9 @@ rule createCsvRealGestaltTest:
 
 rule jsonRealGestaltTrainData:
 	input:
-		"json_simulation/{background}/CV_gestalt/{sample}.json"
+		"jsons/{background}/CV_gestalt/{sample}.json"
 	output:
-		"json_simulation/real/gestalt/train/{background}/{sample}.json"
+		"jsons/real/gestalt/train/{background}/{sample}.json"
 	shell:
 		"""
 		ln {input} {output}
@@ -425,12 +408,12 @@ rule jsonRealGestaltTrainData:
 
 rule createCsvRealGestaltTrain:
 	input:
-		sample = expand("json_simulation/real/gestalt/train/{{background}}/{sample}.json", sample=GESTALT_SINGLE_SAMPLES),
+		sample = expand("jsons/real/gestalt/train/{{background}}/{sample}.json", sample=GESTALT_SINGLE_SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
 		"performanceEvaluation/data/Real/gestalt/train_{background}.csv"
 	params:
-		folder="json_simulation/real/gestalt/train/{background}"
+		folder="jsons/real/gestalt/train/{background}"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -445,9 +428,9 @@ rule createCsvRealGestaltTrain:
 
 rule jsonRealTrainiSimGestaltData:
 	input:
-		"json_simulation/{background}/CV_gestalt/{sample}.json"
+		"jsons/{background}/CV_gestalt/{sample}.json"
 	output:
-		"json_simulation/real/gestalt/test_{background}/{sample}.json"
+		"jsons/real/gestalt/test_{background}/{sample}.json"
 	shell:
 		"""
 		ln {input} {output}
@@ -461,12 +444,12 @@ rule jsonRealTrainiSimGestaltData:
 
 rule createCsvRealSimiGestaltTest:
 	input:
-		expand("json_simulation/real/gestalt/test_{background}/{sample}.json", sample=GESTALT_VCF_SAMPLES, background=BACKGROUNDS),
+		expand("jsons/real/gestalt/test_{background}/{sample}.json", sample=GESTALT_VCF_SAMPLES, background=BACKGROUNDS),
 		script="scripts/jsonToTable.py"
 	output:
 		"performanceEvaluation/data/Real/gestalt/test_simulated_{background}.csv"
 	params:
-		folder="json_simulation/real/gestalt/test_{background}"
+		folder="jsons/real/gestalt/test_{background}"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
