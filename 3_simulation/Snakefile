@@ -140,7 +140,7 @@ def getRealVCF(wc):
 
 rule jsonRealTestData:
 	input:
-		vcf=getRealVCF[0],
+		vcf=getRealVCF,
 		omim="../data/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
@@ -149,7 +149,7 @@ rule jsonRealTestData:
 	shell:
 		"""
 		java -jar -Xmx20g {input.simulator} extendjson \
-		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
+		-j {input.json} -v {input.vcf[0]} -o {input.omim} -out {output}
 		"""
 
 rule jsonRealTrainData:
@@ -185,7 +185,7 @@ rule jsonRealTrainiSimData:
 
 rule jsonRealUnknownTestData:
 	input:
-		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
+		vcf=getRealVCF,
 		omim="../data/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
 		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
@@ -194,7 +194,7 @@ rule jsonRealUnknownTestData:
 	shell:
 		"""
 		java -jar -Xmx20g {input.simulator} extendjson \
-		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
+		-j {input.json} -v {input.vcf[0]} -o {input.omim} -out {output}
 		"""
 
 

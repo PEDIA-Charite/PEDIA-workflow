@@ -32,7 +32,7 @@ rule sort:
 	input:
 		"original/{sample}.vcf"
 	output:
-		"sorted/{sample}.vcf.gz"
+		temp("sorted/{sample}.vcf.gz")
 	shell:
 		"""
 		(cat '{input}' | egrep "^#"; cat '{input}' | egrep -v "^#" | sort -k1,1 -k2,2n) | bgzip -c > '{output}'
@@ -42,7 +42,7 @@ rule index_sorted:
 	input:
 		"sorted/{sample}.vcf.gz"
 	output:
-		"sorted/{sample}.vcf.gz.tbi"
+		temp("sorted/{sample}.vcf.gz.tbi")
 	shell:
 		"tabix '{input}'"
 
