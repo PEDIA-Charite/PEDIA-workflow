@@ -51,9 +51,11 @@ rule filter:
 		"sorted/{sample}.vcf.gz"
 	output:
 		"filtered_vcfs/{sample}.vcf.gz"
+	params:
+		exon = "../../pathogenicityScores/exon_extend_100bp.txt"
 	shell:
 		"""
-		bcftools view -e 'QUAL<100||GT="./."||GT="0/0"||GT=".|."||GT="."' {input} | sed -e 's/nan/NaN/g' | bgzip -c > {output}
+		bcftools view -e 'QUAL<100||GT="./."||GT="0/0"||GT=".|."||GT="."' {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed {params.exon} --stdout --recode --recode-INFO-all | bgzip -c > {output}
 		"""
 
 rule index_filter:
