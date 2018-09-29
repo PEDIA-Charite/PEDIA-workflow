@@ -25,7 +25,7 @@ rule decompress:
 		temp("original/{sample}.vcf")
 	shell:
 		"""
-		bgzip -d -c {input} | awk '{{gsub(/chr/,""); print}}' | awk '{{if($1!="M" && $5!=".") print $0}}' > {output}
+		bgzip -d -c {input} | grep -v "##sgmutationstatistics=" | awk '{{gsub(/chr/,""); print}}' | awk '{{if($1!="M" && $5!=".") print $0}}' > {output}
 		"""
 
 rule sort:
