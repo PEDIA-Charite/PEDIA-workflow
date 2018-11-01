@@ -167,15 +167,16 @@ There are three steps to run pipeline.
     ```
     
     * The final JSON files are in 3_simulation/json_simulation folder.
-        * 3_simulation/json_simulation/1KG is the folder for all cases simulated by 1KG.
-        * 3_simulation/json_simulation/ExAC is the folder for all cases simulated by ExAC.
-        * 3_simulation/json_simulation/IRAN is the folder for all cases simulated by IRAN.
-        * 3_simulation/json_simulation/real/train is the folder for the cases without simulated by 1KG, ExAC or IRAN. We also have three folder under this folder.
-        * 3_simulation/json_simulation/real/test is the folder for the cases with real VCF file.
+        * 3_simulation/jsons/1KG is the folder for all cases simulated by 1KG.
+        * 3_simulation/jsons/ExAC is the folder for all cases simulated by ExAC.
+        * 3_simulation/jsons/IRAN is the folder for all cases simulated by IRAN.
+        * 3_simulation/jsons/real/train is the folder for the cases without simulated by 1KG, ExAC or IRAN. We also have three folder under this folder.
+        * 3_simulation/jsons/real/test is the folder for the cases with real VCF file.
  
-1. Train with all cases and test on patient with **unknown diagnosis**. You will find the results in output/test/1KG/case_id/
+1. Go to classifier folder to classify the patient. Train with all cases and test on patient with **unknown diagnosis**. You will find the results in output/test/1KG/case_id/. Please find the more detail in
+(https://github.com/PEDIA-Charite/classifier).
    ```
-   snakemake ../output/test/1KG/21147/run.out
+   snakemake output/test/1KG/21147/run.out
    ```
    
 1. Cross-validation evaluation
@@ -188,14 +189,14 @@ There are three steps to run pipeline.
    * If you only want to run on 1KG simulation data, please execute this command 'snakemake ../output/cv/CV_1KG/run.log'. Please remind the working directory of classifier is in scripts folder, so to run on 1KG simulation you need to specify the output file '../output/cv/CV_1KG/run.log' instead of 'output/cv/CV_1KG/run.log '.
 
    ```
-   snakemake ../output/cv/CV_1KG/run.log
+   snakemake output/cv/CV_1KG/run.log
    ```
    
 1. Train and test evaluation
    * Training set is in 3_simulation/json_simulation/real/train/1KG (1KG, ExAC and IRAN)
    * Testing set is in 3_simulation/json_simulation/real/test
    ```
-   snakemake ../output/real_test/1KG/run.log
+   snakemake output/real_test/1KG/run.log
    ```
 
 1. How to read the PEDIA results?
