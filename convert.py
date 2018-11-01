@@ -9,9 +9,6 @@ import csv
 def convert_old(content, omim_dict):
     data = {}
     content = json.loads(content)
-    #data['case_id'] = content['case_id']
-    #data['lab_case_id'] = content['lab_case_id']
-    #data['lab_id'] = content['lab_id']
     case_data = content['case_data']
     data['case_id'] = case_data['case_id']
     # selected syndromes
@@ -53,12 +50,11 @@ def convert_old(content, omim_dict):
         detected_syn['combined_score'] = 0
         detected_syn['gestalt_score'] = float(syn['gestalt_score'])
         detected_syn['feature_score'] = float(syn['feature_score'])
-        detected_syn['has_mask'] = syn['syndrome']['app_valid'] 
+        detected_syn['has_mask'] = syn['syndrome']['app_valid']
         detected_syns.append(detected_syn)
 
     data['detected_syndromes'] = detected_syns
     data['algo_deploy_version'] = case_data['algo_version']
-    #data['lab_info'] = content['lab_info']
     data['genomic_entries'] = []
     sub = {}
     sub['user_email'] = "demo@pedia-study.org"#case_data['posting_user']['userEmail']
@@ -67,15 +63,9 @@ def convert_old(content, omim_dict):
 
     data['submitter'] = sub
     data['documents'] = [] if 'documents' not in content else content['documents']
-    #data['gender'] = case_data['gender']
-    #data['ethnicity'] = case_data['ethnicity_array']
     return data
 
-
-
-
 # Parse input arguments
-
 parser = argparse.ArgumentParser(description='Get case json file from lab')
 
 parser.add_argument('-c', '--case', help='Select case id')
@@ -89,7 +79,6 @@ out_dir = args.output
 if not os.path.exists(out_dir):
     os.mkdir(out_dir)
 
-
 omim_filename = args.mapping
 omim_file = open(omim_filename, 'r')
 reader = csv.reader(omim_file, delimiter='\t')
@@ -98,7 +87,7 @@ for row in reader:
     if row[1] == "[]":
         continue
     omim = row[1][1:-1].split(', ')
-    omim_dict[row[0]] = omim 
+    omim_dict[row[0]] = omim
 
 case_file = open(case_id, 'r')
 case_content = json.load(case_file)
