@@ -111,7 +111,7 @@ class ErrorFixer(LazyConfigure):
         '''Load an existing error json or initiate an empty dictionary.
         '''
         if os.path.exists(path):
-            with open(path, "r") as hgvs_file:
+            with open(path, mode="r", encoding='utf-8') as hgvs_file:
                 j = json.load(hgvs_file)
             # explicitly fail if error dict has no version
             if 'version' not in j:
