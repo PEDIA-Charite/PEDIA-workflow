@@ -5,6 +5,7 @@ options.
 '''
 # standard libraries
 import os
+import sys
 import shutil
 import logging
 import logging.config
@@ -22,7 +23,7 @@ from lib.visual import progress_bar, multiprocess
 from lib.model import json_parser, case, config
 from lib.api import omim, mutalyzer, jannovar
 
-from lib.global_singletons import AWS_INST, MUTALYZER_INST
+from lib.global_singletons import AWS_INST, MUTALYZER_INST, LAB_INST
 
 
 def configure_logging(logger_name, logger_file: str = "preprocess.log"):
@@ -55,6 +56,8 @@ def parse_arguments():
         "Process f2g provided jsons into a format processable by "
         "classification."))
     parser.add_argument("-s", "--single", help="Process a single json file.")
+    parser.add_argument("-l", "--lab", help="Name of the lab you which you define in config.ini.")
+    parser.add_argument("--case-id", help="Lab case ID, use it with --lab.")
     parser.add_argument(
         "-o", "--output",
         help="Destination of created old json.",
@@ -82,7 +85,16 @@ def parse_arguments():
         help="Convert cases that failed the first part of quality control."
     )
 
-    return parser.parse_args()
+
+    args = parser.parse_args()
+
+    if args.lab and not args.case_id:
+        parser.print_help()
+        sys.exit('Error: No lab case ID! Please provide lab case ID with --case-id')
+    if args.case_id and not args.lab:
+        parser.print_help()
+        sys.exit('Error: No lab name! Please provide lab name with --lab')
+    return args
 
 
 def create_config(
@@ -125,6 +137,11 @@ def create_jsons(config_data, convert_failed):
     corrected = config_data.input["corrected_path"]
     if config_data.input["input_files"]:
         json_files = config_data.input["input_files"]
+    elif config_data.input["lab"] and config_data.input["lab_case_id"]:
+        json_folder = config_data.input["download_path"]
+        unprocessed_jsons = os.path.join(json_folder, 'cases')
+        json_files = [LAB_INST.download_lab_case(unprocessed_jsons, config_data.input["lab_case_id"])]
+        print("downalod lab case")
     else:
         json_folder = config_data.input["download_path"]
         if config_data.input["download"]:
@@ -138,9 +155,14 @@ def create_jsons(config_data, convert_failed):
             if os.path.splitext(x)[1] == '.json'
         ]
 
-    new_json_objs = progress_bar("Process jsons")(
-        lambda x, y: json_parser.NewJson.from_file(x, y)
-    )(json_files, corrected)
+    if config_data.input["lab"]:
+        new_json_objs = progress_bar("Process jsons")(
+            lambda x, y: json_parser.LabJson.from_file(x, y)
+        )(json_files, corrected)
+    else:
+        new_json_objs = progress_bar("Process jsons")(
+            lambda x, y: json_parser.NewJson.from_file(x, y)
+        )(json_files, corrected)
 
     print('Unfiltered', len(new_json_objs))
     json_failed_data = {
@@ -401,7 +423,7 @@ def main():
             **stats)
     )
 
-    if not args.single:
+    if not args.single or not args.lab:
         quality_check.diff_quality_check(
             config_data.output["quality_check_log"]
         )
