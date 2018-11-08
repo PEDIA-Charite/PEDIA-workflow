@@ -617,3 +617,301 @@ class NewJson(JsonFile):
         '''Unaltered list of detected syndromes.
         '''
         return self._js['detected_syndromes']
+
+class LabJson(JsonFile):
+    '''Implement the new Face2Gene schema as loaded from LAB.
+    '''
+    # this roughly defines the keys to be expected inside a new format json
+    # file
+    schema = {
+        'lab_case_id': '',
+        'case_data': {
+            'algo_deploy_version': '',
+            'case_id': '',
+            'suggested_syndromes': [
+                {
+                    'syndrome': {
+                        'app_valid': '',
+                        'omim_id': '',
+                        'omim_ids': '',
+                        'omim_ps_id': '',
+                        'is_group': '',
+                        'syndrome_name': ''
+                    },
+                    'feature_score': '',
+                    'gestalt_score': ''
+                }
+            ],
+            'documents': [],
+            'features': [],
+            'genomic_entries': [],
+            'selected_syndromes': [
+                {
+                    'diagnosis': '',
+                    'syndrome': {
+                        'app_valid': '',
+                        'omim_id': '',
+                        'omim_ids': '',
+                        'omim_ps_id': '',
+                        'is_group': '',
+                        'syndrome_name': ''
+                    }
+                }
+            ],
+            'posting_user': {'userEmail': '', 'userDisplayName': '', 'userInstitution': ''}
+        }
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # specifiy which fields contain filenames, that have to be loaded
+        # afterwards
+        directive = {
+            #'genomic_entries': [
+            #    Directive(
+            #        lambda x: self._load_json("genomics_entries", x),
+            #        target=dict, intypes=[str, int]
+            #    )
+            #]
+        }
+        # load fields according to directives
+        self.load_linked(directive)
+
+    def check(self, convert_failed: bool) -> bool:
+        '''Check whether Json fulfills all provided criteria.
+        The criteria are:
+            picture has been provided - gestalt_score in detected_syndromes
+            should be greater than 0
+            clinical diagnosis - selected_syndromes should not be empty
+            single monogenetic disease - not multiple syndromes selected and
+            not multiple pathogenic mutations in different genes
+            SNP mutations - no microdel/dup or other large scale aberrations
+
+        Furthermore cases with vcf should not be used for the training of the
+        pipeline.
+        '''
+        valid = True
+        issues = []
+        # check maximum gestalt score
+        max_gestalt_score = reduce(
+            lambda x, y: max(x, y['gestalt_score']),
+            self._js['case_data']['suggested_syndromes'], 0.0)
+        if max_gestalt_score <= 0:
+            issues.append(
+                ('Maximum gestalt score is 0. Probably no image has '
+                 'been provided.')
+            )
+            valid = False
+
+        # check that no structural abnormalities have been detected
+        for entry in self._js['case_data']['genomic_entries']:
+            if entry['test_type'] in constants.CHROMOSOMAL_TESTS:
+                if entry['result'] in constants.POSITIVE_RESULTS:
+                    issues.append(
+                        ('Chromosomal abnormality detected in {} with result '
+                         '{}').format(entry['test_type'], entry['result']))
+                    valid = False
+                    if convert_failed:
+                        self._js['genomic_entries'] = []
+
+
+        return valid, issues
+
+    def get_case_id(self) -> str:
+        return str(self._js['case_data']['case_id'])
+
+    def get_algo_version(self) -> str:
+        return str(self._js['case_data']['algo_version'])
+
+    def get_js(self):
+        js = self._js
+        js['genomic_entries'] = self.get_genomic_entries()
+        js['selected_syndromes'] = self.convert_lab_selected_syndrome(self._js["case_data"]["selected_syndromes"])
+        return js
+
+    def get_genomic_entries(self) -> list:
+        return [entry["entry_id"] for entry in self._js['case_data']["genomic_entries"]]
+
+    def get_variants(self) -> ['HGVSModel']:
+        '''Get a list of hgvs objects for variants.
+        '''
+        models = [HGVSModel(entry)
+                  for entry in self._js['case_data']['genomic_entries']]
+        return models
+
+    def convert_lab_syndrome(self, syndrome):
+        omim_id = syndrome["omim_ids"] if syndrome["is_group"] else syndrome["omim_id"]
+        converted = {
+                "omim_id": omim_id,
+                "syndrome_name": syndrome["syndrome_name"],
+                "has_mask": syndrome["app_valid"]
+                }
+        return converted
+
+    def convert_lab_suggested_syndrome(self, suggested_syndromes):
+        converted_syndromes = []
+        for syndrome in suggested_syndromes:
+            converted = self.convert_lab_syndrome(syndrome["syndrome"])
+            converted["feature_score"] = syndrome["feature_score"]
+            converted["gestalt_score"] = syndrome["gestalt_score"]
+            converted["combined_score"] = 0
+            converted_syndromes.append(converted)
+        return converted_syndromes
+
+    def convert_lab_selected_syndrome(self, selected_syndromes):
+        converted_syndromes = []
+        for syndrome in selected_syndromes:
+            converted = self.convert_lab_syndrome(syndrome["syndrome"])
+            converted["diagnosis"] = syndrome["diagnosis"]
+            converted_syndromes.append(converted)
+        return converted_syndromes
+
+    def get_syndrome_suggestions_and_diagnosis(self) -> pandas.DataFrame:
+        '''Return a pandas dataframe containing all suggested syndromes and the
+        selected syndroms, which is joined on the table with the confirmed
+        column marking the specific entry.
+        '''
+        # create a dataframe from the list of detected syndromes
+        if self._js["case_data"]["suggested_syndromes"]:
+            syndromes_df = pandas.DataFrame.from_dict(
+                self.convert_lab_suggested_syndrome(self._js["case_data"]['suggested_syndromes'])
+            )
+        else:
+            syndromes_df = pandas.DataFrame(
+                columns=[
+                    "omim_id", "gestalt_score", "combined_score",
+                    "feature_score", "has_mask", "syndrome_name"
+                ]
+            )
+
+        # force omim_id to always be a list, required for exploding the df
+        syndromes_df['omim_id'] = syndromes_df['omim_id'].apply(
+            OMIM_INST.replace_deprecated_all
+        )
+        # turn omim_list into multiple rows with other properties duplicated
+        syndromes_df = explode_df_column(syndromes_df, 'omim_id')
+        syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
+
+        # preprare the confirmed diagnosis for joining with the main syndrome
+        # dataframe
+        if self._js['case_data']['selected_syndromes']:
+            selected_syndromes = [
+                dict(
+                    s,
+                    omim_id=OMIM_INST.replace_deprecated_all(s["omim_id"])
+                    or ["0"]
+                )
+                for s in self.convert_lab_selected_syndrome(self._js["case_data"]["selected_syndromes"])
+            ]
+
+            selected = pandas.DataFrame.from_dict(selected_syndromes)
+            syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
+
+            # create multiple rows from list of omim_id entries duplicating
+            # other information
+            selected = explode_df_column(selected, 'omim_id')
+            selected['omim_id'] = selected['omim_id'].astype(int)
+            # add a confirmed diagnosis column
+            selected.loc[
+                selected["diagnosis"].isin(
+                    constants.CONFIRMED_DIAGNOSIS
+                ), 'confirmed'
+            ] = True
+            selected.loc[
+                selected["diagnosis"].isin(
+                    constants.DIFFERENTIAL_DIAGNOSIS
+                ), 'differential'
+            ] = True
+
+            # outer join of the syndrome and the confirmed diagnosis
+            # pandas.merge has to be used instead of join, because the latter
+            # only joins on indices
+            syndromes_df = syndromes_df.merge(
+                selected, on=['omim_id', 'syndrome_name'], how='outer')
+            # set all entries not present in the selected syndromes to not
+            # confirmed
+            syndromes_df = syndromes_df.fillna({'confirmed': False})
+            # merge has_mask
+            syndromes_df["has_mask"] = \
+                syndromes_df["has_mask_x"].astype(bool) \
+                | syndromes_df["has_mask_y"].astype(bool)
+            syndromes_df.drop(
+                ["has_mask_x", "has_mask_y"], inplace=True, axis=1
+            )
+            # reset index for continous indexing after the join and explode
+            # operations
+            syndromes_df = syndromes_df.reset_index(drop=True)
+        else:
+            # if no syndromes selected, everything is false
+            syndromes_df["confirmed"] = False
+            syndromes_df["differential"] = False
+
+        syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
+        return syndromes_df
+
+    def convert_lab_feature(self, feature):
+        converted = [f["full_hpo_id"] for f in feature]
+        return converted
+
+    def get_features(self) -> [str]:
+        '''Return a list of HPO IDs correponding to entered phenotypic
+        features.
+        '''
+        return [
+            h for h in self.convert_lab_feature(self._js['case_data']['selected_features']) if h not in constants.ILLEGAL_HPO
+        ]
+
+    def get_submitter(self) -> {str: str}:
+        '''Return a dictionary containing the submitter name, team and email.
+        '''
+        submitter = {
+            'name': self._js['case_data']['posting_user']['userDisplayName'],
+            'team': self._js['case_data']['posting_user']['userInstitution'],
+            'email': self._js['case_data']['posting_user']['userEmail']
+        }
+        return submitter
+
+    def get_vcf(self, processed_dir: str = "data/PEDIA/vcfs/original") \
+            -> [str]:
+        '''Get a list of vcf files.
+        '''
+        if 'documents' not in self._js['case_data']:
+            return []
+        # vcfs are saved inside documents and marked by is_vcf
+        vcfs = [d['document_name']
+                for d in self._js['documents']
+                if d and d['is_vcf']]
+        # return empty if no vcfs present
+        if not vcfs:
+            return []
+
+        case_id = self.get_case_id()
+        if os.path.exists(vcfs[0]):
+            vcf_path = vcfs[0]
+            LOGGER.info("Case %s, VCF file %s is found.",
+                        case_id, vcfs[0])
+            destination_vcf = os.path.join(processed_dir, case_id + ".vcf.gz")
+        else:
+            vcf_dir = os.path.join(self._base_dir, "vcfs")
+            raw_vcfs = list(os.listdir(vcf_dir))
+
+            # convert and save vcfs to specified location if not already present
+            processed_vcfs = [f.strip(".vcf.gz")
+                              for f in os.listdir(processed_dir)]
+            destination_vcf = os.path.join(processed_dir, case_id + ".vcf.gz")
+
+            case_vcfs = [v for v in raw_vcfs if case_id in v]
+            if not case_vcfs:
+                LOGGER.info("Case %s, VCF file %s could not be found.",
+                            case_id, vcfs[0])
+                return []
+            vcf = case_vcfs[0]
+            vcf_path = os.path.join(vcf_dir, vcf)
+        move_vcf(vcf_path, destination_vcf)
+
+        return [destination_vcf]
+
+    def get_detected_syndromes(self) -> [dict]:
+        '''Unaltered list of detected syndromes.
+        '''
+        return self._js['detected_syndromes']

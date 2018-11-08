@@ -11,7 +11,7 @@ import os
 
 import pandas
 
-from lib.model.json_parser import OldJson, NewJson
+from lib.model.json_parser import OldJson, NewJson, LabJson
 from lib.vcf_operations import move_vcf
 from lib import vcf_jannovar
 from lib import constants
@@ -37,7 +37,7 @@ class Case:
     '''
 
     def __init__(
-            self, data: NewJson, exclude_benign_variants: bool = True
+            self, data, exclude_benign_variants: bool = True
     ):
         # also save the json object to easier extract information from the
         # new format

@@ -3,6 +3,7 @@ Configuration loader to get parameters from a ini file.
 ---
 This is mainly used to define download directories and API access.
 '''
+import sys
 from typing import Union, Iterable, Dict
 from configparser import ConfigParser
 
@@ -10,7 +11,7 @@ from lib import errorfixer
 from lib.api import mutalyzer, omim, jannovar, phenomizer
 
 from lib.global_singletons import (
-    ERRORFIXER_INST, JANNOVAR_INST, OMIM_INST, PHENOMIZER_INST, AWS_INST
+    ERRORFIXER_INST, JANNOVAR_INST, OMIM_INST, PHENOMIZER_INST, AWS_INST, LAB_INST
 )
 
 
@@ -39,6 +40,9 @@ class PEDIAConfig(ConfigParser):
 
         if args.single:
             self.dump_intermediate = False
+
+        if args.lab:
+            LAB_INST.configure(**self.lab_options(args.lab))
 
         # configure api components
         ERRORFIXER_INST.configure(**self.errorfixer_options)
@@ -89,24 +93,46 @@ class PEDIAConfig(ConfigParser):
     def download(self):
         return self._download
 
+    def lab_options(self, lab_name):
+        if lab_name not in self:
+            sys.exit('Error: Lab name is not found in config.ini! Please check if you use the correct lab name in config.ini')
+        return {
+            "lab_id": self[lab_name]["lab_id"],
+            "key": self[lab_name]["key"],
+            "secret": self[lab_name]["secret"],
+        }
+
     def parse_input(self, args: "Namespace"):
         download = self["input"].getboolean(
             "download"
         )
         corrected_path = self["input"]["corrected_path"]
-        download_path = self["input"]["download_path"]
+        lab_case_id = 0
+        lab = ""
+        if args.lab:
+            if args.lab not in self:
+                sys.exit('Error: Lab name is not found in config.ini! Please check if you use the correct lab name in config.ini')
+            download_path = self[args.lab]["download_path"]
+        else:
+            download_path = self["input"]["download_path"]
         input_files = []
 
         if args.single:
             download = False
             input_files = [args.single]
+        if args.lab and args.case_id:
+            lab = args.lab
+            lab_case_id = args.case_id
+
         if args.pickle:
             self._picklefiles = args.pickle
         return {
             "download": download,
             "corrected_path": corrected_path,
             "download_path": download_path,
-            "input_files": input_files
+            "input_files": input_files,
+            "lab_case_id": lab_case_id,
+            "lab": lab
         }
 
     def parse_output(self, args: "Namespace"):
