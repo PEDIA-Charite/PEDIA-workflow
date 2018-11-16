@@ -575,18 +575,22 @@ class NewJson(JsonFile):
         }
         return submitter
 
-    def get_vcf(self, processed_dir: str = "data/PEDIA/vcfs/original") \
+    def get_vcf(self,
+            processed_dir: str = "data/PEDIA/vcfs/original",
+            real_path: str = "") \
             -> [str]:
         '''Get a list of vcf files.
         '''
-        # vcfs are saved inside documents and marked by is_vcf
-        vcfs = [d['document_name']
-                for d in self._js['documents']
-                if d and d['is_vcf']]
-        # return empty if no vcfs present
-        if not vcfs:
-            return []
-
+        if real_path:
+            vcfs = [real_path]
+        else:
+            # vcfs are saved inside documents and marked by is_vcf
+            vcfs = [d['document_name']
+                    for d in self._js['documents']
+                    if d and d['is_vcf']]
+            # return empty if no vcfs present
+            if not vcfs:
+                return []
         case_id = self.get_case_id()
         if os.path.exists(vcfs[0]):
             vcf_path = vcfs[0]
@@ -871,19 +875,24 @@ class LabJson(JsonFile):
         }
         return submitter
 
-    def get_vcf(self, processed_dir: str = "data/PEDIA/vcfs/original") \
+    def get_vcf(self,
+            processed_dir: str = "data/PEDIA/vcfs/original",
+            real_path: str = "") \
             -> [str]:
         '''Get a list of vcf files.
         '''
-        if 'documents' not in self._js['case_data']:
-            return []
-        # vcfs are saved inside documents and marked by is_vcf
-        vcfs = [d['document_name']
-                for d in self._js['documents']
-                if d and d['is_vcf']]
-        # return empty if no vcfs present
-        if not vcfs:
-            return []
+        if real_path:
+            vcfs = [real_path]
+        else:
+            if 'documents' not in self._js['case_data']:
+                return []
+            # vcfs are saved inside documents and marked by is_vcf
+            vcfs = [d['document_name']
+                    for d in self._js['documents']
+                    if d and d['is_vcf']]
+            # return empty if no vcfs present
+            if not vcfs:
+                return []
 
         case_id = self.get_case_id()
         if os.path.exists(vcfs[0]):

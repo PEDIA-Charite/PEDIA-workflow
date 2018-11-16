@@ -109,6 +109,8 @@ class PEDIAConfig(ConfigParser):
         corrected_path = self["input"]["corrected_path"]
         lab_case_id = 0
         lab = ""
+        vcf = ""
+
         if args.lab:
             if args.lab not in self:
                 sys.exit('Error: Lab name is not found in config.ini! Please check if you use the correct lab name in config.ini')
@@ -124,6 +126,9 @@ class PEDIAConfig(ConfigParser):
             lab = args.lab
             lab_case_id = args.case_id
 
+        if args.vcf:
+            vcf = args.vcf
+
         if args.pickle:
             self._picklefiles = args.pickle
         return {
@@ -132,6 +137,7 @@ class PEDIAConfig(ConfigParser):
             "download_path": download_path,
             "input_files": input_files,
             "lab_case_id": lab_case_id,
+            "vcf": vcf,
             "lab": lab
         }
 
