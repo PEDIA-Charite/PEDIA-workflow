@@ -15,6 +15,7 @@ from argparse import ArgumentParser
 import json
 
 import yaml
+import snakemake.workflow
 
 # own libraries
 from lib import errorfixer, quality_check, pickler
@@ -57,6 +58,7 @@ def parse_arguments():
         "classification."))
     parser.add_argument("-s", "--single", help="Process a single json file.")
     parser.add_argument("-l", "--lab", help="Name of the lab you which you define in config.ini.")
+    parser.add_argument("-v", "--vcf", help="Path of the real vcf for the case you want to run PEDIA")
     parser.add_argument("--case-id", help="Lab case ID, use it with --lab.")
     parser.add_argument(
         "-o", "--output",
@@ -197,7 +199,7 @@ def create_cases(config_data, jsons):
     print("== Create cases from new json format ==")
 
     case_objs = progress_bar("Create cases")(
-        lambda json_file: case.Case(json_file)
+        lambda json_file: case.Case(json_file, vcf_path=config_data.input["vcf"])
     )(jsons)
 
     print("Correcting transcripts with mutalyzer")
@@ -367,6 +369,13 @@ def quality_check_cases(config_data, qc_cases, old_jsons, json_log):
         "fail": len(qc_failed_msg) + len(qc_vcf_failed)
     }, qc_passed
 
+def run_workflow(case_id):
+    print("== Start PEDIA workflow == ")
+    classifier_dir = "classifier"
+    snakefile = os.path.join(classifier_dir, 'Snakefile')
+    target_file = os.path.join('output/test/1KG', str(case_id), 'run.out')
+    snakemake.snakemake(snakefile, targets=[target_file], workdir=classifier_dir)
+    print("== PEDIA workflow is completed == ")
 
 def main():
     '''
@@ -423,11 +432,13 @@ def main():
             **stats)
     )
 
-    if not args.single or not args.lab:
+    if not args.single and not args.lab:
         quality_check.diff_quality_check(
             config_data.output["quality_check_log"]
         )
 
+    if args.vcf:
+        run_workflow(cases[0].case_id)
 
 if __name__ == '__main__':
     main()
