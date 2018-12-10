@@ -33,7 +33,6 @@ class PEDIAConfig(ConfigParser):
         self.dump_intermediate = self["general"].getboolean(
             "dump_intermediate"
         )
-
         self.input = self.parse_input(args)
 
         self.output = self.parse_output(args)
@@ -43,13 +42,14 @@ class PEDIAConfig(ConfigParser):
 
         if args.lab:
             LAB_INST.configure(**self.lab_options(args.lab))
+        elif not (args.lab or args.single):
+            LAB_INST.configure(**self.pedia_lab_options)
 
         # configure api components
         ERRORFIXER_INST.configure(**self.errorfixer_options)
         JANNOVAR_INST.configure(**self.jannovar_options)
         OMIM_INST.configure(**self.omim_options)
         PHENOMIZER_INST.configure(**self.phenomizer_options)
-        AWS_INST.configure(**self.aws_options)
 
     @property
     def errorfixer_options(self):
@@ -90,6 +90,14 @@ class PEDIAConfig(ConfigParser):
         }
 
     @property
+    def pedia_lab_options(self):
+        return {
+            "lab_id": self["pedia"]["lab_id"],
+            "key": self["pedia"]["key"],
+            "secret": self["pedia"]["secret"],
+        }
+
+    @property
     def download(self):
         return self._download
 
@@ -116,7 +124,7 @@ class PEDIAConfig(ConfigParser):
                 sys.exit('Error: Lab name is not found in config.ini! Please check if you use the correct lab name in config.ini')
             download_path = self[args.lab]["download_path"]
         else:
-            download_path = self["input"]["download_path"]
+            download_path = self["pedia"]["download_path"]
         input_files = []
 
         if args.single:
@@ -131,6 +139,8 @@ class PEDIAConfig(ConfigParser):
 
         if args.pickle:
             self._picklefiles = args.pickle
+
+        aws_format = True if args.aws_format else False
         return {
             "download": download,
             "corrected_path": corrected_path,
@@ -138,7 +148,8 @@ class PEDIAConfig(ConfigParser):
             "input_files": input_files,
             "lab_case_id": lab_case_id,
             "vcf": vcf,
-            "lab": lab
+            "lab": lab,
+            "aws_format": aws_format
         }
 
     def parse_output(self, args: "Namespace"):

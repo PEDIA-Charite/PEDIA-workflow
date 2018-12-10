@@ -11,7 +11,6 @@ import logging
 import logging.config
 from typing import Tuple, List
 
-from argparse import ArgumentParser
 import json
 
 import yaml
@@ -21,7 +20,7 @@ import snakemake.workflow
 from lib import errorfixer, quality_check, pickler
 from lib.processor import Processor
 from lib.visual import progress_bar, multiprocess
-from lib.model import json_parser, case, config
+from lib.model import json_parser, case, config, args_parser
 from lib.api import omim, mutalyzer, jannovar
 
 from lib.global_singletons import AWS_INST, MUTALYZER_INST, LAB_INST
@@ -49,55 +48,6 @@ def configure_logging(logger_name, logger_file: str = "preprocess.log"):
 
     logger.addHandler(stdout_channel)
     logger.addHandler(file_channel)
-
-
-def parse_arguments():
-    '''Command line arguments affecting preprocess run behavior.'''
-    parser = ArgumentParser(description=(
-        "Process f2g provided jsons into a format processable by "
-        "classification."))
-    parser.add_argument("-s", "--single", help="Process a single json file.")
-    parser.add_argument("-l", "--lab", help="Name of the lab you which you define in config.ini.")
-    parser.add_argument("-v", "--vcf", help="Path of the real vcf for the case you want to run PEDIA")
-    parser.add_argument("--case-id", help="Lab case ID, use it with --lab.")
-    parser.add_argument(
-        "-o", "--output",
-        help="Destination of created old json.",
-        default=""
-    )
-    parser.add_argument(
-        "-p", "--pickle",
-        help="Start with pickled cases after phenomization."
-    )
-    parser.add_argument(
-        "-e", "--entry",
-        help=("Start entrypoint for pickled results. "
-              "Default: pheno - start at phenomization. "
-              "convert - start at old json mapping. "
-              "qc - start at case quality check. "
-              "Used in conjunction with --pickle."),
-        default="pheno"
-    )
-    parser.add_argument(
-        "--skip-vcf", action='store_true',
-        help="Skip vcf convertion."
-    )
-    parser.add_argument(
-        "-c", "--convert-failed", action='store_true',
-        help="Convert cases that failed the first part of quality control."
-    )
-
-
-    args = parser.parse_args()
-
-    if args.lab and not args.case_id:
-        parser.print_help()
-        sys.exit('Error: No lab case ID! Please provide lab case ID with --case-id')
-    if args.case_id and not args.lab:
-        parser.print_help()
-        sys.exit('Error: No lab name! Please provide lab name with --lab')
-    return args
-
 
 def create_config(
         config_path: str = "config.yml",
@@ -147,7 +97,7 @@ def create_jsons(config_data, convert_failed):
     else:
         json_folder = config_data.input["download_path"]
         if config_data.input["download"]:
-            AWS_INST.backup_s3_folder(json_folder)
+            LAB_INST.download_all_lab_case(json_folder)
 
         unprocessed_jsons = os.path.join(json_folder, 'cases')
 
@@ -157,13 +107,13 @@ def create_jsons(config_data, convert_failed):
             if os.path.splitext(x)[1] == '.json'
         ]
 
-    if config_data.input["lab"]:
+    if config_data.input["aws_format"]:
         new_json_objs = progress_bar("Process jsons")(
-            lambda x, y: json_parser.LabJson.from_file(x, y)
+            lambda x, y: json_parser.NewJson.from_file(x, y)
         )(json_files, corrected)
     else:
         new_json_objs = progress_bar("Process jsons")(
-            lambda x, y: json_parser.NewJson.from_file(x, y)
+            lambda x, y: json_parser.LabJson.from_file(x, y)
         )(json_files, corrected)
 
     print('Unfiltered', len(new_json_objs))
@@ -383,7 +333,7 @@ def main():
     '''
 
     configure_logging("lib")
-    args = parse_arguments()
+    args = args_parser.PEDIAParser().args
 
     config_data = config.PEDIAConfig(args)
 
