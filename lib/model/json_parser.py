@@ -328,6 +328,11 @@ class OldJson(JsonFile):
         LOGGER.debug("Creating OldJson from Case for %s.", case.case_id)
         genomic_data = []
         for model in case.hgvs_models:
+            if 'gene_id' in model.gene:
+                with open("gene_with_id.txt", "a") as myfile:
+                    myfile.write("%s, %s \n" % (case.case_id, model.gene))
+            else:
+                continue
             data = {
                 'Test Information': {
                     'Molecular Test': model.test_type,
@@ -697,26 +702,34 @@ class LabJson(JsonFile):
         valid = True
         issues = []
         # check maximum gestalt score
-        max_gestalt_score = reduce(
-            lambda x, y: max(x, y['gestalt_score']),
-            self._js['case_data']['suggested_syndromes'], 0.0)
-        if max_gestalt_score <= 0:
+        if self._js['case_data']['suggested_syndromes']:
+            max_gestalt_score = reduce(
+                lambda x, y: max(x, y['gestalt_score']),
+                self._js['case_data']['suggested_syndromes'], 0.0)
+            if max_gestalt_score <= 0:
+                issues.append(
+                    ('Maximum gestalt score is 0. Probably no image has '
+                     'been provided.')
+                )
+                valid = False
+        else:
             issues.append(
-                ('Maximum gestalt score is 0. Probably no image has '
+                ('No suggested syndrome. Probably no image has '
                  'been provided.')
             )
             valid = False
 
         # check that no structural abnormalities have been detected
-        for entry in self._js['case_data']['genomic_entries']:
-            if entry['test_type'] in constants.CHROMOSOMAL_TESTS:
-                if entry['result'] in constants.POSITIVE_RESULTS:
-                    issues.append(
-                        ('Chromosomal abnormality detected in {} with result '
-                         '{}').format(entry['test_type'], entry['result']))
-                    valid = False
-                    if convert_failed:
-                        self._js['genomic_entries'] = []
+        if 'genomic_entries' in self._js['case_data']:
+            for entry in self._js['case_data']['genomic_entries']:
+                if entry['test_type'] in constants.CHROMOSOMAL_TESTS:
+                    if entry['result'] in constants.POSITIVE_RESULTS:
+                        issues.append(
+                            ('Chromosomal abnormality detected in {} with result '
+                             '{}').format(entry['test_type'], entry['result']))
+                        valid = False
+                        if convert_failed:
+                            self._js['genomic_entries'] = []
 
 
         return valid, issues
@@ -734,13 +747,19 @@ class LabJson(JsonFile):
         return js
 
     def get_genomic_entries(self) -> list:
-        return [entry["entry_id"] for entry in self._js['case_data']["genomic_entries"]]
+        if 'genomic_entries' in self._js['case_data']:
+            return [entry["entry_id"] for entry in self._js['case_data']["genomic_entries"]]
+        else:
+            return []
 
     def get_variants(self) -> ['HGVSModel']:
         '''Get a list of hgvs objects for variants.
         '''
-        models = [HGVSModel(entry)
-                  for entry in self._js['case_data']['genomic_entries']]
+        if 'genomic_entries' in self._js['case_data']:
+            models = [HGVSModel(entry)
+                      for entry in self._js['case_data']['genomic_entries']]
+        else:
+            models = []
         return models
 
     def convert_lab_syndrome(self, syndrome):
@@ -755,6 +774,8 @@ class LabJson(JsonFile):
     def convert_lab_suggested_syndrome(self, suggested_syndromes):
         converted_syndromes = []
         for syndrome in suggested_syndromes:
+            if "syndrome" not in syndrome:
+                continue
             converted = self.convert_lab_syndrome(syndrome["syndrome"])
             converted["feature_score"] = syndrome["feature_score"]
             converted["gestalt_score"] = syndrome["gestalt_score"]
@@ -854,7 +875,7 @@ class LabJson(JsonFile):
         return syndromes_df
 
     def convert_lab_feature(self, feature):
-        converted = [f["full_hpo_id"] for f in feature]
+        converted = [f["feature"]["hpo_full_id"] for f in feature]
         return converted
 
     def get_features(self) -> [str]:
@@ -884,7 +905,7 @@ class LabJson(JsonFile):
         if real_path:
             vcfs = [real_path]
         else:
-            if 'documents' not in self._js['case_data']:
+            if 'documents' not in self._js:
                 return []
             # vcfs are saved inside documents and marked by is_vcf
             vcfs = [d['document_name']
