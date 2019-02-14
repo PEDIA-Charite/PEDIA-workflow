@@ -1,6 +1,6 @@
 # VCF format in PEDIA analysis
 ## General information
-1. Reference genome hg19
+1. Reference genome hg19 <br>
    In our analysis pipeline, we only support reference genome hg19 (GRCh37).
    We strongly recommend that user states the reference genome in the VCF file header as the following
    ```
@@ -8,9 +8,10 @@
    Or
    ##reference=file:///.../hg19.fa
    ```
-1. Single smaple
+   
+1. Single smaple <br>
   PEDIA analysis only analyze the index patient. Therefore, we expect there is only one sample in VCF file. If multiple samples provided in the VCF file, only the first sample will be analyzed.
-1. Genotype
+1. Genotype <br>
   VCF file should contain the genotype information of the sample. For example, the genotype of this variant is 0/1.
   ```
   #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  sample_1
