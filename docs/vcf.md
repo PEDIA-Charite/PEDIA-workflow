@@ -1,4 +1,4 @@
-#VCF format in PEDIA analysis
+# VCF format in PEDIA analysis
 ## General information
 1. Reference genome hg19
    In our analysis pipeline, we only support reference genome hg19 (GRCh37).
@@ -21,23 +21,22 @@
 We support **.vcf.gz** and **.gz**. We strongly recommend that user compresses the VCF file by bgzip before running PEDIA analysis.
 
 ## Header
-1. First line states this file in VCF format
-  ```
-  ##fileformat=VCFv4.2
-  ```
+1. First line states this file is in VCF format
+   ```
+   ##fileformat=VCFv4.2
+   ```
 1. List all the contig ID in header
-  ```
-  ##contig=<ID=1,length=249250621,assembly=hg19>
-  ##contig=<ID=2,length=243199373,assembly=hg19>
-  ##contig=<ID=3,length=198022430,assembly=hg19>
-  ##contig=<ID=4,length=191154276,assembly=hg19>
-  ##contig=<ID=5,length=180915260,assembly=hg19>
-  ##contig=<ID=6,length=171115067,assembly=hg19>
-  ##contig=<ID=7,length=159138663,assembly=hg19>
-  ...
-  ```
+   ```
+   ##contig=<ID=1,length=249250621,assembly=hg19>
+   ##contig=<ID=2,length=243199373,assembly=hg19>
+   ##contig=<ID=3,length=198022430,assembly=hg19>
+   ##contig=<ID=4,length=191154276,assembly=hg19>
+   ##contig=<ID=5,length=180915260,assembly=hg19>
+   ##contig=<ID=6,length=171115067,assembly=hg19>
+   ##contig=<ID=7,length=159138663,assembly=hg19>
+   ...
+   ```
 1. Genotype
-  ```
-  ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-  ```
-
+   ```
+   ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+   ```
