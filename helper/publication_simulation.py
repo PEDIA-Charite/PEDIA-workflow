@@ -128,12 +128,15 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--list', help='path to PEDIA list file')
     parser.add_argument('-o', '--out', help='path to output')
     parser.add_argument('-c', '--config', help='path to config.yml')
+    parser.add_argument('--corrected', help='path to corrected folder')
 
     args = parser.parse_args()
     case_path = os.path.join(args.aws, 'cases')
     pub_file = args.pub
     list_file = args.list
     out_path = args.out
+    corrected_path = args.corrected
+
     if not os.path.exists(out_path):
         os.makedirs(out_path)
     log_file = out_path + '/simulation.log'
@@ -152,7 +155,15 @@ if __name__ == '__main__':
     logger.info("F2G publication file: %s", pub_file)
     logger.info("Deep gestalt list file: %s", list_file)
     logger.info("Output directory: %s", out_path)
+    logger.info("Corrected directory: %s", out_path)
 
+    corrected_file = {}
+    for c_file in os.listdir(corrected_path):
+        names = c_file.split('.')
+        if names[-1] == 'json':
+            case_id = int(names[0])
+            content = json.load(open(os.path.join(corrected_path, c_file)))
+            corrected_file.update({case_id: content})
 
     config_file = open(args.config, 'r')
     reader = csv.reader(config_file)
@@ -228,7 +239,7 @@ if __name__ == '__main__':
             logger.debug("Number of F2G case: %s", str(f2g_num))
             logger.debug("PEDIA case: %s", str(case_list))
             logger.debug("F2G case: %s", str(syn['f2g_id']))
-           
+
             if pedia_num >= f2g_num:
                 simulated_case_id = random.sample(case_list, f2g_num)
             else:
@@ -268,6 +279,11 @@ if __name__ == '__main__':
                 file_content['pedia_case_id'] = case_id
                 file_content['case_id'] = str(case_id) + '_' + str(f2g_id)
 
+                if int(case_id) in corrected_file:
+                    logger.debug("PEDIA case: %s load corrected file", str(case_id))
+                    for entry in corrected_file[int(case_id)]:
+                        file_content[entry] = corrected_file[int(case_id)][entry]
+
                 logger.debug('Simulate: F2G - %s with PEDIA %s', str(f2g_id), case_id)
 
                 with open(os.path.join(out_case_path, str(case_id) + '_' + str(f2g_id) + '.json'), 'w') as outfile:
@@ -279,7 +295,7 @@ if __name__ == '__main__':
                     if case_id in vcf_name:
                         copyfile(os.path.join(args.aws, 'vcfs', vcf_name), os.path.join(out_vcf_path, str(case_id) + '_' + str(f2g_id) + '.' + '.'.join(vcf_name.split('.')[1:])))
 
-                cmd = ("python3 preprocess.py -s " + os.path.join(out_case_path, str(case_id) + '_' + str(f2g_id) + '.json') + " -o " + out_simulated_path + ' --skip-vcf')
+                cmd = ("python3 preprocess.py -s " + os.path.join(out_case_path, str(case_id) + '_' + str(f2g_id) + '.json') + " -o " + out_simulated_path + ' --skip-vcf --aws-format')
                 logger.debug("Command: %s", cmd)
                 os.system(cmd)
                 yml_file.write(" - '" + str(case_id) + "_" + str(f2g_id) + "'\n")
