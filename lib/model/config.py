@@ -130,9 +130,9 @@ class PEDIAConfig(ConfigParser):
         if args.single:
             download = False
             input_files = [args.single]
-        if args.lab and args.case_id:
+        if args.lab and args.lab_case_id:
             lab = args.lab
-            lab_case_id = args.case_id
+            lab_case_id = args.lab_case_id
 
         if args.vcf:
             vcf = args.vcf
