@@ -1,0 +1,2466 @@
+{
+    "lab_case_id": 123,
+    "lab_id": 0,
+    "f2g_case_id": 123,
+    "shared_by_display_name": "Dr. Martin Mensah",
+    "institution": "Institute of Medical Genetics and Human Genetics at the Charit\u00e9 Berlin",
+    "created_at": "2018-09-06 06:17:41",
+    "updated_at": "2018-09-06 06:17:41",
+    "patient_first_name": "123#PEDIA",
+    "patient_last_name": null,
+    "source_case_id": 123,
+    "lab_case_source": "clinic",
+    "case_data": {
+        "case_id": "123",
+        "gender": "Male",
+        "ethnicity_array": [],
+        "inheritance_array": [],
+        "gestational_age": "42",
+        "status": "CLOSED",
+        "selected_syndromes": [
+            {
+                "diagnosis": "DIFFERENTIAL_DIAGNOSIS",
+                "syndrome": {
+                    "syndrome_name": "Mucopolysaccharidosis, Type II; MPS2",
+                    "omim_id": "309900",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                }
+            },
+            {
+                "diagnosis": "DIFFERENTIAL_DIAGNOSIS",
+                "syndrome": {
+                    "syndrome_name": "Mucopolysaccharidoses",
+                    "omim_id": null,
+                    "omim_ids": [
+                        252900,
+                        252920,
+                        253200,
+                        253220,
+                        309900,
+                        601492,
+                        607014,
+                        607016,
+                        252930,
+                        253000,
+                        253010,
+                        607015
+                    ],
+                    "omim_ps_id": "PS607014",
+                    "is_group": true,
+                    "app_valid": 1
+                }
+            },
+            {
+                "diagnosis": "MOLECULARLY_DIAGNOSED",
+                "syndrome": {
+                    "syndrome_name": "Coffin-Siris Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        135900,
+                        614607,
+                        614608,
+                        614609,
+                        616938
+                    ],
+                    "omim_ps_id": "PS135900",
+                    "is_group": true,
+                    "app_valid": 1
+                }
+            }
+        ],
+        "selected_features": [
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Hypopigmentation of the skin",
+                    "hpo_id": "1010",
+                    "hpo_full_id": "HP:0001010"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Elbow hypertrichosis",
+                    "hpo_id": "4780",
+                    "hpo_full_id": "HP:0004780"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Hypertrichosis",
+                    "hpo_id": "998",
+                    "hpo_full_id": "HP:0000998"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Horizontal eyebrow",
+                    "hpo_id": "11228",
+                    "hpo_full_id": "HP:0011228"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Full cheeks",
+                    "hpo_id": "293",
+                    "hpo_full_id": "HP:0000293"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Facial hypertrichosis",
+                    "hpo_id": "2219",
+                    "hpo_full_id": "HP:0002219"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Broad thumb",
+                    "hpo_id": "11304",
+                    "hpo_full_id": "HP:0011304"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Abnormality of the philtrum",
+                    "hpo_id": "288",
+                    "hpo_full_id": "HP:0000288"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Nevus",
+                    "hpo_id": "3764",
+                    "hpo_full_id": "HP:0003764"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Low anterior hairline",
+                    "hpo_id": "294",
+                    "hpo_full_id": "HP:0000294"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Low posterior hairline",
+                    "hpo_id": "2162",
+                    "hpo_full_id": "HP:0002162"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Muscular hypotonia",
+                    "hpo_id": "1252",
+                    "hpo_full_id": "HP:0001252"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Soft, doughy skin",
+                    "hpo_id": "1027",
+                    "hpo_full_id": "HP:0001027"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Unilateral strabismus",
+                    "hpo_id": "10877",
+                    "hpo_full_id": "HP:0010877"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Lumbar hypertrichosis",
+                    "hpo_id": "11913",
+                    "hpo_full_id": "HP:0011913"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Thick lower lip vermilion",
+                    "hpo_id": "179",
+                    "hpo_full_id": "HP:0000179"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Thick eyebrow",
+                    "hpo_id": "574",
+                    "hpo_full_id": "HP:0000574"
+                }
+            },
+            {
+                "is_present": "1",
+                "feature": {
+                    "feature_name": "Retractile testis",
+                    "hpo_id": "12646",
+                    "hpo_full_id": "HP:0012646"
+                }
+            }
+        ],
+        "dismissed_syndromes": [],
+        "suggested_genes": [
+            {
+                "gene_id": "700005833",
+                "gene_name": "ABCC9",
+                "omim_id": "601439"
+            },
+            {
+                "gene_id": "700005489",
+                "gene_name": "KCNJ8",
+                "omim_id": "600935"
+            },
+            {
+                "gene_id": "700002943",
+                "gene_name": "MUC3A",
+                "omim_id": "158371"
+            },
+            {
+                "gene_id": "700005976",
+                "gene_name": "UBE3A",
+                "omim_id": "601623"
+            },
+            {
+                "gene_id": "700004024",
+                "gene_name": "MECP2",
+                "omim_id": "300005"
+            },
+            {
+                "gene_id": "700004169",
+                "gene_name": "CDKL5",
+                "omim_id": "300203"
+            },
+            {
+                "gene_id": "700002316",
+                "gene_name": "GABRB3",
+                "omim_id": "137192"
+            },
+            {
+                "gene_id": "700001613",
+                "gene_name": "AMY2B",
+                "omim_id": "104660"
+            },
+            {
+                "gene_id": "700000172",
+                "gene_name": "IDUA",
+                "omim_id": "252800"
+            },
+            {
+                "gene_id": "700003585",
+                "gene_name": "SNRPN",
+                "omim_id": "182279"
+            },
+            {
+                "gene_id": "700006347",
+                "gene_name": "NDN",
+                "omim_id": "602117"
+            },
+            {
+                "gene_id": "700009136",
+                "gene_name": "MAGEL2",
+                "omim_id": "605283"
+            },
+            {
+                "gene_id": "700007237",
+                "gene_name": "SMARCE1",
+                "omim_id": "603111"
+            },
+            {
+                "gene_id": "700007368",
+                "gene_name": "SMARCA4",
+                "omim_id": "603254"
+            },
+            {
+                "gene_id": "700016575",
+                "gene_name": "ARID1B",
+                "omim_id": "614556"
+            },
+            {
+                "gene_id": "700005963",
+                "gene_name": "SMARCB1",
+                "omim_id": "601607"
+            },
+            {
+                "gene_id": "700007159",
+                "gene_name": "ARID1A",
+                "omim_id": "603024"
+            },
+            {
+                "gene_id": "700005462",
+                "gene_name": "SOX11",
+                "omim_id": "600898"
+            },
+            {
+                "gene_id": "700004846",
+                "gene_name": "SMARCA2",
+                "omim_id": "600014"
+            },
+            {
+                "gene_id": "700005634",
+                "gene_name": "KCNAB2",
+                "omim_id": "601142"
+            },
+            {
+                "gene_id": "700003082",
+                "gene_name": "SKI",
+                "omim_id": "164780"
+            },
+            {
+                "gene_id": "700009372",
+                "gene_name": "PRDM16",
+                "omim_id": "605557"
+            },
+            {
+                "gene_id": "700002307",
+                "gene_name": "GABRD",
+                "omim_id": "137163"
+            },
+            {
+                "gene_id": "700010734",
+                "gene_name": "MTHFR",
+                "omim_id": "607093"
+            },
+            {
+                "gene_id": "700005431",
+                "gene_name": "DYRK1A",
+                "omim_id": "600855"
+            },
+            {
+                "gene_id": "700004695",
+                "gene_name": "GATA1",
+                "omim_id": "305371"
+            },
+            {
+                "gene_id": "700001620",
+                "gene_name": "APP",
+                "omim_id": "104760"
+            },
+            {
+                "gene_id": "700002916",
+                "gene_name": "MTR",
+                "omim_id": "156570"
+            },
+            {
+                "gene_id": "700007057",
+                "gene_name": "RCAN1",
+                "omim_id": "602917"
+            },
+            {
+                "gene_id": "700002671",
+                "gene_name": "SOD1",
+                "omim_id": "147450"
+            },
+            {
+                "gene_id": "700005451",
+                "gene_name": "KCNJ6",
+                "omim_id": "600877"
+            },
+            {
+                "gene_id": "700005458",
+                "gene_name": "SIM2",
+                "omim_id": "600892"
+            },
+            {
+                "gene_id": "700003394",
+                "gene_name": "S100B",
+                "omim_id": "176990"
+            },
+            {
+                "gene_id": "700005113",
+                "gene_name": "SLC19A1",
+                "omim_id": "600424"
+            },
+            {
+                "gene_id": "700006696",
+                "gene_name": "DSCAM",
+                "omim_id": "602523"
+            },
+            {
+                "gene_id": "700002793",
+                "gene_name": "RUNX1",
+                "omim_id": "151385"
+            },
+            {
+                "gene_id": "700005199",
+                "gene_name": "PRDX2",
+                "omim_id": "600538"
+            },
+            {
+                "gene_id": "700006899",
+                "gene_name": "BACH1",
+                "omim_id": "602751"
+            },
+            {
+                "gene_id": "700008710",
+                "gene_name": "DOPEY2",
+                "omim_id": "604803"
+            },
+            {
+                "gene_id": "700003073",
+                "gene_name": "ETS2",
+                "omim_id": "164740"
+            },
+            {
+                "gene_id": "700002378",
+                "gene_name": "GSTM2",
+                "omim_id": "138380"
+            },
+            {
+                "gene_id": "700021925",
+                "gene_name": "TMEM50B",
+                "omim_id": "603191"
+            },
+            {
+                "gene_id": "700009039",
+                "gene_name": "ADAMTS1",
+                "omim_id": "605174"
+            },
+            {
+                "gene_id": "700012328",
+                "gene_name": "HLCS",
+                "omim_id": "609018"
+            },
+            {
+                "gene_id": "700015590",
+                "gene_name": "TSPEAR",
+                "omim_id": "612920"
+            },
+            {
+                "gene_id": "700002384",
+                "gene_name": "GART",
+                "omim_id": "138440"
+            },
+            {
+                "gene_id": "700003084",
+                "gene_name": "NRAS",
+                "omim_id": "164790"
+            },
+            {
+                "gene_id": "700004613",
+                "gene_name": "STAG2",
+                "omim_id": "300826"
+            },
+            {
+                "gene_id": "700006448",
+                "gene_name": "SH3BGR",
+                "omim_id": "602230"
+            },
+            {
+                "gene_id": "700010118",
+                "gene_name": "OLIG1",
+                "omim_id": "606385"
+            },
+            {
+                "gene_id": "700012470",
+                "gene_name": "MRAP",
+                "omim_id": "609196"
+            },
+            {
+                "gene_id": "700003113",
+                "gene_name": "ERG",
+                "omim_id": "165080"
+            },
+            {
+                "gene_id": "700006471",
+                "gene_name": "TTC3",
+                "omim_id": "602259"
+            },
+            {
+                "gene_id": "700009145",
+                "gene_name": "PSMG1",
+                "omim_id": "605296"
+            },
+            {
+                "gene_id": "700010119",
+                "gene_name": "OLIG2",
+                "omim_id": "606386"
+            },
+            {
+                "gene_id": "700012581",
+                "gene_name": "MIR155",
+                "omim_id": "609337"
+            },
+            {
+                "gene_id": "700002622",
+                "gene_name": "CXCL8",
+                "omim_id": "146930"
+            },
+            {
+                "gene_id": "700003292",
+                "gene_name": "KCNE1",
+                "omim_id": "176261"
+            },
+            {
+                "gene_id": "700004805",
+                "gene_name": "COX2",
+                "omim_id": "516040"
+            },
+            {
+                "gene_id": "700007673",
+                "gene_name": "CBR3",
+                "omim_id": "603608"
+            },
+            {
+                "gene_id": "700009147",
+                "gene_name": "DSCR3",
+                "omim_id": "605298"
+            },
+            {
+                "gene_id": "700010186",
+                "gene_name": "RAD21",
+                "omim_id": "606462"
+            },
+            {
+                "gene_id": "700013053",
+                "gene_name": "RIPPLY3",
+                "omim_id": "609892"
+            },
+            {
+                "gene_id": "700002646",
+                "gene_name": "MX1",
+                "omim_id": "147150"
+            },
+            {
+                "gene_id": "700006522",
+                "gene_name": "PRDX6",
+                "omim_id": "602316"
+            },
+            {
+                "gene_id": "700007841",
+                "gene_name": "KCNE2",
+                "omim_id": "603796"
+            },
+            {
+                "gene_id": "700010250",
+                "gene_name": "HUNK",
+                "omim_id": "606532"
+            },
+            {
+                "gene_id": "700013208",
+                "gene_name": "ORMDL3",
+                "omim_id": "610075"
+            },
+            {
+                "gene_id": "700016572",
+                "gene_name": "N6AMT1",
+                "omim_id": "614553"
+            },
+            {
+                "gene_id": "700005703",
+                "gene_name": "CHAF1B",
+                "omim_id": "601245"
+            },
+            {
+                "gene_id": "700006577",
+                "gene_name": "IFNAR2",
+                "omim_id": "602376"
+            },
+            {
+                "gene_id": "700007953",
+                "gene_name": "CRYZL1",
+                "omim_id": "603920"
+            },
+            {
+                "gene_id": "700013211",
+                "gene_name": "MORC3",
+                "omim_id": "610078"
+            },
+            {
+                "gene_id": "700006633",
+                "gene_name": "ITSN1",
+                "omim_id": "602442"
+            },
+            {
+                "gene_id": "700008084",
+                "gene_name": "B3GALT5",
+                "omim_id": "604066"
+            },
+            {
+                "gene_id": "700010542",
+                "gene_name": "JAM2",
+                "omim_id": "606870"
+            },
+            {
+                "gene_id": "700013492",
+                "gene_name": "RNF125",
+                "omim_id": "610432"
+            },
+            {
+                "gene_id": "700017057",
+                "gene_name": "CLIC6",
+                "omim_id": "615321"
+            },
+            {
+                "gene_id": "700001653",
+                "gene_name": "IFNAR1",
+                "omim_id": "107450"
+            },
+            {
+                "gene_id": "700002694",
+                "gene_name": "IFNGR2",
+                "omim_id": "147569"
+            },
+            {
+                "gene_id": "700008128",
+                "gene_name": "IL18BP",
+                "omim_id": "604113"
+            },
+            {
+                "gene_id": "700009418",
+                "gene_name": "CLDN14",
+                "omim_id": "605608"
+            },
+            {
+                "gene_id": "700013664",
+                "gene_name": "IGSF5",
+                "omim_id": "610638"
+            },
+            {
+                "gene_id": "700017627",
+                "gene_name": "CYYR1",
+                "omim_id": "616020"
+            },
+            {
+                "gene_id": "700001809",
+                "gene_name": "CALCA",
+                "omim_id": "114130"
+            },
+            {
+                "gene_id": "700002743",
+                "gene_name": "MX2",
+                "omim_id": "147890"
+            },
+            {
+                "gene_id": "700003615",
+                "gene_name": "SON",
+                "omim_id": "182465"
+            },
+            {
+                "gene_id": "700005131",
+                "gene_name": "SLC5A3",
+                "omim_id": "600444"
+            },
+            {
+                "gene_id": "700005935",
+                "gene_name": "EZH2",
+                "omim_id": "601573"
+            },
+            {
+                "gene_id": "700009473",
+                "gene_name": "BACE2",
+                "omim_id": "605668"
+            },
+            {
+                "gene_id": "700010908",
+                "gene_name": "ATP6V1G1",
+                "omim_id": "607296"
+            },
+            {
+                "gene_id": "700013741",
+                "gene_name": "CCT6B",
+                "omim_id": "610730"
+            },
+            {
+                "gene_id": "700017630",
+                "gene_name": "SCAF4",
+                "omim_id": "616023"
+            },
+            {
+                "gene_id": "700001843",
+                "gene_name": "CBR1",
+                "omim_id": "114830"
+            },
+            {
+                "gene_id": "700003851",
+                "gene_name": "TP53",
+                "omim_id": "191170"
+            },
+            {
+                "gene_id": "700008171",
+                "gene_name": "CTCF",
+                "omim_id": "604167"
+            },
+            {
+                "gene_id": "700023400",
+                "gene_name": "KIAA1429",
+                "omim_id": "616447"
+            },
+            {
+                "gene_id": "700002070",
+                "gene_name": "IL10RB",
+                "omim_id": "123889"
+            },
+            {
+                "gene_id": "700003896",
+                "gene_name": "VIP",
+                "omim_id": "192320"
+            },
+            {
+                "gene_id": "700008271",
+                "gene_name": "SYNJ1",
+                "omim_id": "604297"
+            },
+            {
+                "gene_id": "700009508",
+                "gene_name": "RIPK4",
+                "omim_id": "605706"
+            },
+            {
+                "gene_id": "700014069",
+                "gene_name": "MAP3K7CL",
+                "omim_id": "611110"
+            },
+            {
+                "gene_id": "700023464",
+                "gene_name": "CLDN17",
+                "omim_id": "617005"
+            },
+            {
+                "gene_id": "700005255",
+                "gene_name": "GABPA",
+                "omim_id": "600609"
+            },
+            {
+                "gene_id": "700005980",
+                "gene_name": "PCP4",
+                "omim_id": "601629"
+            },
+            {
+                "gene_id": "700011908",
+                "gene_name": "PCBP3",
+                "omim_id": "608502"
+            },
+            {
+                "gene_id": "700014181",
+                "gene_name": "CLDN8",
+                "omim_id": "611231"
+            },
+            {
+                "gene_id": "700003024",
+                "gene_name": "NTF3",
+                "omim_id": "162660"
+            },
+            {
+                "gene_id": "700005301",
+                "gene_name": "TIAM1",
+                "omim_id": "600687"
+            },
+            {
+                "gene_id": "700007055",
+                "gene_name": "WRB",
+                "omim_id": "602915"
+            },
+            {
+                "gene_id": "700009717",
+                "gene_name": "PIGP",
+                "omim_id": "605938"
+            },
+            {
+                "gene_id": "700012001",
+                "gene_name": "FAM3B",
+                "omim_id": "608617"
+            },
+            {
+                "gene_id": "700014358",
+                "gene_name": "DONSON",
+                "omim_id": "611428"
+            },
+            {
+                "gene_id": "700003038",
+                "gene_name": "HMGN1",
+                "omim_id": "163920"
+            },
+            {
+                "gene_id": "700005408",
+                "gene_name": "ATP5O",
+                "omim_id": "600828"
+            },
+            {
+                "gene_id": "700006298",
+                "gene_name": "NCAM2",
+                "omim_id": "602040"
+            },
+            {
+                "gene_id": "700008649",
+                "gene_name": "USP16",
+                "omim_id": "604735"
+            },
+            {
+                "gene_id": "700009748",
+                "gene_name": "DCAF7",
+                "omim_id": "605973"
+            },
+            {
+                "gene_id": "700012173",
+                "gene_name": "ABCC13",
+                "omim_id": "608835"
+            },
+            {
+                "gene_id": "700014715",
+                "gene_name": "MRPL39",
+                "omim_id": "611845"
+            },
+            {
+                "gene_id": "700006317",
+                "gene_name": "TMPRSS2",
+                "omim_id": "602060"
+            },
+            {
+                "gene_id": "700009798",
+                "gene_name": "CPSF2",
+                "omim_id": "606028"
+            },
+            {
+                "gene_id": "700012199",
+                "gene_name": "URB1",
+                "omim_id": "608865"
+            },
+            {
+                "gene_id": "700014817",
+                "gene_name": "MRPS6",
+                "omim_id": "611973"
+            },
+            {
+                "gene_id": "700002351",
+                "gene_name": "GRIK1",
+                "omim_id": "138245"
+            },
+            {
+                "gene_id": "700006339",
+                "gene_name": "KCNJ15",
+                "omim_id": "602106"
+            },
+            {
+                "gene_id": "700008892",
+                "gene_name": "ADAMTS5",
+                "omim_id": "605007"
+            },
+            {
+                "gene_id": "700015206",
+                "gene_name": "KANSL1",
+                "omim_id": "612452"
+            },
+            {
+                "gene_id": "700016320",
+                "gene_name": "TMCO1",
+                "omim_id": "614123"
+            },
+            {
+                "gene_id": "700015631",
+                "gene_name": "ASXL1",
+                "omim_id": "612990"
+            },
+            {
+                "gene_id": "700009807",
+                "gene_name": "CD96",
+                "omim_id": "606037"
+            },
+            {
+                "gene_id": "700008130",
+                "gene_name": "KCNQ1OT1",
+                "omim_id": "604115"
+            },
+            {
+                "gene_id": "700005432",
+                "gene_name": "CDKN1C",
+                "omim_id": "600856"
+            },
+            {
+                "gene_id": "700001575",
+                "gene_name": "H19",
+                "omim_id": "103280"
+            },
+            {
+                "gene_id": "700010386",
+                "gene_name": "NSD1",
+                "omim_id": "606681"
+            },
+            {
+                "gene_id": "700002673",
+                "gene_name": "IGF2",
+                "omim_id": "147470"
+            },
+            {
+                "gene_id": "700016301",
+                "gene_name": "ICAM4",
+                "omim_id": "614088"
+            },
+            {
+                "gene_id": "700008287",
+                "gene_name": "GTF2IRD1",
+                "omim_id": "604318"
+            },
+            {
+                "gene_id": "700006016",
+                "gene_name": "GTF2I",
+                "omim_id": "601679"
+            },
+            {
+                "gene_id": "700009484",
+                "gene_name": "BAZ1B",
+                "omim_id": "605681"
+            },
+            {
+                "gene_id": "700002159",
+                "gene_name": "ELN",
+                "omim_id": "130160"
+            },
+            {
+                "gene_id": "700007528",
+                "gene_name": "CLIP2",
+                "omim_id": "603432"
+            },
+            {
+                "gene_id": "700005771",
+                "gene_name": "LIMK1",
+                "omim_id": "601329"
+            },
+            {
+                "gene_id": "700007028",
+                "gene_name": "DLG4",
+                "omim_id": "602887"
+            },
+            {
+                "gene_id": "700005097",
+                "gene_name": "RFC2",
+                "omim_id": "600404"
+            },
+            {
+                "gene_id": "700009629",
+                "gene_name": "TBL2",
+                "omim_id": "605842"
+            },
+            {
+                "gene_id": "700068988",
+                "gene_name": "CASK",
+                "omim_id": "300172"
+            },
+            {
+                "gene_id": "700004921",
+                "gene_name": "CREBBP",
+                "omim_id": "600140"
+            },
+            {
+                "gene_id": "700006849",
+                "gene_name": "EP300",
+                "omim_id": "602700"
+            },
+            {
+                "gene_id": "700009161",
+                "gene_name": "HDAC4",
+                "omim_id": "605314"
+            },
+            {
+                "gene_id": "700002498",
+                "gene_name": "HDLBP",
+                "omim_id": "142695"
+            },
+            {
+                "gene_id": "700011078",
+                "gene_name": "PASK",
+                "omim_id": "607505"
+            },
+            {
+                "gene_id": "700014021",
+                "gene_name": "RUSC2",
+                "omim_id": "611053"
+            },
+            {
+                "gene_id": "700007000",
+                "gene_name": "DHCR7",
+                "omim_id": "602858"
+            },
+            {
+                "gene_id": "700009978",
+                "gene_name": "SHANK3",
+                "omim_id": "606230"
+            },
+            {
+                "gene_id": "700003323",
+                "gene_name": "INS",
+                "omim_id": "176730"
+            },
+            {
+                "gene_id": "700003041",
+                "gene_name": "NFIX",
+                "omim_id": "164005"
+            },
+            {
+                "gene_id": "700012223",
+                "gene_name": "CHD7",
+                "omim_id": "608892"
+            },
+            {
+                "gene_id": "700011625",
+                "gene_name": "SEMA3E",
+                "omim_id": "608166"
+            },
+            {
+                "gene_id": "700003362",
+                "gene_name": "PTPN1",
+                "omim_id": "176885"
+            },
+            {
+                "gene_id": "700002152",
+                "gene_name": "EGR2",
+                "omim_id": "129010"
+            },
+            {
+                "gene_id": "700006481",
+                "gene_name": "TCF4",
+                "omim_id": "602272"
+            },
+            {
+                "gene_id": "700005220",
+                "gene_name": "NRXN1",
+                "omim_id": "600565"
+            },
+            {
+                "gene_id": "700008492",
+                "gene_name": "CNTNAP2",
+                "omim_id": "604569"
+            }
+        ],
+        "selected_genes": [
+            {
+                "gene_id": "700000172",
+                "gene_name": "IDUA",
+                "gene_entrez_id": "3425",
+                "omim_id": "252800"
+            }
+        ],
+        "measurements": [
+            {
+                "value": 115,
+                "label": "Height",
+                "units": "CM",
+                "percentile": "11.36",
+                "sd": "-1.22"
+            },
+            {
+                "value": 22,
+                "label": "Weight",
+                "units": "KG",
+                "percentile": "41.18",
+                "sd": "-0.25"
+            },
+            {
+                "value": 54,
+                "label": "Head Circumference",
+                "units": "CM",
+                "percentile": "91.67",
+                "sd": "1.43"
+            }
+        ],
+        "updated_at": "2019-02-13 07:43:19",
+        "age_years": "7",
+        "age_months": "0",
+        "genomic_entries": [
+            {
+                "entry_id": "2664",
+                "test_type": "TARGETED_TESTING",
+                "variant_type": "SEQUENCE_CHANGE",
+                "result": "VARIANTS_DETECTED",
+                "variants": [
+                    {
+                        "zygosity": "HETEROZYGOUS",
+                        "mutation": {
+                            "mutation_type": "SUBSTITUTION",
+                            "location": "5737",
+                            "original_base": "C",
+                            "substituted_base": "T",
+                            "transcript": "NM_020732.3",
+                            "hgvs_variant_description": "NM_020732.3:c.5737C>T",
+                            "interpretation": "PATHOGENIC"
+                        },
+                        "variant_information": "CDNA_LEVEL",
+                        "notes": "autosomal dominant, de novo, monogenic"
+                    }
+                ],
+                "pmid": "",
+                "gene": {
+                    "gene_id": "57492",
+                    "gene_symbol": "ARID1B",
+                    "gene_omim_id": "614556"
+                }
+            }
+        ],
+        "posting_user": {
+            "userDisplayName": "Dr. Martin Mensah",
+            "userInstitution": "Institute of Medical Genetics and Human Genetics at the Charit\u00e9 Berlin",
+            "userEmail": "martin-atta.mensah@charite.de",
+            "userPhone": null,
+            "userCountry": null,
+            "userState": null
+        },
+        "teams": {
+            "team_name": "Charite MENDEL Study - DE"
+        },
+        "algo_version": "18.2.1",
+        "suggested_syndromes": [
+            {
+                "syndrome": {
+                    "syndrome_name": "Cantu Syndrome",
+                    "omim_id": "239850",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.6660390883
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Angelman Syndrome; AS",
+                    "omim_id": "105830",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.2523385006,
+                "feature_score": 0.4006859258
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Hurler Syndrome",
+                    "omim_id": "607014",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.6648115804
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Prader-Willi Syndrome; PWS",
+                    "omim_id": "176270",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.244349018,
+                "feature_score": 0.4380519861
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Coffin-Siris Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        135900,
+                        614607,
+                        614608,
+                        614609,
+                        616938
+                    ],
+                    "omim_ps_id": "PS135900",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1906981653,
+                "feature_score": 0.6204913322
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mucopolysaccharidoses",
+                    "omim_id": null,
+                    "omim_ids": [
+                        252900,
+                        252920,
+                        253200,
+                        253220,
+                        309900,
+                        601492,
+                        607014,
+                        607016,
+                        252930,
+                        253000,
+                        253010,
+                        607015
+                    ],
+                    "omim_ps_id": "PS607014",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08243255511,
+                "feature_score": 0.6648115804
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Chromosome 1p36 Deletion Syndrome",
+                    "omim_id": "607872",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1235535121,
+                "feature_score": 0.658469032
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Down Syndrome",
+                    "omim_id": "190685",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1905495867,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Craniofacial Dysmorphism, Skeletal Anomalies, and Mental Retardation Syndrome; CFSMR",
+                    "omim_id": "213980",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.6524338322
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Hyperphosphatasia with Mental Retardation Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        239300,
+                        614207,
+                        614749,
+                        615716,
+                        616025,
+                        239300
+                    ],
+                    "omim_ps_id": "PS239300",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1820792156,
+                "feature_score": 0.4143153552
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Bohring-Opitz Syndrome; BOPS",
+                    "omim_id": "605039",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.6377573734
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Beckwith-Wiedemann Syndrome; BWS",
+                    "omim_id": "130650",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1802743132,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Williams-Beuren Syndrome; WBS",
+                    "omim_id": "194050",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1521845559,
+                "feature_score": 0.5795508875
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mental retardation and microcephaly with pontine and cerebellar hypoplasia; MICPCH",
+                    "omim_id": "300749",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1631526302,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Rubinstein-Taybi Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        180849,
+                        613684,
+                        610543
+                    ],
+                    "omim_ps_id": "PS180849",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.07153942813,
+                "feature_score": 0.6093561889
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Fetal Valproate Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1606443959,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Chromosome 2q37 Deletion Syndrome",
+                    "omim_id": "600430",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1592210421,
+                "feature_score": 0.4598704894
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Chromosome 9p Deletion Syndrome",
+                    "omim_id": "158170",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.603619304
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Smith-Lemli-Opitz Syndrome; SLOS",
+                    "omim_id": "270400",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1537074997,
+                "feature_score": 0.3970764522
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Craniofaciofrontodigital Syndrome",
+                    "omim_id": "114620",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.6012406664
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Phelan-Mcdermid Syndrome; PHMDS",
+                    "omim_id": "606232",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1499254115,
+                "feature_score": 0.4933899739
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Marshall-Smith Syndrome; MRSHSS",
+                    "omim_id": "602535",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5978623471
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Pallister-Killian Syndrome; PKS",
+                    "omim_id": "601803",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.07724067862,
+                "feature_score": 0.5876521682
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Spondyloepimetaphyseal dysplasia, Camera-Genevieve type; SEMDG",
+                    "omim_id": "610442",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5948790038
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Fontaine progeroid syndrome",
+                    "omim_id": "612289",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5891321706
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mental Retardation X-Linked 102; MRX102",
+                    "omim_id": "300958",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1427683568,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "CHARGE Syndrome",
+                    "omim_id": "214800",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1346140317,
+                "feature_score": 0.4429168162
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Rett Syndrome; RTT",
+                    "omim_id": "312750",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1326552803,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Pitt-Hopkins Syndrome; PTHS",
+                    "omim_id": "610954",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1284264088,
+                "feature_score": 0.489171435
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Hypertrichosis, Hyperkeratosis, Mental Retardation, and Distinctive Facial Features",
+                    "omim_id": "609943",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5866035027
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Trichorhinophalangeal Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        150230,
+                        190350,
+                        190351
+                    ],
+                    "omim_ps_id": "PS150230",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5774868708
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Bardet-Biedl Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        209900,
+                        600151,
+                        605231,
+                        615981,
+                        615982,
+                        615983,
+                        615984,
+                        615985,
+                        615986,
+                        615987,
+                        615988,
+                        615989,
+                        615990,
+                        615991,
+                        615992,
+                        615993,
+                        615994,
+                        615995,
+                        615996
+                    ],
+                    "omim_ps_id": "PS209900",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1303115383,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Cornelia De Lange Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        122470,
+                        300590,
+                        610759,
+                        300882,
+                        614701
+                    ],
+                    "omim_ps_id": "PS122470",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1038866961,
+                "feature_score": 0.5325866746
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Fragile X Syndrome",
+                    "omim_id": "300624",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1285525612,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Schwartz-Jampel Syndrome, Type 1; SJS1",
+                    "omim_id": "255800",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5717873916
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mannosidosis, Alpha B, Lysosomal; MANSA",
+                    "omim_id": "248500",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5670744609
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Waardenburg Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        103470,
+                        148820,
+                        193500,
+                        277580,
+                        613265,
+                        193510,
+                        608890,
+                        611584,
+                        613266
+                    ],
+                    "omim_ps_id": "PS193500",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08496948238,
+                "feature_score": 0.5414691603
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mental Retardation, X-Linked, Syndromic, Nascimento Type; MRXSN",
+                    "omim_id": "300860",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5537734349
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Hemifacial Microsomia",
+                    "omim_id": null,
+                    "omim_ids": [
+                        164210,
+                        0
+                    ],
+                    "omim_ps_id": "PS164210",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1235188737,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Marfanoid Mental Retardation Syndrome, Autosomal",
+                    "omim_id": "248770",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5627756221
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Melanocytic Nevus Syndrome, Congenital; CMNS",
+                    "omim_id": "137550",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.555935445
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "White-Sutton Syndrome; WHSUS",
+                    "omim_id": "616364",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1183977923,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Cockayne Syndrome",
+                    "omim_id": "216400",
+                    "omim_ids": [
+                        133540,
+                        216400,
+                        216400
+                    ],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1172930288,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Cohen Syndrome; COH1",
+                    "omim_id": "216550",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.05378155414,
+                "feature_score": 0.5420291165
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Costello Syndrome; CSTLO",
+                    "omim_id": "218040",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.05526224227,
+                "feature_score": 0.5417628791
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Gapo Syndrome",
+                    "omim_id": "230740",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5444267662
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mucolipidosis Type IV",
+                    "omim_id": "252650",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1171820902,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Kleefstra Syndrome",
+                    "omim_id": "610253",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.0998537231,
+                "feature_score": 0.4958756208
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mandibuloacral Dysplasia with Lipodystrophy",
+                    "omim_id": null,
+                    "omim_ids": [
+                        248370,
+                        608612
+                    ],
+                    "omim_ps_id": "PS248370",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.543358856
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Spondyloepimetaphyseal Dysplasia",
+                    "omim_id": "608940",
+                    "omim_ids": [
+                        183849,
+                        184095,
+                        184250,
+                        271510,
+                        271640,
+                        271650,
+                        300106,
+                        300232,
+                        601096,
+                        602111,
+                        602557,
+                        603546,
+                        608728,
+                        610442,
+                        612813
+                    ],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5509372344
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Distal 18q Deletion",
+                    "omim_id": null,
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1154008496,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Biotinidase Deficiency",
+                    "omim_id": "253260",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1134540029,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "PMM2-Related Disorder",
+                    "omim_id": null,
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1150279033,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Prolidase Deficiency",
+                    "omim_id": "170100",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5420501472
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mental Retardation, Autosomal Dominant 19; MRD19",
+                    "omim_id": "615075",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1101820046,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Schuurs-Hoeijmakers syndrome; SHMS",
+                    "omim_id": "615009",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.09210217239,
+                "feature_score": 0.4823747145
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Marfan Syndrome; MFS",
+                    "omim_id": "154700",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1092239173,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Kabuki Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        147920,
+                        300867,
+                        300867
+                    ],
+                    "omim_ps_id": "PS147920",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.09993215088,
+                "feature_score": 0.3951010901
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Myhre Syndrome; MYHRS",
+                    "omim_id": "139210",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.09796637485,
+                "feature_score": 0.4455017201
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "USP7-Related Disorder",
+                    "omim_id": "0",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.1075500959,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Smith-Magenis Syndrome; SMS",
+                    "omim_id": "182290",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.089804344,
+                "feature_score": 0.4679846122
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Hajdu-Cheney Syndrome; HJCYS",
+                    "omim_id": "102500",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.05328093513,
+                "feature_score": 0.5246743866
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Hypomelanosis of Ito; HMI",
+                    "omim_id": "300337",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5404993167
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Ehlers-Danlos Syndrome, Type VII, Autosomal Recessive",
+                    "omim_id": "225410",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5404339397
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Wilson-Turner X-Linked Mental Retardation Syndrome; WTS",
+                    "omim_id": "309585",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5370966726
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Robinow Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        180700,
+                        268310,
+                        616331
+                    ],
+                    "omim_ps_id": "PS268310",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08111198158,
+                "feature_score": 0.485821804
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Goldberg-Shprintzen Megacolon Syndrome; GOSHS",
+                    "omim_id": "609460",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.535633942
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Alternating Hemiplegia of Childhood 2; AHC2",
+                    "omim_id": "614820",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.09803239613,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Opitz-Kaveggia syndrome; OKS",
+                    "omim_id": "305450",
+                    "omim_ids": [
+                        305450
+                    ],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.06804109256,
+                "feature_score": 0.5128679815
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mucolipidosis II Alpha/beta",
+                    "omim_id": "252500",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.526654837
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Zimmermann-Laband Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        135500,
+                        616455
+                    ],
+                    "omim_ps_id": "PS135500",
+                    "is_group": true,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.532838075
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Nablus Mask-Like Facial Syndrome; NMLFS",
+                    "omim_id": "608156",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5230133276
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Fetal Alcohol Syndrome; FAS",
+                    "omim_id": "0",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.09668706074,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Lowe Oculocerebrorenal Syndrome; OCRL",
+                    "omim_id": "309000",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5312003694
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mental Retardation, X-Linked, Syndromic 33; MRXS33",
+                    "omim_id": "300966",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.09214774435,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Koolen-de Vries Syndrome; KDVS",
+                    "omim_id": "610443",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08606328095,
+                "feature_score": 0.3934604454
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mullerian Derivatives, Persistence Of, with Lymphangiectasia and Postaxial Polydactyly",
+                    "omim_id": "235255",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5285061012
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Wiedemann-Steiner syndrome; WDSTS",
+                    "omim_id": "605130",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5208086039
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Blepharophimosis with Facial and Genital Anomalies and Mental Retardation",
+                    "omim_id": "604314",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5280139396
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Schaaf-Yang syndrome; SHFYNG",
+                    "omim_id": null,
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.09050342653,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Nijmegen Breakage Syndrome; NBS",
+                    "omim_id": "251260",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.0616640107,
+                "feature_score": 0.5006910534
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Acromegaloid Facial Appearance Syndrome",
+                    "omim_id": "102150",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5227471013
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Holoprosencephaly",
+                    "omim_id": null,
+                    "omim_ids": [
+                        236100,
+                        142946,
+                        157170,
+                        609637,
+                        610828,
+                        610829,
+                        612530,
+                        614226,
+                        605934,
+                        609408
+                    ],
+                    "omim_ps_id": "PS236100",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08539230387,
+                "feature_score": 0.3826814143
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Fountain Syndrome",
+                    "omim_id": "229120",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5276210761
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Ehlers-Danlos Syndrome, Type IV, Autosomal Dominant",
+                    "omim_id": "130050",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5210989089
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Mental Retardation, Autosomal Dominant 5; MRD5",
+                    "omim_id": "612621",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08918462563,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Cyprus Facial Neuromusculoskeletal Syndrome",
+                    "omim_id": "123853",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5266792054
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Feingold Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        164280
+                    ],
+                    "omim_ps_id": "PS164280",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08578147107,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Floating-Harbor Syndrome; FLHS",
+                    "omim_id": "136140",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5094737353
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Keutel Syndrome",
+                    "omim_id": "245150",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.0795259078,
+                "feature_score": 0.4416646937
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Nicolaides-Baraitser Syndrome; NCBRS",
+                    "omim_id": "601358",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5107854471
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Dubowitz Syndrome",
+                    "omim_id": "223370",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5177223133
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Fryns Macrocephaly",
+                    "omim_id": "600302",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5240768651
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Noonan Syndrome",
+                    "omim_id": null,
+                    "omim_ids": [
+                        163950,
+                        609942,
+                        610733,
+                        611553,
+                        613706,
+                        163950,
+                        613224,
+                        605275,
+                        615355,
+                        616559,
+                        616564
+                    ],
+                    "omim_ps_id": "PS163950",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.0805003644,
+                "feature_score": 0.4155436267
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Filippi Syndrome; FLPIS",
+                    "omim_id": "272440",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08068932509,
+                "feature_score": 0.4026069342
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Recombinant Chromosome 8 Syndrome",
+                    "omim_id": "179613",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5235069647
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Yunis-Varon Syndrome; YVS",
+                    "omim_id": "216340",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5150701996
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Bosch-Boonstra-Schaaf Optic Atrophy Syndrome; BBSOAS",
+                    "omim_id": "615722",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08459183957,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "3-Methylglutaconic Aciduria",
+                    "omim_id": null,
+                    "omim_ids": [
+                        302060,
+                        614739,
+                        250950,
+                        250951,
+                        258501,
+                        610198,
+                        616271
+                    ],
+                    "omim_ps_id": "PS250950",
+                    "is_group": true,
+                    "app_valid": 1
+                },
+                "gestalt_score": 0.08451388214,
+                "feature_score": 0
+            },
+            {
+                "syndrome": {
+                    "syndrome_name": "Menkes Disease",
+                    "omim_id": "309400",
+                    "omim_ids": [],
+                    "omim_ps_id": null,
+                    "is_group": false,
+                    "app_valid": 0
+                },
+                "gestalt_score": 0,
+                "feature_score": 0.5230722391
+            }
+        ],
+        "custom_name": "",
+        "publications": []
+    }
+}
