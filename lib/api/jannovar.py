@@ -62,7 +62,8 @@ class JannovarClient(LazyConfigure):
         msg = "{}\n{}".format(len(msg), msg)
 
         byte_msg = msg.encode("utf-8")
-
+        data = None
+        status = 0
         with self._connect() as con:
             try:
                 self._send(con, byte_msg)
