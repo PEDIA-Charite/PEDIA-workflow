@@ -18,7 +18,7 @@ if __name__ == '__main__':
 
     # Copy CV
     path = os.path.join(args.input, 'jsons/1KG/CV_gestalt')
-    out_path = os.path.join(args.output, 'pedia_jsons_v1.1/jsons/1KG/CV_gestalt')
+    out_path = os.path.join(args.output, 'pedia_jsons_v1.1/jsons/1KG/CV')
     os.makedirs(out_path, exist_ok=True)
     all_files = os.listdir(path)
     for json_file in all_files:
@@ -30,8 +30,8 @@ if __name__ == '__main__':
             json.dump(file_content, outfile)
 
     # Copy real and test
-    path = os.path.join(args.input, 'jsons/real/gestalt/train/1KG')
-    out_path = os.path.join(args.output, 'pedia_jsons_v1.1/jsons/real/gestalt/train/1KG')
+    path = os.path.join(args.input, 'jsons/real/train/1KG')
+    out_path = os.path.join(args.output, 'pedia_jsons_v1.1/jsons/real/train/1KG')
     os.makedirs(out_path, exist_ok=True)
     all_files = os.listdir(path)
     for json_file in all_files:
@@ -42,8 +42,8 @@ if __name__ == '__main__':
         with open(out_file, 'w') as outfile:
             json.dump(file_content, outfile)
 
-    path = os.path.join(args.input, 'jsons/real/gestalt/test')
-    out_path = os.path.join(args.output, 'pedia_jsons_v1.1/jsons/real/gestalt/test')
+    path = os.path.join(args.input, 'jsons/real/test')
+    out_path = os.path.join(args.output, 'pedia_jsons_v1.1/jsons/real/test')
     os.makedirs(out_path, exist_ok=True)
     all_files = os.listdir(path)
     for json_file in all_files:
