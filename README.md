@@ -131,23 +131,11 @@ If you add ```-v your_vcf_file```, it will automatically trigger the whole workf
 ./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER -v your_vcf_file
 ./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case -v your_vcf_file
 ```
-* Example
-You could use the example in examples/123.json and examples/123.vcf.gz
+* **Example:**
+You could use the example in tests/data/123.json and tests/data/123.vcf.gz
 ```
-python3 preprocess.py -s examples/123.json -v examples/123.vcf.gz
+python3 preprocess.py -s tests/data/123.json -v tests/data/123.vcf.gz
 ```
-
-* Optional: Run tests
-    * Populate the tests/data directory. The case with the specified case ID and the specified genomic entry is needed.
-        ```
-        tests/data/cases/51702.json
-        tests/data/genomics_entries/2669.json
-        tests/data/config.ini -- necessary for API keys
-        ```
-    * Run tests
-        ```
-        python3 -m unittest discover
-        ```
 
 ### Run PEDIA pipeline
 There are three steps to run pipeline.
