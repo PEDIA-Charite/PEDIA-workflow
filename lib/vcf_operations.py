@@ -106,17 +106,25 @@ def fix_header(vcf_file):
         '##contig=<ID=21,assembly=b37,length=48129895>\n' + \
         '##contig=<ID=22,assembly=b37,length=51304566>\n' + \
         '##contig=<ID=X,assembly=b37,length=155270560>\n' + \
-        '##contig=<ID=Y,assembly=b37,length=59373566>'
-    out = bytes('', 'utf-8')
+        '##contig=<ID=Y,assembly=b37,length=59373566>\n' + \
+        '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">'
+
+    out = ''.encode('UTF-8')
     stop = False
     line = vcf_file.readline()
     while line:
         line = line.decode('utf-8')
-        if '##contig=<ID=' not in line:
-            if '#CHROM' in line:
-                line = header + '\n' + line
-                stop = True
-            out += bytes(line, 'utf-8')
+        if '##INFO=<ID=DP' in line or \
+            '##INFO=<ID=AF' in line or \
+            '##INFO=<ID=AC' in line or \
+            '##FORMAT=<ID=AF' in line or \
+            '##FORMAT=<ID=DP' in line or\
+            '##reference' in line:
+            out += line.encode('UTF-8')
+        if '#CHROM' in line:
+            line = header + '\n' + line
+            out += line.encode('UTF-8')
+            stop = True
         if stop == True:
             break
         line = vcf_file.readline()
