@@ -132,7 +132,7 @@ If you add ```-v your_vcf_file```, it will automatically trigger the whole workf
 ./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case -v your_vcf_file
 ```
 * **Example:**
-You could use the example in tests/data/123.json and tests/data/123.vcf.gz
+You could use the example in tests/data/cases/123.json and tests/data/vcfs/123.vcf.gz
 ```
 python3 preprocess.py -s tests/data/123.json -v tests/data/123.vcf.gz
 ```

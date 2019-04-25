@@ -34,14 +34,14 @@ rule json:
 		json="REP_{run}/simulated_case/{sample}.json",
 		simulator="../simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
 	output:
-		"REP_{run}/jsons/{background}/CV/{sample}.json"
+		"REP_{run}/jsons/{background}/test/{sample}.json"
 	shell:
 		"java -jar {input.simulator} extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
 
 
 def get_sample(wc):
 	configfile: "REP_%s/config.yml" % wc.run
-	return expand("REP_{run}/jsons/{background}/CV/{sample}.json",run=wc.run, background=wc.background, sample=config['SIMULATE_SAMPLES'])
+	return expand("REP_{run}/jsons/{background}/test/{sample}.json",run=wc.run, background=wc.background, sample=config['SIMULATE_SAMPLES'])
 
 rule jsonRun:
 	input:
@@ -67,7 +67,7 @@ rule jsonRunAllBack:
 		touch("run.log")
 
 def get_prefix(wc):
-	return "../jsons/" + wc.background + "/CV_gestalt/" + wc.sample.split('_')[0] + ".json"
+	return "../jsons/" + wc.background + "/CV/" + wc.sample.split('_')[0] + ".json"
 
 rule copyTrain:
 	input:
