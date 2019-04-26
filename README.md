@@ -14,14 +14,14 @@ in Institute for Genomic Statistics and Bioinformatics for more details.
 * [General information](#general-information)
 * [Download dataset](#download-dataset)
 * [Environment setup](#environment-setup)
- * [Configuration](#configuration)
- * [Required external files](required-external-files)
- * [Description of the subfolders](description-of-subfolders)
+  * [Configuration](#configuration)
+  * [Required external files](required-external-files)
+  * [Description of the subfolders](description-of-subfolders)
 * [Running PEDIA](#running-pedia)
- * [Activate environment](#activate-environment)
- * [Preprocessing](#preprocessing)
- * [Running pipeline](#running-pipeline)
- * [Results](#results)
+  * [Activate environment](#activate-environment)
+  * [Preprocessing](#preprocessing)
+  * [Running pipeline](#running-pipeline)
+  * [Results](#results)
 
 ## General Information
 
