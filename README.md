@@ -1,9 +1,35 @@
 # Project PEDIA
-Prioritization of Exome Data by Image Analysis (PEDIA) is to investigate the value of computer-assisted analysis of medical images and clinical features in the diagnostic workup of patients with rare genetic disorders. We integrate the facial gestalt analysis from DeepGestalt approach (https://www.nature.com/articles/s41591-018-0279-0) in Face2Gene with the other phenotypic analysis tools and deleteriousness scores from the molecular level to prioritize potential disease genes.
+Prioritization of Exome Data by Image Analysis (PEDIA) investigates the value of computer-assisted analysis
+of medical images and clinical features in the diagnostic workup of patients with rare genetic disorders.
+We integrate the facial gestalt analysis from DeepGestalt approach
+(https://www.nature.com/articles/s41591-018-0279-0) in Face2Gene with the other phenotypic analysis
+tools and deleteriousness scores from the molecular level to prioritize potential disease genes.
 
-This tool is already integrated in Face2Gen LAB and https://pedia-study.org. For the user who would like to utilize it to analyze your patients, please contact Prof. Peter Krawitz (pkrawitz@uni-bonn.de) in Institute for Genomic Statistics and Bioinformatics for more details.
+This tool is already integrated in Face2Gen LAB and https://pedia-study.org.
+For the user who would like to utilize it to analyze your patients,
+please contact Prof. Peter Krawitz (pkrawitz@uni-bonn.de)
+in Institute for Genomic Statistics and Bioinformatics for more details.
+
+## Contents
+* [General information](#general-information)
+* [Download dataset](#download-dataset)
+* [Environment setup](#environment-setup)
+ * [Configuration](#configuration)
+ * [Required external files](required-external-files)
+ * [Description of the subfolders](description-of-subfolders)
+* [Running PEDIA](#running-pedia)
+ * [Activate environment](#activate-environment)
+ * [Preprocessing](#preprocessing)
+ * [Running pipeline](#running-pipeline)
+ * [Results](#results)
 
 ## General Information
+
+It requires the **Key and Secret** to fetch the gestalt score and patient data from
+face2gene platform. Therefore, you are not able to run the PEDIA-workflow without the Key and Secret.
+However, we provide the PEDIA datasets which is described in PEDIA paper. You could run the pipeline
+by downloading the datasets from [pedia-study.org](https://pedia-study.org/pedia_services/download)
+on the test case below.
 
 The whole workflow of the PEDIA project uses [snakemake](https://snakemake.readthedocs.io/) to run a pipeline together with [conda/bioconda](https://bioconda.github.io/) to install the necessary programs. So pelase get familiar with both BEFORE starting the workflow. A good start is the [snakemake tutorial](https://snakemake.readthedocs.io/en/stable/tutorial/tutorial.html). 
 
@@ -46,7 +72,15 @@ classifier is the submodule, so we have to clone it by the following command.
 git submodule update --recursive
 ```
 
-## Usage instructions
+## Download dataset
+Please download the PEDIA datasets we used in PEDIA paper in the following link
+[https://pedia-study.org/pedia_services/download](https://pedia-study.org/pedia_services/download).
+The download link requires registration to pedia-study.org.
+The PEDIA datasets contain the following two data sets.
+ * PEDIA cohort
+ * Deep-Gestalt publication test set
+
+## Environment setup
 ### Configuration
 
 Most configuration options are in a `config.ini` file, with options commented.
@@ -62,18 +96,6 @@ key = your key in Face2Gene LAB
 secret = your secrect in Face2Gene LAB
 download_path = process/lab/bonn (the folder you would like to save the downloaded JSON files)
 ```
-
-### HGVS Error dict (optional)
-
-HGVS variant overrides are specified in `hgvs_errors.json`. Which is per-default
-searched for in the project root.
-
-The hgvs version is specified in `lib/constants.py` and will cause an error if
-an hgvs errors file of not at least the specified version is found.
-
-The number can be lowered manually to accept older hgvs error files.
-
-A version of 0 will accept no hgvs_errors file.
 
 ### Required external files
    * Go to data folder, and run 'snakemake all' to download all necessary files such as reference genome, population data.
@@ -91,9 +113,18 @@ A version of 0 will accept no hgvs_errors file.
  It is a submodule of PEDIA-workflow. The repository is here. (https://github.com/PEDIA-Charite/classifier). 
  * rest of the files and folders belong to preprocessing such as lib, helper, test
 	All About the quality check and phenomization
-	
+
+### HGVS Error dict (optional)
+
+HGVS variant overrides are specified in `hgvs_errors.json`. Which is per-default
+searched for in the project root.
+The hgvs version is specified in `lib/constants.py` and will cause an error if
+an hgvs errors file of not at least the specified version is found.
+The number can be lowered manually to accept older hgvs error files.
+A version of 0 will accept no hgvs_errors file.
+
 ## Running PEDIA
-### Environment setup
+### Activate environment
    * Go to data folder, and run 'snakemake all' to download all necessary files such as reference genome, population data.
    ```
    cd data
@@ -101,7 +132,7 @@ A version of 0 will accept no hgvs_errors file.
    snakemake all
    ```
    * You could download the training data we used in PEDIA paper in the following link (https://pedia-study.org/pedia_services/download)
-   * Copy jsons folder to 3_simulation. 3_simulation/jsons/1KG/CV_gestalt/* .json will be used for training data.
+   * Copy jsons folder to 3_simulation. 3_simulation/jsons/1KG/CV/* .json will be used for training data.
 
 ### Preprocessing
 Since some steps depend on the existence of API keys, running the preprocess.py
@@ -210,4 +241,35 @@ There are three steps to run pipeline.
    * case_id.csv contains all genes with corresponding pedia scores in this case
    * case_id_pedia.json contains all scores and PEDIA scores
    * rank.csv contains the predicted rank of disease-causing gene of each case.
+
+### Results
+You will find the results in the output dir you specified in the command.
+
+```
+ls output_dir/cv_0/
+# *.csv contain all five scores and pedia score for each gene in csv format
+# *.json contain the PEDIA score in JSON format
+# count_*.csv list the number of cases in each rank
+# rank_*.csv list the rank of each case
+```
+
+**45254.csv**
+
+Here, we listed the top ten genes in 45254.csv. You will find the five scores and PEDIA score.
+The label indicates whether this gene is disease-causing gene or not.
+In this case, ARID1B has the highest PEDIA score and it is the disease-causing gene of this case.
+
+```
+gene_name gene_id pedia_score feature_score cadd_score gestalt_score boqa_score pheno_score label
+ARID1B    57492   4.509       0.836         25.0       0.721         0.0        0.9982      1
+ARID1A    8289    1.238       0.836         0.001      0.721         0.0        0.9982      0
+SMARCB1   6598    1.238       0.836         0.001      0.721         0.0        0.9982      0
+SOX11     6664    1.238       0.836         0.001      0.721         0.0        0.9982      0
+SMARCE1   6605    1.238       0.836         0.001      0.721         0.0        0.9982      0
+SMARCA4   6597    1.238       0.836         0.001      0.721         0.0        0.9982      0
+FIG4      9896    0.942       0.738         38.0       0.0           0.0        0.0         0
+CYP26C1   340665  0.074       0.0           24.0       0.273         0.0        0.0         0
+RFT1      91869   0.0207      0.0           35.0       0.0           0.0        0.0         0
+VEGFC     7424    -0.110      0.0           34.0       0.0           0.0        0.0         0
+```
 
