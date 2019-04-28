@@ -19,8 +19,9 @@ in Institute for Genomic Statistics and Bioinformatics for more details.
   * [Description of the subfolders](description-of-subfolders)
 * [Running PEDIA](#running-pedia)
   * [Activate environment](#activate-environment)
-  * [Preprocessing](#preprocessing)
+  * [Example](#example)
   * [Running pipeline](#running-pipeline)
+  * [Preprocessing](#preprocessing)
   * [Results](#results)
 
 ## General Information
@@ -76,7 +77,7 @@ git submodule update --recursive
 Please download the PEDIA datasets we used in PEDIA paper in the following link
 [https://pedia-study.org/pedia_services/download](https://pedia-study.org/pedia_services/download).
 The download link requires registration to pedia-study.org.
-The PEDIA datasets contain the following two data sets.
+The PEDIA datasets contain the following two data sets. Please find more details about PEDIA dataset in wiki page ([PEDIA dataset](https://github.com/PEDIA-Charite/PEDIA-workflow/wiki/PEDIA-datasets)).
  * PEDIA cohort
  * Deep-Gestalt publication test set
 
@@ -87,6 +88,7 @@ Most configuration options are in a `config.ini` file, with options commented.
 A `config.ini.SAMPLE` in the project directory can be used as reference for
 creating an own configuration.
 
+#### Setup Key and Secret of your Face2Gene LAB
 To fetch the patient data from your Face2Gene LAB, please put the secret and key in the following setting in config.ini
 ```
 [your_lab_name]
@@ -97,8 +99,25 @@ secret = your secrect in Face2Gene LAB
 download_path = process/lab/bonn (the folder you would like to save the downloaded JSON files)
 ```
 
+#### Setup Phenomizer account (Optional)
+It requires username and password for using phenomizer.
+You could still use Feature-Match from Face2Gene if you don't fill up this part.
+```
+[phenomizer]
+; addition of phenomization scores based on HPO terms
+url = 
+user = 
+password = 
+```
+
 ### Required external files
    * Go to data folder, and run 'snakemake all' to download all necessary files such as reference genome, population data.
+   ```
+   cd data
+   source activate pedia
+   snakemake all
+   ```
+   
    * Copy corrected JSON files to process/correct/ (optional)
    * Copy hgvs_errors.json to project folder (optional)
 
@@ -127,42 +146,14 @@ A version of 0 will accept no hgvs_errors file.
 ### Activate environment
    * Go to data folder, and run 'snakemake all' to download all necessary files such as reference genome, population data.
    ```
-   cd data
    source activate pedia
-   snakemake all
    ```
+   
    * You could download the training data we used in PEDIA paper in the following link (https://pedia-study.org/pedia_services/download)
    * Copy jsons folder to 3_simulation. 3_simulation/jsons/1KG/CV/* .json will be used for training data.
 
-### Preprocessing
-Since some steps depend on the existence of API keys, running the preprocess.py
-script without a configuration file will **not work**.
 
-The **preprocess.py** script contains most information necessary for running a
-conversion of json files from your Face2Gene LAB to PEDIA format.
-
-If you add ```-v your_vcf_file```, it will automatically trigger the whole workflow.
-
-```
-# do not forget to activate the previously created virtual environment
-
-# get a list of usable options
-./preprocess.py -h
-
-# run complete process on all the cases in your lab
-./preprocess.py -l lab_name_in_config.ini
-
-# run complete process on a single case in your lab
-./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case
-
-# run for a single file (specifying output folder is beneficial)
-./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER
-
-# run for a single file on whole PEDIA workflow with -v and specify the VCF file
-./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER -v your_vcf_file
-./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case -v your_vcf_file
-```
-* **Example:**
+### Example
 You could use the example in tests/data/cases/123.json and tests/data/vcfs/123.vcf.gz
 ```
 python3 preprocess.py -s tests/data/123.json -v tests/data/123.vcf.gz
@@ -230,19 +221,36 @@ There are three steps to run pipeline.
    snakemake output/cv/CV_1KG/run.log
    ```
    
-1. Train and test evaluation
-   * Training set is in 3_simulation/json_simulation/real/train/1KG (1KG, ExAC and IRAN)
-   * Testing set is in 3_simulation/json_simulation/real/test
-   ```
-   snakemake output/real_test/1KG/run.log
-   ```
+### Preprocessing
+Since some steps depend on the existence of API keys, running the preprocess.py
+script without a configuration file will **not work**.
 
-1. How to read the PEDIA results?
-   * case_id.csv contains all genes with corresponding pedia scores in this case
-   * case_id_pedia.json contains all scores and PEDIA scores
-   * rank.csv contains the predicted rank of disease-causing gene of each case.
+The **preprocess.py** script contains most information necessary for running a
+conversion of json files from your Face2Gene LAB to PEDIA format.
 
-### Results
+If you add ```-v your_vcf_file```, it will automatically trigger the whole workflow.
+
+```
+# do not forget to activate the previously created virtual environment
+
+# get a list of usable options
+./preprocess.py -h
+
+# run complete process on all the cases in your lab
+./preprocess.py -l lab_name_in_config.ini
+
+# run complete process on a single case in your lab
+./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case
+
+# run for a single file (specifying output folder is beneficial)
+./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER
+
+# run for a single file on whole PEDIA workflow with -v and specify the VCF file
+./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER -v your_vcf_file
+./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case -v your_vcf_file
+```
+
+## Results
 You will find the results in the output dir you specified in the command.
 
 ```
