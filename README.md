@@ -22,7 +22,7 @@ in Institute for Genomic Statistics and Bioinformatics for more details.
   * [Usage](#usage)
   * [Example](#example)
   * [Preprocessing (Phenotypic level)](#preprocessing)
-  * [CADD annotation (Genomic level)](#running-pipeline)
+  * [CADD annotation (Genomic level)](#cadd-annotation)
     * [VCF annotation](#vcf-annotation)
 	* [Variant filtering](#variant-filtering)
   * [Classification](#classification)
@@ -162,7 +162,7 @@ There are the following three steps in PEDIA pipeline.
 The whole workflow is connected by snakemake.
 You are able to get the PEDIA results by one command. Please check the [example](#example).
 1. Preprocessing (perform phenomizer and map syndrome to gene)
- * Without the authentication from Face2Gene, you are not able to run this step. Please go to [Example](#example) directly.
+   * Without the authentication from Face2Gene, you are not able to run this step. Please go to [Example](#example) directly.
 1. CADD annotation (annotate CADD and merge with the phenotype scores)
 1. Classification
 
@@ -264,19 +264,20 @@ snakemake jsons/real/unknown_test/{case_id}.json
     * 3_simulation/jsons/real/unknown_test is the folder for the cases with real VCF file.
  
 ### Classification
-1. Go to classifier folder to classify the patient. Train with all cases and test on patient with **unknown diagnosis**. You will find the results in output/test/1KG/case_id/. Please find the more detail in
-(https://github.com/PEDIA-Charite/classifier).
+1. Go to classifier folder to classify the patient. 
+Train with all cases and test on patient with **unknown diagnosis**. You will find the results in output/test/1KG/case_id/.
+Please find more detail in (https://github.com/PEDIA-Charite/classifier).
    ```
    snakemake output/test/1KG/123/run.out
    ```
-   
+
 1. Cross-validation evaluation
    * Perform 10 fold cross-validation on 1KG simulation data, please execute this command
 
    ```
    snakemake output/cv/CV_1KG/run.log
    ```
-   
+
 
 ## Results
 You will find the results in the output dir you specified in the command.
