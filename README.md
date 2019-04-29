@@ -25,6 +25,7 @@ in Institute for Genomic Statistics and Bioinformatics for more details.
   * [CADD annotation (Genomic level)](#running-pipeline)
     * [VCF annotation](#vcf-annotation)
 	* [Variant filtering](#variant-filtering)
+  * [Classification](#classification)
   * [Results](#results)
 
 ## General Information
@@ -266,12 +267,11 @@ snakemake jsons/real/unknown_test/{case_id}.json
 1. Go to classifier folder to classify the patient. Train with all cases and test on patient with **unknown diagnosis**. You will find the results in output/test/1KG/case_id/. Please find the more detail in
 (https://github.com/PEDIA-Charite/classifier).
    ```
-   snakemake output/test/1KG/21147/run.out
+   snakemake output/test/1KG/123/run.out
    ```
    
 1. Cross-validation evaluation
-   * Go to classifier folder.  Run 'source activate classifier' to enable the environment. If you haven't created the environment, please execute 'conda env create -f environment.ymal'.
-   * Perform 10 times 10 fold cross-validation on 1KG simulation data, please execute this command 'snakemake ../output/cv/CV_1KG/run.log'. Please remind the working directory of classifier is in scripts folder, so to run on 1KG simulation you need to specify the output file 'output/cv/CV_1KG/run.log '.
+   * Perform 10 fold cross-validation on 1KG simulation data, please execute this command
 
    ```
    snakemake output/cv/CV_1KG/run.log
