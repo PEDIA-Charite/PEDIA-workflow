@@ -26,7 +26,7 @@ in Institute for Genomic Statistics and Bioinformatics for more details.
     * [VCF annotation](#vcf-annotation)
 	* [Variant filtering](#variant-filtering)
   * [Classification](#classification)
-  * [Results](#results)
+* [Results](#results)
 
 ## General Information
 
@@ -283,30 +283,31 @@ Please find more detail in (https://github.com/PEDIA-Charite/classifier).
 You will find the results in the output dir you specified in the command.
 
 ```
-ls output_dir/cv_0/
+ls classifier/output/test/123/
 # *.csv contain all five scores and pedia score for each gene in csv format
 # *.json contain the PEDIA score in JSON format
 # count_*.csv list the number of cases in each rank
 # rank_*.csv list the rank of each case
 ```
 
-**45254.csv**
+**123.csv**
 
-Here, we listed the top ten genes in 45254.csv. You will find the five scores and PEDIA score.
+Here, we listed the top ten genes in 123.csv. You will find the five scores and PEDIA score.
+**Here you will only see three scores with non zero values because there is no phenomizer setting by default.**
 The label indicates whether this gene is disease-causing gene or not.
-In this case, ARID1B has the highest PEDIA score and it is the disease-causing gene of this case.
+In this case, ARID1B has the second highest PEDIA score and it is the disease-causing gene of this case.
 
 ```
 gene_name gene_id pedia_score feature_score cadd_score gestalt_score boqa_score pheno_score label
-ARID1B    57492   4.509       0.836         25.0       0.721         0.0        0.9982      1
-ARID1A    8289    1.238       0.836         0.001      0.721         0.0        0.9982      0
-SMARCB1   6598    1.238       0.836         0.001      0.721         0.0        0.9982      0
-SOX11     6664    1.238       0.836         0.001      0.721         0.0        0.9982      0
-SMARCE1   6605    1.238       0.836         0.001      0.721         0.0        0.9982      0
-SMARCA4   6597    1.238       0.836         0.001      0.721         0.0        0.9982      0
-FIG4      9896    0.942       0.738         38.0       0.0           0.0        0.0         0
-CYP26C1   340665  0.074       0.0           24.0       0.273         0.0        0.0         0
-RFT1      91869   0.0207      0.0           35.0       0.0           0.0        0.0         0
-VEGFC     7424    -0.110      0.0           34.0       0.0           0.0        0.0         0
+FIG4      9896    0.886       0.515         38.0       0.0           0.0        0.0         0
+ARID1B    57492   0.200       0.620         25.0       0.190         0.0        0.0         1
+RFT1      91869   0.025       0.0           35.0       0.0           0.0        0.0         0
+VEGFC     7424    -0.125      0.0           34.0       0.0           0.0        0.0         0
+SPEG      10290   -0.276      0.0           33.0       0.0           0.0        0.0         0
+ITGB6     3694    -0.427      0.0           32.0       0.0           0.0        0.0         0
+MYH9      4627    -0.427      0.0           32.0       0.0           0.0        0.0         0
+SCN9A     6335    -0.427      0.0           32.0       0.0           0.0        0.0         0
+HRG       3273    -0.577      0.0           31.0       0.0           0.0        0.0         0
+GSR       2936    -0.577      0.0           31.0       0.0           0.0        0.0         0
 ```
 
