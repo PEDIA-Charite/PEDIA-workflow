@@ -19,9 +19,12 @@ in Institute for Genomic Statistics and Bioinformatics for more details.
   * [Description of the subfolders](description-of-subfolders)
 * [Running PEDIA](#running-pedia)
   * [Activate environment](#activate-environment)
+  * [Usage](#usage)
   * [Example](#example)
-  * [Running pipeline](#running-pipeline)
-  * [Preprocessing](#preprocessing)
+  * [Preprocessing (Phenotypic level)](#preprocessing)
+  * [CADD annotation (Genomic level)](#running-pipeline)
+    * [VCF annotation](#vcf-annotation)
+	* [Variant filtering](#variant-filtering)
   * [Results](#results)
 
 ## General Information
@@ -77,7 +80,8 @@ git submodule update --recursive
 Please download the PEDIA datasets we used in PEDIA paper in the following link
 [https://pedia-study.org/pedia_services/download](https://pedia-study.org/pedia_services/download).
 The download link requires registration to pedia-study.org.
-The PEDIA datasets contain the following two data sets. Please find more details about PEDIA dataset in wiki page ([PEDIA dataset](https://github.com/PEDIA-Charite/PEDIA-workflow/wiki/PEDIA-datasets)).
+The PEDIA datasets contain the following two data sets.
+Please find more details about PEDIA dataset in wiki page ([PEDIA dataset](https://github.com/PEDIA-Charite/PEDIA-workflow/wiki/PEDIA-datasets)).
  * PEDIA cohort
  * Deep-Gestalt publication test set
 
@@ -117,7 +121,6 @@ password =
    source activate pedia
    snakemake all
    ```
-   
    * Copy corrected JSON files to process/correct/ (optional)
    * Copy hgvs_errors.json to project folder (optional)
 
@@ -142,30 +145,81 @@ an hgvs errors file of not at least the specified version is found.
 The number can be lowered manually to accept older hgvs error files.
 A version of 0 will accept no hgvs_errors file.
 
-## Running PEDIA
 ### Activate environment
+```
+source activate pedia
+```
+Please check if you already have the following files before you run the pipeline.
    * Go to data folder, and run 'snakemake all' to download all necessary files such as reference genome, population data.
-   ```
-   source activate pedia
-   ```
-   
    * You could download the training data we used in PEDIA paper in the following link (https://pedia-study.org/pedia_services/download)
    * Copy jsons folder to 3_simulation. 3_simulation/jsons/1KG/CV/* .json will be used for training data.
 
 
+## Running PEDIA
+
+There are the following three steps in PEDIA pipeline.
+The whole workflow is connected by snakemake.
+You are able to get the PEDIA results by one command. Please check the [example](#example).
+1. Preprocessing (perform phenomizer and map syndrome to gene)
+ * Without the authentication from Face2Gene, you are not able to run this step. Please go to [Example](#example) directly.
+1. CADD annotation (annotate CADD and merge with the phenotype scores)
+1. Classification
+
+### Usage
+You could run PEDIA analysis on the patient in your Face2Gene LAB by the following command.
+By specifying the Lab ID and Lab cases ID, you can fetch the case with phenotypic information such as
+gestalt and feature-match score and HPO terms from your Face2Gene LAB.
+With argument -v, you could specify the VCF file of the patient.
+
+```
+# run for a single file on whole PEDIA workflow with -v and specify the VCF file
+python3 preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case -v your_vcf_file
+```
+
+If you already downloaded the case from Face2Gene, you could use argument -s to specify the case.
+
+```
+python3 preprocess.py -s PATH_TO_FILE -v your_vcf_file
+```
+
 ### Example
-You could use the example in tests/data/cases/123.json and tests/data/vcfs/123.vcf.gz
+You could use the example in tests/data/cases/123.json and tests/data/vcfs/123.vcf.gz.
+By excuting the command below, you will find the PEDIA results in classifier/output/test/1KG/123.
+
 ```
-python3 preprocess.py -s tests/data/123.json -v tests/data/123.vcf.gz
+python3 preprocess.py -s tests/data/cases/123.json -v tests/data/vcfs/123.vcf.gz
 ```
 
-### Run PEDIA pipeline
-There are three steps to run pipeline.
-1. Download cases and perform preprocessing
+### Preprocessing
+This step is the processing on **phenotype level**.
+It will donwload the data from Face2Gene LAB and perform the following:
+* Convert JSON format to PEDIA format
+* Perform phenomizer
+* Map syndrome to gene
 
-   ```
-   python3 preprocess.py -l lab_name
-   ```
+Since some steps depend on the existence of API keys, running the preprocess.py
+script without a configuration file will **not work**.
+
+The **preprocess.py** script contains most information necessary for running a
+conversion of json files from your Face2Gene LAB to PEDIA format.
+
+If you add ```-v your_vcf_file```, it will automatically trigger the whole workflow.
+
+```
+# get a list of usable options
+./preprocess.py -h
+
+# run complete process on all the cases in your lab
+./preprocess.py -l lab_name_in_config.ini
+
+# run complete process on a single case in your lab
+./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case
+
+# run for a single file (specifying output folder is beneficial)
+./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER
+```
+
+**Output of preprocessing**
    * config.yml contains the cases passed quality check. SIMPLE_SAMPLES is the case with disease-causing mutation but without real VCF file. VCF_SAMPLES is the case with real VCF file. TEST_SAMPLE is the case with real VCF but without disease-causing mutation.
    * process/lab/lab_name is the folder of cases downloaded from LAB (in config.ini).
    * data/PEDIA/jsons/phenomized is the folder which contains the JSON files passed QC.
@@ -177,36 +231,38 @@ There are three steps to run pipeline.
        ],
    ```
 
-1. Get JSON files of simulated cases and real cases
+### CADD annotation
+This step is the processing on **genomic level**.
 
-    To obtain the CADD scores of variants, we need to annotate the VCF files and retrieve the CADD score and append it to the geneList in JSON file. Now, we go to 3_simulation folder and activate simulation environment. 
-   
-    Note: you could skip this step by running the experiemnt in classifier. The classifier will trigger this subworkflow to generate JSON files.
-   
-    Before we start, we would like to explain the two experiments we want to conduct in this study. First one is that we want to perform cross-validation on all cases to evaluate the performance among three simulation samples (1KG, ExAC and IRAN). The second one is that we want to train the model with simulated cases and test on the real cases. To achieve these two goals, we have the following command to perform simulation and generate the final JSON files.
+To obtain the CADD scores of variants, we have to annotate the VCF files first and
+further retrieve the CADD score and append it to the geneList in JSON file.
 
+Therefore, we could further separate this steps into two parts:
+* Annotating VCF file (CADD and allele frequency)
+* Retrieve CADD score (Perform [variant filtering](https://github.com/PEDIA-Charite/PEDIA-workflow/wiki/Variants-filtering) and retrieve CADD score)
 
-    * To perform the CV experiment, we run the following command to obtain the JSON files simulated from 1KG, ExAC and IRAN data. You could replace 1KG with ExAC and IRAN
-    ```
-    snakemake performanceEvaluation/data/CV/1KG.csv
-    ```
-   
-    * To peform the second experiemnt, we run the following command to obtain the training and testing data sets. Generate the JSON files of **real cases** the output will be in 3_simulation/json_simulation/real/test
-    ```
-    snakemake createCsvRealTest
-    ```
-   
-    * Generate the JSON files of **simulated cases** the output will be in 3_simulation/json_simulation/real/train/1KG. You could replace 1KG with ExAC and IRAN
-    ```
-    snakemake performanceEvaluation/data/Real/train_1KG.csv
-    ```
-    
-    * The final JSON files are in 3_simulation/json_simulation folder.
-        * 3_simulation/jsons/1KG is the folder for all cases simulated by 1KG.
-        * 3_simulation/jsons/ExAC is the folder for all cases simulated by ExAC.
-        * 3_simulation/jsons/real/train is the folder for the cases without simulated by 1KG, ExAC or IRAN. We also have three folder under this folder.
-        * 3_simulation/jsons/real/test is the folder for the cases with real VCF file.
+#### VCF annotation
+The working directory for VCF annotation is in data/PEDIA/vcfs.
+Please find data/PEDIA/vcfs/Snakefile for more detail.
+
+To run the annotation, please run the following command.
+```
+snakemake annotated_vcfs/{case_id}_annotated.vcf.gz
+```
+
+#### Variant filtering
+We filter out the variants with high allele frequency or without phenotype mapping in OMIM.
+Please find [variant filtering](https://github.com/PEDIA-Charite/PEDIA-workflow/wiki/Variants-filtering) for more details.
+To get the JSON file with scores from all 5 methods, please run the following command.
+```
+snakemake jsons/real/unknown_test/{case_id}.json
+```
+
+**Output**
+* The final JSON files are in 3_simulation/json_simulation folder.
+    * 3_simulation/jsons/real/unknown_test is the folder for the cases with real VCF file.
  
+### Classification
 1. Go to classifier folder to classify the patient. Train with all cases and test on patient with **unknown diagnosis**. You will find the results in output/test/1KG/case_id/. Please find the more detail in
 (https://github.com/PEDIA-Charite/classifier).
    ```
@@ -221,34 +277,6 @@ There are three steps to run pipeline.
    snakemake output/cv/CV_1KG/run.log
    ```
    
-### Preprocessing
-Since some steps depend on the existence of API keys, running the preprocess.py
-script without a configuration file will **not work**.
-
-The **preprocess.py** script contains most information necessary for running a
-conversion of json files from your Face2Gene LAB to PEDIA format.
-
-If you add ```-v your_vcf_file```, it will automatically trigger the whole workflow.
-
-```
-# do not forget to activate the previously created virtual environment
-
-# get a list of usable options
-./preprocess.py -h
-
-# run complete process on all the cases in your lab
-./preprocess.py -l lab_name_in_config.ini
-
-# run complete process on a single case in your lab
-./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case
-
-# run for a single file (specifying output folder is beneficial)
-./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER
-
-# run for a single file on whole PEDIA workflow with -v and specify the VCF file
-./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER -v your_vcf_file
-./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case -v your_vcf_file
-```
 
 ## Results
 You will find the results in the output dir you specified in the command.
