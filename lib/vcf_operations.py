@@ -139,7 +139,7 @@ def move_vcf(orig_path: str, new_path: str) -> None:
         new_data = read_vcf(new_path)
         move_flag = False if new_data == data else True
     if move_flag:
-        print("\nCopy VCF file to data/PEDIA/vcfs/original")
+        print("\nCopy VCF file to {}".format(new_path))
         write_vcf(data, new_path)
     else:
         print("\nVCF file is existed and identical.")

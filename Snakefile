@@ -1,53 +1,139 @@
-configfile: "config_gestalt.yml"
+classify_file = 'classifier/pedia.py'
+mapping_file = 'classifier/lib/mapping.py'
+mapping_vcf_file = 'classifier/lib/get_variant.py'
 
-vcf_samples = config['VCF_SAMPLES']
-single_samples = config['SINGLE_SAMPLES']
-samples = []
-samples.extend(single_samples)
-samples.extend(vcf_samples)
-
-preproc_dir = "preproc/"
-merged_cases_dir = preproc_dir + "merged_dir/cases/"
-pedia_dir = "data/PEDIA/"
-converted_json_dir = pedia_dir + "jsons/phenomized/"
-mutation_dir = pedia_dir + "mutations/"
-vcf_dir = pedia_dir + "vcfs/original/"
-
-
-rule all:
+rule decompress:
 	input:
-		cases = expand(converted_json_dir + "{case}.json", case = samples)
-
-# orginal_json/ contains meta data
-# final_json_per_case_280618 contains the gestalt and FM scores from data freeze
-# We merge them and save to merged_dir/cases/ dir
-rule merge:
-	input:
-		cases = expand(preproc_dir + "original_json/{case}.json", case = samples),
-		syn = preproc_dir + "216_gestalt_syn_to_omim_final.csv",
-		f2g = expand(preproc_dir + "final_json_per_case_280618/{case}.json", case = samples),
-		list = preproc_dir + "config_gestalt.csv"
+		"{output}/vcfs/original/{sample}.vcf.gz"
 	output:
-		cases = expand(merged_cases_dir + "{case}.json", case = samples)
-	params:
-		output = merged_cases_dir,
-		input_dir = preproc_dir + "original_json/",
-		f2g = preproc_dir + "final_json_per_case_280618",
-		script = preproc_dir + "merge_pedia_dgfm.py" 
+		temp("{output}/vcfs/original/{sample}.vcf")
 	shell:
 		"""
-		python {params.script} -l {input.list} -o {params.output} -s {input.syn} -f {params.f2g} -i {params.input_dir}
+		bgzip -d -c {input} | grep -v "##sgmutationstatistics=" | awk '{{gsub(/chr/,""); print}}' | awk '{{if($1!="M" && $5!=".") print $0}}' > {output}
 		"""
 
-rule convert:
+rule sort:
 	input:
-		cases = merged_cases_dir + "{case}.json"
+		"{output}/vcfs/original/{sample}.vcf"
 	output:
-		cases = converted_json_dir + "{case}.json"
-	params:
-		output = converted_json_dir
+		temp("{output}/vcfs/sorted/{sample}.vcf.gz")
 	shell:
 		"""
-		python preprocess.py -s {input.cases} -o {params.output} 
+		(cat '{input}' | egrep "^#"; cat '{input}' | egrep -v "^#" | sort -k1,1 -k2,2n) | bgzip -c > '{output}'
 		"""
 
+rule index_sorted:
+	input:
+		"{output}/vcfs/sorted/{sample}.vcf.gz"
+	output:
+		temp("{output}/vcfs/sorted/{sample}.vcf.gz.tbi")
+	shell:
+		"tabix '{input}'"
+
+rule filter:
+	input:
+		"{output}/vcfs/sorted/{sample}.vcf.gz"
+	output:
+		"{output}/vcfs/filtered_vcfs/{sample}.vcf.gz"
+	params:
+		exon = "data/pathogenicityScores/exon_extend_100bp.txt"
+	shell:
+		"""
+		bcftools view -e 'QUAL<100||GT="./."||GT="0/0"||GT=".|."||GT="."' {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed {params.exon} --stdout --recode --recode-INFO-all | bgzip -c > {output}
+		"""
+
+rule index_filter:
+	input:
+		"{output}/vcfs/filtered_vcfs/{sample}.vcf.gz"
+	output:
+		"{output}/vcfs/filtered_vcfs/{sample}.vcf.gz.tbi"
+	shell:
+		"""
+		tabix {input}
+		"""
+
+rule annotate:
+	input:
+		vcf="{output}/vcfs/filtered_vcfs/{sample}.vcf.gz",
+		vcf_index="{output}/vcfs/filtered_vcfs/{sample}.vcf.gz.tbi",
+		db="data/jannovar/data/hg19_refseq.ser",
+		exac="data/populationDBs/ExAC.r1.sites.vep.vcf.gz",
+		uk="data/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
+		#dbsnp="data/dbSNPs/b147/All_20160601.vcf.gz",
+		caddsnv="data/pathogenicityScores/cadd_snv_exon.tsv.gz",
+		caddindel="data/pathogenicityScores/cadd_indel_exon.tsv.gz",
+		ref="data/referenceGenome/data/human_g1k_v37.fasta"
+	output:
+		"{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz"
+	shell:
+		"java -jar -Xmx3g data/jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}'"
+
+rule index_annotated:
+	input:
+		"{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz"
+	output:
+		"{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz.tbi"
+	shell:
+		"tabix '{input}'"
+
+rule json:
+	input:
+		vcf="{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz",
+		vcf_index="{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz.tbi",
+		omim="data/omim/genemap2.txt",
+		json="data/PEDIA/jsons/phenomized/{sample}.json",
+		simulator="3_simulation/simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+	output:
+		"{output}/jsons/test/{sample}.json"
+	shell:
+		"""
+		java -jar -Xmx20g {input.simulator} extendjson \
+		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
+		"""
+
+rule test:
+    input:
+        json = "{output}/jsons/test/{sample}.json"
+    output:
+        csv = "{output}/results/{sample}/{sample}.csv"
+    params:
+        label = "1KG",
+        dir = "{output}/results/{sample}/",
+        train = "3_simulation/jsons/1KG/CV"
+    shell:
+        """
+        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}';
+        """
+
+rule map_pedia:
+    input:
+        csv = "{output}/results/{sample}/{sample}.csv",
+        json = "{output}/jsons/test/{sample}.json"
+    output:
+        json = "{output}/results/{sample}/{sample}_pedia.json",
+    params:
+        dir = "{output}/results/{sample}/",
+    shell:
+        """
+        python {mapping_file} --input '{input.json}' --pedia '{input.csv}' --output '{output.json}';
+        """
+
+rule map_vcf:
+    input:
+        csv = "{output}/results/{sample}/{sample}.csv",
+        vcf = "{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz"
+    output:
+        vcf = "{output}/results/{sample}/{sample}.vcf.gz",
+    params:
+        dir = "{output}/results/{sample}/"
+    shell:
+        """
+        python {mapping_vcf_file} --input '{input.vcf}' --pedia '{input.csv}' --output '{output.vcf}';
+        """
+
+rule map:
+    input:
+        vcf = "{output}/results/{sample}/{sample}.vcf.gz",
+        json = "{output}/results/{sample}/{sample}_pedia.json"
+    output:
+        out = touch("{output}/results/{sample}/run.out")

@@ -37,7 +37,7 @@ class Case:
     '''
 
     def __init__(
-            self, data, exclude_benign_variants: bool = True, vcf_path: str = ""
+            self, data, config_data, exclude_benign_variants: bool = True, vcf_path: str = ""
     ):
         # also save the json object to easier extract information from the
         # new format
@@ -49,7 +49,7 @@ class Case:
         self.case_id = self.data.get_case_id()
         self.features = self.data.get_features()
         self.submitter = self.data.get_submitter()
-        self.real_vcf_paths = self.data.get_vcf(real_path=vcf_path)
+        self.real_vcf_paths = self.data.get_vcf(config_data.output['real_vcf_path'], real_path=vcf_path)
 
         self.simulated_vcf = None
 

@@ -581,11 +581,12 @@ class NewJson(JsonFile):
         return submitter
 
     def get_vcf(self,
-            processed_dir: str = "data/PEDIA/vcfs/original",
+            processed_dir: str = "",
             real_path: str = "") \
             -> [str]:
         '''Get a list of vcf files.
         '''
+
         if real_path:
             vcfs = [real_path]
         else:
@@ -897,11 +898,12 @@ class LabJson(JsonFile):
         return submitter
 
     def get_vcf(self,
-            processed_dir: str = "data/PEDIA/vcfs/original",
+            processed_dir: str = "",
             real_path: str = "") \
             -> [str]:
         '''Get a list of vcf files.
         '''
+
         if real_path:
             vcfs = [real_path]
         else:
