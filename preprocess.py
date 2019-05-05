@@ -149,7 +149,7 @@ def create_cases(config_data, jsons):
     print("== Create cases from new json format ==")
 
     case_objs = progress_bar("Create cases")(
-        lambda json_file: case.Case(json_file, vcf_path=config_data.input["vcf"])
+        lambda json_file: case.Case(json_file, config_data, vcf_path=config_data.input["vcf"])
     )(jsons)
 
     print("Correcting transcripts with mutalyzer")
@@ -319,12 +319,11 @@ def quality_check_cases(config_data, qc_cases, old_jsons, json_log):
         "fail": len(qc_failed_msg) + len(qc_vcf_failed)
     }, qc_passed
 
-def run_workflow(case_id):
+def run_workflow(case_id, config_data):
     print("== Start PEDIA workflow == ")
-    classifier_dir = "classifier"
-    snakefile = os.path.join(classifier_dir, 'Snakefile')
-    target_file = os.path.join('output/test/1KG', str(case_id), 'run.out')
-    snakemake.snakemake(snakefile, targets=[target_file], workdir=classifier_dir)
+    snakefile = 'Snakefile'
+    target_file = os.path.join(config_data.output['output_path'], 'results', str(case_id), 'run.out')
+    snakemake.snakemake(snakefile, targets=[target_file], workdir='.')
     print("== PEDIA workflow is completed == ")
 
 def main():
@@ -332,12 +331,10 @@ def main():
     Some program blocks are enabled and disabled via config options in general
     '''
 
-    configure_logging("lib")
     args = args_parser.PEDIAParser().args
 
     config_data = config.PEDIAConfig(args)
-
-    print(config_data.output)
+    configure_logging("lib", config_data.logfile_path)
 
     json_log = {}
 
@@ -355,7 +352,6 @@ def main():
     if args.convert_failed:
         print("== Convert failed cases == ")
         convert_failed_cases(config_data,failed_jsons)
-
 
     if args.entry == "pheno" or args.entry == "convert":
         old_jsons, cases = convert_to_old_format(config_data, cases)
@@ -388,7 +384,7 @@ def main():
         )
 
     if args.vcf:
-        run_workflow(cases[0].case_id)
+        run_workflow(cases[0].case_id, config_data)
 
 if __name__ == '__main__':
     main()

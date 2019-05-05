@@ -4,6 +4,7 @@ Configuration loader to get parameters from a ini file.
 This is mainly used to define download directories and API access.
 '''
 import sys
+import os
 from typing import Union, Iterable, Dict
 from configparser import ConfigParser
 
@@ -29,13 +30,22 @@ class PEDIAConfig(ConfigParser):
         super().__init__()
         self.read(self.path)
 
-        self.logfile_path = self["general"]["logfile"]
         self.dump_intermediate = self["general"].getboolean(
             "dump_intermediate"
         )
         self.input = self.parse_input(args)
 
         self.output = self.parse_output(args)
+        if args.output and args.single:
+            filename = os.path.basename(args.single)
+            case_id = filename.split('.json')[0]
+            log_dir = os.path.join(args.output, 'logs/{}/'.format(case_id))
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+
+            self.logfile_path = os.path.join(log_dir, 'preprocess.log')
+        else:
+            self.logfile_path = self["general"]["logfile"]
 
         if args.single:
             self.dump_intermediate = False
@@ -153,21 +163,35 @@ class PEDIAConfig(ConfigParser):
         }
 
     def parse_output(self, args: "Namespace"):
-        simulated_vcf_path = self["output"]["simulated_vcf_path"]
-        real_vcf_path = self["output"]["real_vcf_path"]
-        vcf_config_file = self["output"]["vcf_config_file"]
-        converted_path = args.output if args.output else self["output"]["converted_path"]
+        output_path = args.output if args.output else self["output"]
+        if not os.path.exists(output_path):
+            os.makedirs(output_path, exist_ok=True)
 
-        valid_case_path = self["output"]["valid_case_path"]
-        quality_check_log = self["output"]["quality_check_log"]
+        simulated_vcf_path = os.path.join(output_path, self["output"]["simulated_vcf_path"])
+        if not os.path.exists(output_path):
+            os.makedirs(output_path, exist_ok=True)
+
+        real_vcf_path = os.path.join(output_path, self["output"]["real_vcf_path"])
+        if not os.path.exists(real_vcf_path):
+            os.makedirs(real_vcf_path, exist_ok=True)
+
+        vcf_config_file = os.path.join(output_path, self["output"]["vcf_config_file"])
+
+        converted_path = os.path.join(output_path, self["output"]["converted_path"])
+        if not os.path.exists(converted_path):
+            os.makedirs(converted_path, exist_ok=True)
+
+        valid_case_path =  os.path.join(output_path, self["output"]["valid_case_path"])
+        quality_check_log = os.path.join(output_path, self["output"]["quality_check_log"])
 
         create_log = True
 
-        if args.single:
-            create_log = False
+        #if args.single:
+        #    create_log = False
         if args.output:
             self._output_base_dir = args.output
         return {
+            "output_path": output_path,
             "simulated_vcf_path": simulated_vcf_path,
             "real_vcf_path": real_vcf_path,
             "vcf_config_file": vcf_config_file,
