@@ -21,63 +21,19 @@ rule all:
 		expand("results/{background}/{background}.refSeq105.vcf.gz.tbi",background=BACKGROUNDS),
 		expand("results/{background}/{background}.refSeq105.AF.vcf.gz",background=BACKGROUNDS),
 		expand("results/{background}/{background}.refSeq105.AF.vcf.gz.tbi",background=BACKGROUNDS),
-#		"results/1KG/1KG.refSeq105.AF.filter.vcf.gz",
-#		"results/1KG/1KG.refSeq105.AF.filter.vcf.gz.tbi,"
-
 
 #### 1KG Samples ###
 
 rule download_refSeq:
 	input:
 	output:
-		"data/refseq/ref_GRCh37.p13_top_level.gff3.gz"
-	shell:
-		"curl ftp://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/H_sapiens/ARCHIVE/ANNOTATION_RELEASE.105/GFF/ref_GRCh37.p13_top_level.gff3.gz "
-		"> {output}"
-#chromosomes 9 and 11 are switched? I think NC_000009.11 is chr 9 and NC_000011.9 is chr 11
-rule refSeqToBed:
-	input:
-		"data/refseq/ref_GRCh37.p13_top_level.gff3.gz"
-	output:
-		"data/refseq/ref_GRCh37.p13_top_level.bed.gz"
+		bed = "data/refseq/ncbi_refseq_exon.bed.gz",
+		index = "data/refseq/ncbi_refseq_exon.bed.gz.tbi"
 	shell:
 		"""
-		zcat {input} | grep '^NC' | grep '\sexon\s' | awk -F \"\\t\" -v OFS=\"\\t\" '{{print $1,$4-1,$5,$3,$6,$7}}' | \
-		sed 's/NC_000001.10/1/g' | \
-		sed 's/NC_000002.11/2/g' | \
-		sed 's/NC_000003.11/3/g' | \
-		sed 's/NC_000004.11/4/g' | \
-		sed 's/NC_000005.9/5/g' | \
-		sed 's/NC_000006.11/6/g' | \
-		sed 's/NC_000007.13/7/g' | \
-		sed 's/NC_000008.10/8/g' | \
-		sed 's/NC_000009.11/9/g' | \
-		sed 's/NC_000010.10/10/g' | \
-		sed 's/NC_000011.9/11/g' | \
-		sed 's/NC_000012.11/12/g' | \
-		sed 's/NC_000013.10/13/g' | \
-		sed 's/NC_000014.8/14/g' | \
-		sed 's/NC_000015.9/15/g' | \
-		sed 's/NC_000016.9/16/g' | \
-		sed 's/NC_000017.10/17/g' | \
-		sed 's/NC_000018.9/18/g' | \
-		sed 's/NC_000019.9/19/g' | \
-		sed 's/NC_000020.10/20/g' | \
-		sed 's/NC_000021.8/21/g' | \
-		sed 's/NC_000022.10/22/g' | \
-		sed 's/NC_000023.10/X/g' | \
-		sed 's/NC_000024.9/Y/g' | \
-		sed 's/NC_012920.1/MT/g' | \
-		sort -k 1,1 -k 2,2n | bedtools merge -i - | bgzip -c > {output}
+		wget https://uni-bonn.sciebo.de/s/3nL5ckzwzymFtHh/download -O {output.bed};
+		wget https://uni-bonn.sciebo.de/s/mFYRgPOg0vU1REb/download -O {output.index};
 		"""
-
-rule indexRefSeqBed:
-	input:
-		vcf="data/refseq/ref_GRCh37.p13_top_level.bed.gz"
-	output:
-		"data/refseq/ref_GRCh37.p13_top_level.bed.gz.tbi"
-	shell:
-		"tabix {input}"
 
 rule download1KGAutosomes:
 	input:
@@ -98,13 +54,13 @@ rule download1KGAutosomesIndex:
 
 rule filter1KGAutosomes:
 	input:
-		refseq="data/refseq/ref_GRCh37.p13_top_level.bed.gz",
+		refseq="data/refseq/ncbi_refseq_exon.bed.gz",
 		vcf="data/1KG/download/ALL.{chr}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz",
 		index="data/1KG/download/ALL.{chr}.phase3_shapeit2_mvncall_integrated_v5a.20130502.genotypes.vcf.gz.tbi"
 	output:
 		"data/1KG/1KG_{chr}.refSeq105.vcf.gz"
 	shell:
-		"bedtools intersect -header -a {input.vcf} -b {input.refseq} 2>/dev/null | bgzip -c > {output}"
+		"bedtools intersect -header -a {input.vcf} -b {input.refseq} -u 2>/dev/null | bgzip -c > {output}"
 
 rule download1KGGonosomes:
 	input:
@@ -131,7 +87,7 @@ rule download1KGGonosomesIndex:
 
 rule filter1KGGonosomes:
 	input:
-		refseq="data/refseq/ref_GRCh37.p13_top_level.bed.gz",
+		refseq="data/refseq/ncbi_refseq_exon.bed.gz",
 		mt="data/1KG/download/ALL.chrMT.phase3_callmom-v0_4.20130502.genotypes.vcf.gz",
 		x="data/1KG/download/ALL.chrX.phase3_shapeit2_mvncall_integrated_v1b.20130502.genotypes.vcf.gz",
 		y="data/1KG/download/ALL.chrY.phase3_integrated_v2a.20130502.genotypes.vcf.gz",
@@ -144,9 +100,9 @@ rule filter1KGGonosomes:
 		y="data/1KG/1KG_chrY.refSeq105.vcf.gz",
 		mt="data/1KG/1KG_chrMT.refSeq105.vcf.gz"
 	shell:
-		"bedtools intersect -header -a {input.y} -b {input.refseq} 2>/dev/null | ruby scripts/addZeroIfSampleNotPresent.rb {input.samples} | bgzip -c > {output.y} && "
-		"bedtools intersect -header -a {input.mt} -b {input.refseq} 2>/dev/null | ruby scripts/addZeroIfSampleNotPresent.rb {input.samples} | bgzip -c > {output.mt} &&"
-		"bedtools intersect -header -a {input.x} -b {input.refseq} 2>/dev/null | bgzip -c > {output.x}"
+		"bedtools intersect -header -a {input.y} -b {input.refseq} -u 2>/dev/null | ruby scripts/addZeroIfSampleNotPresent.rb {input.samples} | bgzip -c > {output.y} && "
+		"bedtools intersect -header -a {input.mt} -b {input.refseq} -u 2>/dev/null | ruby scripts/addZeroIfSampleNotPresent.rb {input.samples} | bgzip -c > {output.mt} &&"
+		"bedtools intersect -header -a {input.x} -b {input.refseq} -u 2>/dev/null | bgzip -c > {output.x}"
 
 rule index1KG:
 	input:
@@ -254,8 +210,8 @@ rule annotateAFs:
 		exac="../../data/populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../../data/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
 		kg="../../data/populationDBs/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
-		caddsnv="../../data/pathogenicityScores/whole_genome_SNVs.tsv.gz",
-		caddindel="../../data/pathogenicityScores/InDels.tsv.gz",
+		caddsnv="../../data/pathogenicityScores/cadd_exon_snv.v1.3.tsv.gz",
+		caddindel="../../data/pathogenicityScores/cadd_exon_indel.v1.3.tsv.gz",
 		ref="../../data/referenceGenome/data/human_g1k_v37.fasta"
 	output:
 		"results/{background}/{background}.refSeq105.AF.vcf.gz"
