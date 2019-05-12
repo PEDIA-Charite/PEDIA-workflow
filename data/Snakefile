@@ -25,10 +25,10 @@ subworkflow dbsnp_workflow:
 # download the data!
 rule all:
     input:
-        patho_workflow("cadd_snv_exon.tsv.gz"),
-        patho_workflow("cadd_snv_exon.tsv.gz.tbi"),
-        patho_workflow("cadd_indel_exon.tsv.gz"),
-        patho_workflow("cadd_indel_exon.tsv.gz.tbi"),
+        patho_workflow("cadd_exon_snv.v1.3.tsv.gz"),
+        patho_workflow("cadd_exon_snv.v1.3.tsv.gz.tbi"),
+        patho_workflow("cadd_exon_indel.v1.3.tsv.gz"),
+        patho_workflow("cadd_exon_indel.v1.3.tsv.gz.tbi"),
         population_workflow("ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz"),
         population_workflow("ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz.tbi"),
         population_workflow("ExAC.r1.sites.vep.vcf.gz"),
