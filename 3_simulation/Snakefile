@@ -59,8 +59,8 @@ rule annotate:
 		exac="../data/populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../data/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
 		kg="../data/populationDBs/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
-		caddsnv="../data/pathogenicityScores/whole_genome_SNVs.tsv.gz",
-		caddindel="../data/pathogenicityScores/InDels.tsv.gz",
+		caddsnv="../data/pathogenicityScores/cadd_exon_snv.v1.3.tsv.gz",
+		caddindel="../data/pathogenicityScores/cadd_exon_indel.v1.3.tsv.gz",
 		ref="../data/referenceGenome/data/human_g1k_v37.fasta"
 	output:
 		"mutations/{sample}_JsonsVCF_annotated.vcf.gz"
@@ -113,16 +113,16 @@ rule spikein:
 		"vcf_simulation/{background}/{sample}.vcf.gz"
 	run:
 		if wildcards.background == "ExAC":
-			shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back}' -m '{input.vcf}' --sample '{wildcards.sample}'")
+			shell("java -jar simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back}' -m '{input.vcf}' --sample '{wildcards.sample}'")
 		else:
-			shell("java -jar simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back[0]}' -m '{input.vcf}' --sample '{wildcards.sample}'")
+			shell("java -jar simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back[0]}' -m '{input.vcf}' --sample '{wildcards.sample}'")
 
 rule json:
 	input:
 		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
 		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"jsons/{background}/CV/{sample}.json"
 	shell:
@@ -143,7 +143,7 @@ rule jsonRealTestData:
 		vcf=getRealVCF,
 		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"jsons/real/test/{sample}.json"
 	shell:
@@ -188,7 +188,7 @@ rule jsonRealUnknownTestData:
 		vcf=getRealVCF,
 		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"jsons/real/unknown_test/{sample}.json"
 	shell:
@@ -340,7 +340,7 @@ rule jsonTrainGestaltData:
 		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
 		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"jsons/{background}/CV_gestalt/{sample}.json"
 	shell:
@@ -373,7 +373,7 @@ rule jsonRealGestaltTestData:
 		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
 		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar"
+		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"jsons/real/gestalt/test/{sample}.json"
 	shell:
