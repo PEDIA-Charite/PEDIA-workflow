@@ -174,13 +174,13 @@ With argument -v, you could specify the VCF file of the patient.
 
 ```
 # run for a single file on whole PEDIA workflow with -v and specify the VCF file
-python3 preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case -v your_vcf_file
+python3 pedia.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case -v your_vcf_file
 ```
 
 If you already downloaded the case from Face2Gene, you could use argument -s to specify the case.
 
 ```
-python3 preprocess.py -s PATH_TO_FILE -v your_vcf_file
+python3 pedia.py -s PATH_TO_FILE -v your_vcf_file
 ```
 
 ### Example
@@ -188,7 +188,7 @@ You could use the example in tests/data/cases/123.json and tests/data/vcfs/123.v
 By excuting the command below, you will find the PEDIA results in classifier/output/test/1KG/123.
 
 ```
-python3 preprocess.py -s tests/data/cases/123.json -v tests/data/vcfs/123.vcf.gz
+python3 pedia.py -s tests/data/cases/123.json -v tests/data/vcfs/123.vcf.gz
 ```
 
 ### Preprocessing
@@ -198,26 +198,26 @@ It will donwload the data from Face2Gene LAB and perform the following:
 * Perform phenomizer
 * Map syndrome to gene
 
-Since some steps depend on the existence of API keys, running the preprocess.py
+Since some steps depend on the existence of API keys, running the pedia.py
 script without a configuration file will **not work**.
 
-The **preprocess.py** script contains most information necessary for running a
+The **pedia.py** script contains most information necessary for running a
 conversion of json files from your Face2Gene LAB to PEDIA format.
 
 If you add ```-v your_vcf_file```, it will automatically trigger the whole workflow.
 
 ```
 # get a list of usable options
-./preprocess.py -h
+./pedia.py -h
 
 # run complete process on all the cases in your lab
-./preprocess.py -l lab_name_in_config.ini
+./pedia.py -l lab_name_in_config.ini
 
 # run complete process on a single case in your lab
-./preprocess.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case
+./pedia.py -l lab_name_in_config.ini --lab-case-id the_lab_case_id_of_your_case
 
 # run for a single file (specifying output folder is beneficial)
-./preprocess.py -s PATH_TO_FILE -o OUTPUT_FOLDER
+./pedia.py -s PATH_TO_FILE -o OUTPUT_FOLDER
 ```
 
 **Output of preprocessing**
