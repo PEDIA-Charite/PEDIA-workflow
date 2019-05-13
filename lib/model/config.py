@@ -124,7 +124,6 @@ class PEDIAConfig(ConfigParser):
         download = self["input"].getboolean(
             "download"
         )
-        corrected_path = self["input"]["corrected_path"]
         lab_case_id = 0
         lab = ""
         vcf = ""
@@ -133,8 +132,10 @@ class PEDIAConfig(ConfigParser):
             if args.lab not in self:
                 sys.exit('Error: Lab name is not found in config.ini! Please check if you use the correct lab name in config.ini')
             download_path = self[args.lab]["download_path"]
+            corrected_path = self[args.lab]["corrected_path"]
         else:
             download_path = self["pedia"]["download_path"]
+            corrected_path = self["pedia"]["corrected_path"]
         input_files = []
 
         if args.single:
@@ -163,13 +164,19 @@ class PEDIAConfig(ConfigParser):
         }
 
     def parse_output(self, args: "Namespace"):
-        output_path = args.output if args.output else self["output"]
+        if args.output:
+            output_path = args.output
+        else:
+            if args.lab:
+                output_path = self[args.lab]["output"]
+            else:
+                output_path = self["pedia"]["output"]
         if not os.path.exists(output_path):
             os.makedirs(output_path, exist_ok=True)
 
         simulated_vcf_path = os.path.join(output_path, self["output"]["simulated_vcf_path"])
-        if not os.path.exists(output_path):
-            os.makedirs(output_path, exist_ok=True)
+        if not os.path.exists(simulated_vcf_path):
+            os.makedirs(simulated_vcf_path, exist_ok=True)
 
         real_vcf_path = os.path.join(output_path, self["output"]["real_vcf_path"])
         if not os.path.exists(real_vcf_path):

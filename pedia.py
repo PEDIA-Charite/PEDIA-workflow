@@ -337,7 +337,7 @@ def main():
     configure_logging("lib", config_data.logfile_path)
 
     json_log = {}
-
+    print(config_data['input'])
     if not args.pickle:
         jsons, failed_jsons, json_log = create_jsons(config_data, args.convert_failed)
 
