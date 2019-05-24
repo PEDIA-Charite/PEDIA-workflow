@@ -107,7 +107,7 @@ rule test:
     log: "{output}/logs/{sample}/classification.log"
     shell:
         """
-        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' 2> {log}
+        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' --param-c 0.0156252 > {log}
         """
 
 rule map_pedia:
