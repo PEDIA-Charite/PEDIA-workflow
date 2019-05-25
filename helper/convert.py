@@ -76,9 +76,14 @@ def convert_old(content, omim_dict):
     data['genomic_entries'] = []
 
     sub = {}
-    sub['user_email'] = case_data['posting_user']['userEmail']
-    sub['user_name'] = case_data['posting_user']['userDisplayName']
-    sub['user_team'] = case_data['posting_user']['userInstitution']
+    if 'posting_user' not in case_data:
+        sub['user_email'] = "demo@pedia-study.org"
+        sub['user_name'] = "Mr. PEDIA study"
+        sub['user_team'] = "pedia"
+    else:
+        sub['user_email'] = case_data['posting_user']['userEmail']
+        sub['user_name'] = case_data['posting_user']['userDisplayName']
+        sub['user_team'] = case_data['posting_user']['userInstitution']
 
     data['submitter'] = sub
     data['documents'] = [] if 'documents' not in content else content['documents']
