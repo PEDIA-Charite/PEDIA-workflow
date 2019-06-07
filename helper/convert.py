@@ -50,8 +50,14 @@ def convert_old(content, omim_dict):
             continue
         detected_syn = {}
         detected_syn['syndrome_name'] = syn['syndrome']['syndrome_name']
-        if syn['syndrome']['omim_id'] == None and len(syn['syndrome']['omim_ids']) == 0:
-            continue
+
+        # Check if syndrome is null
+        if syn['syndrome']['omim_id'] == None:
+            if syn['syndrome']['omim_ids'] == None:
+                continue
+            if len(syn['syndrome']['omim_ids']) == 0:
+                continue
+
         if detected_syn['syndrome_name'] in omim_dict:
             detected_syn['omim_id'] = omim_dict[detected_syn['syndrome_name']]
         else:
