@@ -41,7 +41,7 @@ rule filter:
     log: "{output}/logs/{sample}/filter.log"
     shell:
         """
-        bcftools view -e 'QUAL<100||GT="./."||GT="0/0"||GT=".|."||GT="."' {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed {params.exon} --stdout --recode --recode-INFO-all | bgzip -c > {output} 2> {log}
+		zcat {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed data/referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed --stdout --recode |  bcftools view -e 'QUAL<100||GT="./."||GT="0/0"||GT=".|."||GT="."'  - | bgzip -c > {output} 2> {log}
         """
 
 rule index_filter:
