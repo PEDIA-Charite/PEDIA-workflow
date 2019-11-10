@@ -1,4 +1,4 @@
-configfile: "../../../config.yml"
+configfile: "../../../config_gestalt.yml"
 
 def allSamples(a,b):
 	samples = []
@@ -9,7 +9,7 @@ def allSamples(a,b):
 
 VCF_SAMPLES = config['VCF_SAMPLES']
 TEST_SAMPLES = config['TEST_SAMPLES']
-SAMPLES = allSamples(VCF_SAMPLES, TEST_SAMPLES)
+SAMPLES = VCF_SAMPLES
 
 rule all:
 	input:
@@ -52,7 +52,7 @@ rule filter:
 	output:
 		"filtered_vcfs/{sample}.vcf.gz"
 	params:
-		exon = "../../pathogenicityScores/exon_extend_100bp.txt"
+		exon = "../../referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed"
 	shell:
 		"""
 		bcftools view -e 'QUAL<100||GT="./."||GT="0/0"||GT=".|."||GT="."' {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed {params.exon} --stdout --recode --recode-INFO-all | bgzip -c > {output}
@@ -76,8 +76,8 @@ rule annotate:
 		exac="../../populationDBs/ExAC.r1.sites.vep.vcf.gz",
 		uk="../../populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
 		#dbsnp="../../dbSNPs/b147/All_20160601.vcf.gz",
-		caddsnv="../../pathogenicityScores/cadd_snv_exon.tsv.gz",
-		caddindel="../../pathogenicityScores/cadd_indel_exon.tsv.gz",
+		caddsnv="../../pathogenicityScores/cadd_exon_snv.v1.3.tsv.gz",
+		caddindel="../../pathogenicityScores/cadd_exon_indel.v1.3.tsv.gz",
 		ref="../../referenceGenome/data/human_g1k_v37.fasta"
 	output:
 		"annotated_vcfs/{sample}_annotated.vcf.gz"

@@ -22,6 +22,10 @@ class PEDIAParser():
             help="Parsing the JSON input with F2G LAB foramt"
         )
         parser.add_argument("-v", "--vcf", help="Path of the real vcf for the case you want to run PEDIA")
+        parser.add_argument("--vcf-sample-index",
+                default=0,
+                type=int,
+                help="The index of sample in multip vcf. Default: 0")
         parser.add_argument("--lab-case-id", help="Lab case ID, use it with --lab.")
         parser.add_argument(
             "-o", "--output",

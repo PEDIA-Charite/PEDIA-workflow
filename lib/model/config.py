@@ -141,8 +141,9 @@ class PEDIAConfig(ConfigParser):
         if args.single:
             download = False
             input_files = [args.single]
-        if args.lab and args.lab_case_id:
+        if args.lab:
             lab = args.lab
+        if args.lab_case_id:
             lab_case_id = args.lab_case_id
 
         if args.vcf:
@@ -150,6 +151,8 @@ class PEDIAConfig(ConfigParser):
 
         if args.pickle:
             self._picklefiles = args.pickle
+
+        vcf_sample_index = args.vcf_sample_index
 
         aws_format = True if args.aws_format else False
         return {
@@ -159,6 +162,7 @@ class PEDIAConfig(ConfigParser):
             "input_files": input_files,
             "lab_case_id": lab_case_id,
             "vcf": vcf,
+            "vcf_sample_index": vcf_sample_index,
             "lab": lab,
             "aws_format": aws_format
         }
