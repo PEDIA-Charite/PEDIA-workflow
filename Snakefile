@@ -2,6 +2,11 @@ classify_file = 'classifier/pedia.py'
 mapping_file = 'classifier/lib/mapping.py'
 mapping_vcf_file = 'classifier/lib/get_variant.py'
 
+if 'sample_index' in config:
+	sample_index = config['sample_index']
+else:
+	sample_index = '0'
+
 rule decompress:
     input:
         "{output}/vcfs/original/{sample}.vcf.gz"
@@ -41,8 +46,8 @@ rule filter:
     log: "{output}/logs/{sample}/filter.log"
     shell:
         """
-		zcat {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed data/referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed --stdout --recode |  bcftools view -e 'QUAL<100||GT="./."||GT="0/0"||GT=".|."||GT="."'  - | bgzip -c > {output} 2> {log}
-        """
+        zcat {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed data/referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed --stdout --recode | bcftools view -i 'GT!~"\."' - | bcftools view -e 'QUAL<100' - | bgzip -c > {output} 2> {log}
+       	"""
 
 rule index_filter:
     input:
@@ -85,14 +90,14 @@ rule json:
         vcf_index="{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz.tbi",
         omim="data/omim/genemap2.txt",
         json="{output}/jsons/phenomized/{sample}.json",
-        simulator="3_simulation/simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
+        simulator="3_simulation/simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar"
     output:
         "{output}/jsons/test/{sample}.json"
     log: "{output}/logs/{sample}/extend_json.log"
     shell:
         """
         java -jar -Xmx20g {input.simulator} extendjson \
-        -j {input.json} -v {input.vcf} -o {input.omim} -out {output} 2> {log}
+        -j {input.json} -v {input.vcf} -o {input.omim} -out {output} -s {sample_index} 2> {log}
         """
 
 rule test:
@@ -131,11 +136,12 @@ rule map_vcf:
     output:
         vcf = "{output}/results/{sample}/{sample}.vcf.gz",
     params:
-        dir = "{output}/results/{sample}/"
+        dir = "{output}/results/{sample}/",
+        sample_index=sample_index
     log: "{output}/logs/{sample}/map_vcf.log"
     shell:
         """
-        python {mapping_vcf_file} --input '{input.vcf}' --pedia '{input.csv}' --output '{output.vcf}' 2> {log}
+        python {mapping_vcf_file} --input '{input.vcf}' --pedia '{input.csv}' --output '{output.vcf}' --sample-index {params.sample_index} 2> {log}
         """
 
 rule map:

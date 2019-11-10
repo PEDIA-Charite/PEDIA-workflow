@@ -323,7 +323,9 @@ def run_workflow(case_id, config_data):
     print("== Start PEDIA workflow == ")
     snakefile = 'Snakefile'
     target_file = os.path.join(config_data.output['output_path'], 'results', str(case_id), 'run.out')
-    snakemake.snakemake(snakefile, targets=[target_file], workdir='.')
+    vcf_sample_index = config_data.input['vcf_sample_index']
+    print('Analyze vcf sample index: {}'.format(vcf_sample_index))
+    snakemake.snakemake(snakefile, targets=[target_file], workdir='.', config={'sample_index': vcf_sample_index})
     print("== PEDIA workflow is completed == ")
 
 def main():

@@ -113,18 +113,18 @@ rule spikein:
 		"vcf_simulation/{background}/{sample}.vcf.gz"
 	run:
 		if wildcards.background == "ExAC":
-			shell("java -jar simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back}' -m '{input.vcf}' --sample '{wildcards.sample}'")
+			shell("java -jar simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back}' -m '{input.vcf}' --sample '{wildcards.sample}'")
 		else:
-			shell("java -jar simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back[0]}' -m '{input.vcf}' --sample '{wildcards.sample}'")
+			shell("java -jar simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar spikein -o {input.omim} -out {output} -v '{input.back[0]}' -m '{input.vcf}' --sample '{wildcards.sample}'")
 
 rule json:
 	input:
 		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
 		omim="../data/omim/genemap2.txt",
-		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
+		json="../output/{lab}/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar"
 	output:
-		"jsons/{background}/CV/{sample}.json"
+		"../output/{lab}/jsons/{background}/CV/{sample}.json"
 	shell:
 		"java -jar {input.simulator} extendjson -j {input.json} -v {input.vcf} -o {input.omim} -out {output}"
 
@@ -140,23 +140,23 @@ def getRealVCF(wc):
 
 rule jsonRealTestData:
 	input:
-		vcf=getRealVCF,
+		vcf="../data/PEDIA/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz",
 		omim="../data/omim/genemap2.txt",
-		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
+		json="../output/{lab}/jsons/phenomized/{sample}.json",
+		simulator="simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar"
 	output:
-		"jsons/real/test/{sample}.json"
+		"../output/{lab}/jsons/real/test/{sample}.json"
 	shell:
 		"""
 		java -jar -Xmx20g {input.simulator} extendjson \
-		-j {input.json} -v {input.vcf[0]} -o {input.omim} -out {output}
+		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
 		"""
 
 rule jsonRealTrainData:
 	input:
-		"jsons/{background}/CV/{sample}.json"
+		"../output/{lab}/jsons/{background}/CV/{sample}.json"
 	output:
-		"jsons/real/train/{background}/{sample}.json"
+		"../output/{lab}/jsons/real/train/{background}/{sample}.json"
 	shell:
 		"""
 		ln {input} {output}
@@ -188,7 +188,7 @@ rule jsonRealUnknownTestData:
 		vcf=getRealVCF,
 		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
+		simulator="simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"jsons/real/unknown_test/{sample}.json"
 	shell:
@@ -205,12 +205,12 @@ rule jsonRealUnknownTestData:
 
 rule createCsvTrain:
 	input:
-		expand("jsons/{{background}}/CV/{sample}.json", sample=SAMPLES),
+		expand("../output/{{lab}}/jsons/{{background}}/CV/{sample}.json", sample=SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
-		"performanceEvaluation/data/CV/{background}.csv"
+		"../output/{lab}/performanceEvaluation/data/CV/{background}.csv"
 	params:
-		folder="jsons/{background}/CV"
+		folder="../output/{lab}/jsons/{background}/CV"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -222,12 +222,12 @@ rule createCsvTrain:
 
 rule createCsvRealTest:
 	input:
-		expand("jsons/real/test/{sample}.json", sample=VCF_SAMPLES),
+		expand("../output/{{lab}}/jsons/real/test/{sample}.json", sample=VCF_SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
-		"performanceEvaluation/data/Real/test_real.csv"
+		"../output/{lab}/performanceEvaluation/data/Real/test_real.csv"
 	params:
-		folder="jsons/real/test"
+		folder="../output/{lab}/jsons/real/test"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -259,12 +259,12 @@ rule createCsvRealSimTest:
 
 rule createCsvRealTrain:
 	input:
-		expand("jsons/real/train/{{background}}/{sample}.json", sample=SINGLE_SAMPLES),
+		expand("../output/{{lab}}/jsons/real/train/{{background}}/{sample}.json", sample=SINGLE_SAMPLES),
 		script="scripts/jsonToTable.py"
 	output:
-		"performanceEvaluation/data/Real/train_{background}.csv"
+		"../output/{lab}/performanceEvaluation/data/Real/train_{background}.csv"
 	params:
-		folder="jsons/real/train/{background}"
+		folder="../output/{lab}/jsons/real/train/{background}"
 	shell:
 		"""
 		python {input.script} -i {params.folder} -o {output}
@@ -285,11 +285,11 @@ rule trainCV:
 
 rule trainSimTestReal:
 	input:
-		train="performanceEvaluation/data/Real/train_{background}.csv",
-		test="performanceEvaluation/data/Real/test_real.csv",
+		train="../output/{lab}/performanceEvaluation/data/Real/train_{background}.csv",
+		test="../output/{lab}/performanceEvaluation/data/Real/test_real.csv",
 		script="scripts/trainTest.py"
 	output:
-		"performanceEvaluation/results/real.{background}.tsv.gz"
+		"../output/{lab}/performanceEvaluation/results/real.{background}.tsv.gz"
 	params:
 		repetitons="30"
 	shell:
@@ -340,7 +340,7 @@ rule jsonTrainGestaltData:
 		vcf="vcf_simulation/{background}/{sample}.vcf.gz",
 		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
+		simulator="simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"jsons/{background}/CV_gestalt/{sample}.json"
 	shell:
@@ -370,16 +370,16 @@ rule createCsvTrainGestalt:
 
 rule jsonRealGestaltTestData:
 	input:
-		vcf="vcf_annotation/{sample}.annotation.vcf.gz",
+		vcf=getRealVCF,
 		omim="../data/omim/genemap2.txt",
 		json="../data/PEDIA/jsons/phenomized/{sample}.json",
-		simulator="simulator/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar"
+		simulator="simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar"
 	output:
 		"jsons/real/gestalt/test/{sample}.json"
 	shell:
 		"""
 		java -jar -Xmx20g {input.simulator} extendjson \
-		-j {input.json} -v {input.vcf} -o {input.omim} -out {output}
+		-j {input.json} -v {input.vcf[0]} -o {input.omim} -out {output}
 		"""
 
 

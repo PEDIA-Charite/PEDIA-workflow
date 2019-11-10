@@ -758,7 +758,7 @@ class LabJson(JsonFile):
         '''
         if 'genomic_entries' in self._js['case_data']:
             models = [HGVSModel(entry)
-                      for entry in self._js['case_data']['genomic_entries']]
+                      for entry in self._js['case_data']['genomic_entries'] if 'variants' in entry]
         else:
             models = []
         return models
@@ -875,8 +875,11 @@ class LabJson(JsonFile):
         syndromes_df['omim_id'] = syndromes_df['omim_id'].astype(int)
         return syndromes_df
 
-    def convert_lab_feature(self, feature):
-        converted = [f["feature"]["hpo_full_id"] for f in feature]
+    def convert_lab_feature(self, features):
+        converted = []
+        for feature in features:
+            if feature['is_present'] == '1':
+                converted.append(feature['feature']['hpo_full_id'])
         return converted
 
     def get_features(self) -> [str]:
