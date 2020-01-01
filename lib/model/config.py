@@ -26,13 +26,15 @@ class PEDIAConfig(ConfigParser):
             args: Union["Namespace", None] = None,
             conf_file: str = "config.ini"
     ):
-        self.path = conf_file
+        self.path = args.config
         super().__init__()
         self.read(self.path)
 
         self.dump_intermediate = self["general"].getboolean(
             "dump_intermediate"
         )
+        self.data_path = self["general"]["data_path"] if self["general"]["data_path"] else "data"
+        self.train_pickle = self["general"]["train_pickle_path"] if self["general"]["train_pickle_path"] else "train_v1.2.p"
         self.input = self.parse_input(args)
 
         self.output = self.parse_output(args)
@@ -152,9 +154,11 @@ class PEDIAConfig(ConfigParser):
         if args.pickle:
             self._picklefiles = args.pickle
 
+
         vcf_sample_index = args.vcf_sample_index
 
         aws_format = True if args.aws_format else False
+        phenobot_format = True if args.phenobot_format else False
         return {
             "download": download,
             "corrected_path": corrected_path,
@@ -164,7 +168,8 @@ class PEDIAConfig(ConfigParser):
             "vcf": vcf,
             "vcf_sample_index": vcf_sample_index,
             "lab": lab,
-            "aws_format": aws_format
+            "aws_format": aws_format,
+            "phenobot_format": phenobot_format
         }
 
     def parse_output(self, args: "Namespace"):

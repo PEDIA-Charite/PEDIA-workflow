@@ -7,6 +7,16 @@ if 'sample_index' in config:
 else:
 	sample_index = '0'
 
+if 'data_path' in config:
+	data_path = config['data_path']
+else:
+	data_path = 'data'
+
+if 'train_pickle' in config:
+	train_pickle = config['train_pickle']
+else:
+	train_pickle = 'train_v1.2.p'
+
 rule decompress:
     input:
         "{output}/vcfs/original/{sample}.vcf.gz"
@@ -41,12 +51,10 @@ rule filter:
         "{output}/vcfs/sorted/{sample}.vcf.gz"
     output:
         "{output}/vcfs/filtered_vcfs/{sample}.vcf.gz"
-    params:
-        exon = "data/referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed"
     log: "{output}/logs/{sample}/filter.log"
     shell:
         """
-        zcat {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed data/referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed --stdout --recode | bcftools view -i 'GT!~"\."' - | bcftools view -e 'QUAL<100' - | bgzip -c > {output} 2> {log}
+        zcat {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed {data_path}/referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed --stdout --recode | bcftools view -i 'GT!~"\."' - | bcftools view -e 'QUAL<100' - | bgzip -c > {output} 2> {log}
        	"""
 
 rule index_filter:
@@ -63,18 +71,18 @@ rule annotate:
     input:
         vcf="{output}/vcfs/filtered_vcfs/{sample}.vcf.gz",
         vcf_index="{output}/vcfs/filtered_vcfs/{sample}.vcf.gz.tbi",
-        db="data/jannovar/data/hg19_refseq.ser",
-        exac="data/populationDBs/ExAC.r1.sites.vep.vcf.gz",
-        uk="data/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz",
-        #dbsnp="data/dbSNPs/b147/All_20160601.vcf.gz",
-        caddsnv="data/pathogenicityScores/cadd_exon_snv.v1.3.tsv.gz",
-        caddindel="data/pathogenicityScores/cadd_exon_indel.v1.3.tsv.gz",
-        ref="data/referenceGenome/data/human_g1k_v37.fasta"
+        db="{}/jannovar/data/hg19_refseq.ser".format(data_path),
+        exac="{}/populationDBs/ExAC.r1.sites.vep.vcf.gz".format(data_path),
+        kg="{}/populationDBs/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz".format(data_path),
+        uk="{}/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz".format(data_path),
+        caddsnv="{}/pathogenicityScores/cadd_exon_snv.v1.3.tsv.gz".format(data_path),
+        caddindel="{}/pathogenicityScores/cadd_exon_indel.v1.3.tsv.gz".format(data_path),
+        ref="{}/referenceGenome/data/human_g1k_v37.fasta".format(data_path)
     output:
         "{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz"
     log: "{output}/logs/{sample}/annotation.log"
     shell:
-        "java -jar -Xmx3g data/jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}' 2> {log}"
+        "java -jar -Xmx3g {data_path}/jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --1kg-vcf {input.kg} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}' 2> {log}"
 
 rule index_annotated:
     input:
@@ -88,7 +96,7 @@ rule json:
     input:
         vcf="{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz",
         vcf_index="{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz.tbi",
-        omim="data/omim/genemap2.txt",
+        omim="{}/omim/genemap2.txt".format(data_path),
         json="{output}/jsons/phenomized/{sample}.json",
         simulator="3_simulation/simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar"
     output:
@@ -112,7 +120,7 @@ rule test:
     log: "{output}/logs/{sample}/classification.log"
     shell:
         """
-        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' --param-c 0.0156252 > {log}
+        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' --param-c 0.0156252 --train-pickle {train_pickle}> {log}
         """
 
 rule map_pedia:

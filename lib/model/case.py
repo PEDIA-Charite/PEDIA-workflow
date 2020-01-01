@@ -212,7 +212,6 @@ class Case:
                         "syndrome_name": syndrome_name,
                         "gestalt_score": syndrome["gestalt_score"],
                         "feature_score": syndrome["feature_score"],
-                        "combined_score": syndrome["combined_score"],
                         "pheno_score": pheno_score,
                         "boqa_score": boqa_score,
                         "has_mask": syndrome["has_mask"],

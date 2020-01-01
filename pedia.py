@@ -107,7 +107,11 @@ def create_jsons(config_data, convert_failed):
             if os.path.splitext(x)[1] == '.json'
         ]
 
-    if config_data.input["aws_format"]:
+    if config_data.input["phenobot_format"]:
+        new_json_objs = progress_bar("Process jsons")(
+            lambda x, y: json_parser.PhenobotJson.from_file(x, y)
+        )(json_files, corrected)
+    elif config_data.input["aws_format"]:
         new_json_objs = progress_bar("Process jsons")(
             lambda x, y: json_parser.NewJson.from_file(x, y)
         )(json_files, corrected)
@@ -191,6 +195,7 @@ def convert_failed_cases(config_data, jsons):
         "Create old", create_old_json, cases,
         destination=config_data.output["converted_path"]
     )
+    return cases
 
 def create_qc_case(case):
     return case.check(), case
@@ -325,7 +330,10 @@ def run_workflow(case_id, config_data):
     target_file = os.path.join(config_data.output['output_path'], 'results', str(case_id), 'run.out')
     vcf_sample_index = config_data.input['vcf_sample_index']
     print('Analyze vcf sample index: {}'.format(vcf_sample_index))
-    snakemake.snakemake(snakefile, targets=[target_file], workdir='.', config={'sample_index': vcf_sample_index})
+    snakemake.snakemake(snakefile, targets=[target_file],
+            workdir='.', config={'sample_index': vcf_sample_index,
+                'data_path': config_data.data_path,
+                'train_pickle': config_data.train_pickle})
     print("== PEDIA workflow is completed == ")
 
 def main():
@@ -340,25 +348,28 @@ def main():
 
     json_log = {}
     print(config_data['input'])
+    cases = []
     if not args.pickle:
         jsons, failed_jsons, json_log = create_jsons(config_data, args.convert_failed)
 
         with open("failed_cases.json","w") as failed_log:
             json.dump(json_log,failed_log)
-
-        cases = create_cases(config_data, jsons)
+        if jsons:
+            cases = create_cases(config_data, jsons)
     else:
         with open(args.pickle, "rb") as pickled_file:
             cases = pickler.CaseUnpickler(pickled_file).load()
 
-    if args.convert_failed:
-        print("== Convert failed cases == ")
-        convert_failed_cases(config_data,failed_jsons)
 
     if args.entry == "pheno" or args.entry == "convert":
-        old_jsons, cases = convert_to_old_format(config_data, cases)
+        if cases:
+            old_jsons, cases = convert_to_old_format(config_data, cases)
     else:
         old_jsons = None
+
+    if args.convert_failed:
+        print("== Convert failed cases == ")
+        failed_cases = convert_failed_cases(config_data,failed_jsons)
 
     if args.entry != "qc":
         # QC Check for only using cases passing qc
@@ -370,20 +381,24 @@ def main():
     else:
         qc_cases = cases
 
-    # Quality check
-    stats, qc_cases = quality_check_cases(
-        config_data, qc_cases, old_jsons, json_log
-    )
+    if not args.convert_failed:
+        # Quality check
+        stats, qc_cases = quality_check_cases(
+            config_data, qc_cases, old_jsons, json_log
+        )
 
-    print(
-        "== QC results ==\nPassed: {pass} Failed: {fail}".format(
-            **stats)
-    )
+        print(
+            "== QC results ==\nPassed: {pass} Failed: {fail}".format(
+                **stats)
+        )
 
     if not args.single and not args.lab:
         quality_check.diff_quality_check(
             config_data.output["quality_check_log"]
         )
+
+    if args.convert_failed:
+        cases = cases + failed_cases
 
     if args.vcf:
         run_workflow(cases[0].case_id, config_data)
