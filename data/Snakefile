@@ -18,9 +18,6 @@ subworkflow omim_workflow:
     workdir: "omim"
     snakefile: "omim/Snakefile"
 
-subworkflow dbsnp_workflow: 
-    workdir: "dbSNPs"
-    snakefile: "dbSNPs/Snakefile"
 
 # download the data!
 rule all:
@@ -35,9 +32,6 @@ rule all:
         population_workflow("ExAC.r1.sites.vep.vcf.gz.tbi"),
         population_workflow("UK10K_COHORT.20160215.sites.vcf.gz"),
         population_workflow("UK10K_COHORT.20160215.sites.vcf.gz.tbi"),
-        reference_workflow("data/hg19.fa"),
-        reference_workflow("data/hg19.fa.fai"),
-        reference_workflow("data/hg19.fa.dict"),
         reference_workflow("data/human_g1k_v37.fasta"),
         reference_workflow("data/human_g1k_v37.fasta.fai"),
         reference_workflow("data/human_g1k_v37.fasta.dict"),
@@ -51,6 +45,4 @@ rule all:
         omim_workflow("morbidmap.txt"),
         omim_workflow("omim_deprecated_replacement.json"),
         omim_workflow("phenotypicSeries.txt"),
-        dbsnp_workflow("b147/All_20160601.vcf.gz"),
-        dbsnp_workflow("b147/All_20160601.vcf.gz.tbi")
 

@@ -27,8 +27,8 @@ rule downloadExAC:
 		index="ExAC.r1.sites.vep.vcf.gz.tbi"
 	shell:
 		"""
-		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/{output.file};
-		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/{output.index};
+		wget https://storage.googleapis.com/gnomad-public/legacy/exac_browser/{output.file};
+		wget https://storage.googleapis.com/gnomad-public/legacy/exac_browser/{output.index};
 		"""
 
 rule downloadUK10K:

@@ -14,6 +14,7 @@ class PEDIAParser():
         parser = ArgumentParser(description=(
             "Process f2g provided jsons into a format processable by "
             "classification."))
+        parser.add_argument("--config", default='config.ini', help="config.ini file.")
         parser.add_argument("-s", "--single", help="Process a single json file.")
         parser.add_argument("-l", "--lab", help="Name of the lab you which you define in config.ini.")
         parser.add_argument(
@@ -57,6 +58,10 @@ class PEDIAParser():
         parser.add_argument(
             "--aws-format", action='store_true',
             help="Use the AWS format for parsing JSON file"
+        )
+        parser.add_argument(
+            "--phenobot-format", action='store_true',
+            help="Use the phenobot format for parsing JSON file"
         )
 
         self.args = parser.parse_args()
