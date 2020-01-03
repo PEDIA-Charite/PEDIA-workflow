@@ -1,0 +1,22 @@
+# files
+**/*.tar.gz
+**/*.json
+**/*.csv
+*.p
+**/*.png
+**/*.pdf
+**/latex/
+**/remm-cli-0.0.4-SNAPSHOT-jar-with-dependencies.jar
+**/*.log
+**/pedia-simulator-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+**/pedia-simulator-0.0.2-SNAPSHOT-jar-with-dependencies.jar
+
+# folder
+docs/
+examples/
+trello/
+.git/
+.snakemake/
+3_simulation/performanceEvaluation/
+output/
+data/
