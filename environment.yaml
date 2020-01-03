@@ -9,19 +9,22 @@ dependencies:
  - numpy=1.14.5
  - scikit-learn=0.19.1
  - matplotlib
- - curl=7.45.0
  - filetype=1.0.1
  - pandas=0.23.3
  - requests=2.19.1
  - boto3=1.7.58
  - biopython=1.72
  - pyyaml=3.13
- - bedtools=2.26.0
- - htslib=1.4.1
+ - bedtools=2.29.2
+ - htslib=1.10.2
+ - pysam=0.15.3
  - ruby=2.5.1
- - samtools=1.3.1
- - bcftools=1.5
- - bedtools=2.26.0
+ - samtools=1.10
+ - bcftools=1.10.2
+ - openssl=1.1.1d
+ - vcftools=0.1.16
+ - tabix=0.2.6
+ - java-jdk=8.0.112
  - pip:
    - hgvs==1.2.0
    - ratelimit==2.2.0

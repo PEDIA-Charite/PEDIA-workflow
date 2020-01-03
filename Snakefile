@@ -54,7 +54,7 @@ rule filter:
     log: "{output}/logs/{sample}/filter.log"
     shell:
         """
-        zcat {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed {data_path}/referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed --stdout --recode | bcftools view -i 'GT!~"\."' - | bcftools view -e 'QUAL<100' - | bgzip -c > {output} 2> {log}
+        zcat {input} | sed -e 's/nan/NaN/g' | vcftools --vcf - --bed {data_path}/referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed --stdout --recode | bcftools view -i 'GT!~"\."' - | bcftools view -e 'QUAL<100' - | bgzip -c > {output} 2>&1 | tee {log}
        	"""
 
 rule index_filter:
@@ -82,7 +82,7 @@ rule annotate:
         "{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz"
     log: "{output}/logs/{sample}/annotation.log"
     shell:
-        "java -jar -Xmx3g {data_path}/jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --1kg-vcf {input.kg} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}' 2> {log}"
+        "java -jar -Xmx3g {data_path}/jannovar/jannovar-cli-0.21-SNAPSHOT.jar annotate-vcf -d {input.db} --exac-vcf {input.exac} --uk10k-vcf {input.uk} --1kg-vcf {input.kg} --tabix {input.caddsnv} {input.caddindel} --tabix-prefix CADD_SNV_ CADD_INDEL_ --ref-fasta {input.ref} -o '{output}' -i '{input.vcf}' 2>&1 | tee {log}"
 
 rule index_annotated:
     input:
@@ -105,7 +105,7 @@ rule json:
     shell:
         """
         java -jar -Xmx20g {input.simulator} extendjson \
-        -j {input.json} -v {input.vcf} -o {input.omim} -out {output} -s {sample_index} 2> {log}
+        -j {input.json} -v {input.vcf} -o {input.omim} -out {output} -s {sample_index} 2>&1 | tee {log}
         """
 
 rule test:
@@ -120,7 +120,7 @@ rule test:
     log: "{output}/logs/{sample}/classification.log"
     shell:
         """
-        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' --param-c 0.0156252 --train-pickle {train_pickle}> {log}
+        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' --param-c 0.0156252 --train-pickle {train_pickle} 2>&1 | tee {log}
         """
 
 rule map_pedia:
@@ -134,7 +134,7 @@ rule map_pedia:
     log: "{output}/logs/{sample}/map_pedia.log"
     shell:
         """
-        python {mapping_file} --input '{input.json}' --pedia '{input.csv}' --output '{output.json}' 2> {log}
+        python {mapping_file} --input '{input.json}' --pedia '{input.csv}' --output '{output.json}' 2>&1 | tee {log}
         """
 
 rule map_vcf:
@@ -149,7 +149,7 @@ rule map_vcf:
     log: "{output}/logs/{sample}/map_vcf.log"
     shell:
         """
-        python {mapping_vcf_file} --input '{input.vcf}' --pedia '{input.csv}' --output '{output.vcf}' --sample-index {params.sample_index} 2> {log}
+        python {mapping_vcf_file} --input '{input.vcf}' --pedia '{input.csv}' --output '{output.vcf}' --sample-index {params.sample_index} 2>&1 | tee {log}
         """
 
 rule map:
