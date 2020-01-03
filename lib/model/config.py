@@ -34,7 +34,15 @@ class PEDIAConfig(ConfigParser):
             "dump_intermediate"
         )
         self.data_path = self["general"]["data_path"] if self["general"]["data_path"] else "data"
-        self.train_pickle = self["general"]["train_pickle_path"] if self["general"]["train_pickle_path"] else "train_v1.2.p"
+
+        self.train_pickle = args.train_pickle_path
+        if self["classifier"]["train_pickle_path"]:
+            self.train_pickle = self["classifier"]["train_pickle_path"]
+
+        self.param_c = args.param_c
+        if self["classifier"]["param_c"]:
+            self.param_c = self["classifier"]["param_c"]
+
         self.input = self.parse_input(args)
 
         self.output = self.parse_output(args)
@@ -136,8 +144,12 @@ class PEDIAConfig(ConfigParser):
             download_path = self[args.lab]["download_path"]
             corrected_path = self[args.lab]["corrected_path"]
         else:
-            download_path = self["pedia"]["download_path"]
-            corrected_path = self["pedia"]["corrected_path"]
+            if 'pedia' in self:
+                download_path = self["pedia"]["download_path"]
+                corrected_path = self["pedia"]["corrected_path"]
+            else:
+                download_path = ''
+                corrected_path = ''
         input_files = []
 
         if args.single:

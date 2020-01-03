@@ -330,6 +330,11 @@ def run_workflow(case_id, config_data):
     target_file = os.path.join(config_data.output['output_path'], 'results', str(case_id), 'run.out')
     vcf_sample_index = config_data.input['vcf_sample_index']
     print('Analyze vcf sample index: {}'.format(vcf_sample_index))
+    snakemake_config = {'sample_index': vcf_sample_index,
+                        'data_path': config_data.data_path,
+                        'train_pickle': config_data.train_pickle,
+                        'param_c': config_data.param_c
+                        }
     snakemake.snakemake(snakefile, targets=[target_file],
             workdir='.', config={'sample_index': vcf_sample_index,
                 'data_path': config_data.data_path,
@@ -350,7 +355,7 @@ def main():
     print(config_data['input'])
     cases = []
     if not args.pickle:
-        jsons, failed_jsons, json_log = create_jsons(config_data, args.convert_failed)
+        jsons, failed_jsons, json_log = create_jsons(config_data, not args.filter_failed)
 
         with open("failed_cases.json","w") as failed_log:
             json.dump(json_log,failed_log)
@@ -367,7 +372,7 @@ def main():
     else:
         old_jsons = None
 
-    if args.convert_failed:
+    if not args.filter_failed:
         print("== Convert failed cases == ")
         failed_cases = convert_failed_cases(config_data,failed_jsons)
 
@@ -381,7 +386,7 @@ def main():
     else:
         qc_cases = cases
 
-    if not args.convert_failed:
+    if args.filter_failed:
         # Quality check
         stats, qc_cases = quality_check_cases(
             config_data, qc_cases, old_jsons, json_log
@@ -397,7 +402,7 @@ def main():
             config_data.output["quality_check_log"]
         )
 
-    if args.convert_failed:
+    if not args.filter_failed:
         cases = cases + failed_cases
 
     if args.vcf:

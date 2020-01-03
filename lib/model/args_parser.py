@@ -34,6 +34,29 @@ class PEDIAParser():
             default=""
         )
         parser.add_argument(
+            "--aws-format", action='store_true',
+            help="Use the AWS format for parsing JSON file"
+        )
+        parser.add_argument(
+            "--phenobot-format", action='store_true',
+            help="Use the phenobot format for parsing JSON file"
+        )
+
+        parser.add_argument(
+            "--param-c", default=0, type=float,
+            help="Parameter C used in PEDIA classifier"
+        )
+        parser.add_argument(
+            "--train_pickle_path", type=str,
+            help="Pickle file of training file. The file is in data/train/train_v*.*.p"
+        )
+
+        parser.add_argument(
+            "--filter-failed", default=False, action='store_true',
+            help="Filter cases that failed the first part of quality control."
+        )
+
+        parser.add_argument(
             "-p", "--pickle",
             help="Start with pickled cases after phenomization."
         )
@@ -50,20 +73,6 @@ class PEDIAParser():
             "--skip-vcf", action='store_true',
             help="Skip vcf convertion."
         )
-        parser.add_argument(
-            "-c", "--convert-failed", action='store_true',
-            help="Convert cases that failed the first part of quality control."
-        )
-
-        parser.add_argument(
-            "--aws-format", action='store_true',
-            help="Use the AWS format for parsing JSON file"
-        )
-        parser.add_argument(
-            "--phenobot-format", action='store_true',
-            help="Use the phenobot format for parsing JSON file"
-        )
-
         self.args = parser.parse_args()
 
         if self.args.lab and not self.args.lab_case_id:
