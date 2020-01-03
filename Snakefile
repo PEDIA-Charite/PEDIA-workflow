@@ -15,7 +15,12 @@ else:
 if 'train_pickle' in config:
 	train_pickle = config['train_pickle']
 else:
-	train_pickle = 'train_v1.2.p'
+	train_pickle = 'data/train/train_v1.2.p'
+
+if 'param_c' in config:
+	param_c = '--param-c ' + str(config['param_c'])
+else:
+	param_c = ''
 
 rule decompress:
     input:
@@ -120,7 +125,7 @@ rule test:
     log: "{output}/logs/{sample}/classification.log"
     shell:
         """
-        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' --param-c 0.0156252 --train-pickle {train_pickle} 2>&1 | tee {log}
+        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' {param_c} --train-pickle {train_pickle} 2>&1 | tee {log}
         """
 
 rule map_pedia:
