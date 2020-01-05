@@ -8,7 +8,11 @@ rule all:
 		"ExAC.r1.sites.vep.vcf.gz",
 		"ExAC.r1.sites.vep.vcf.gz.tbi",
 		"UK10K_COHORT.20160215.sites.vcf.gz",
-		"UK10K_COHORT.20160215.sites.vcf.gz.tbi"
+		"UK10K_COHORT.20160215.sites.vcf.gz.tbi",
+		"1KG_ncbi_exon.vcf.gz",
+		"1KG_ncbi_exon.vcf.gz.tbi",
+		"UK10K_ncbi_exon.vcf.gz",
+		"UK10K_ncbi_exon.vcf.gz.tbi"
 
 
 rule download1KG:
@@ -21,14 +25,28 @@ rule download1KG:
 		wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/{output.index};
 		"""
 
+rule get_1KG_exon:
+	input:
+		file="ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz",
+		index="ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz.tbi",
+		ref="../referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed"
+	output:
+		file="1KG_ncbi_exon.vcf.gz",
+		index="1KG_ncbi_exon.vcf.gz.tbi"
+	shell:
+		"""
+		tabix {input.file} -h -R {input.ref} | awk '$1 ~ /^#/ {{print $0;next}} {{print $0 | "sort -k1,1V -k2,2n"}}' | bgzip > {output.file};
+		tabix {output.file}
+		"""
+
 rule downloadExAC:
 	output:
 		file="ExAC.r1.sites.vep.vcf.gz",
 		index="ExAC.r1.sites.vep.vcf.gz.tbi"
 	shell:
 		"""
-		wget https://storage.googleapis.com/gnomad-public/legacy/exac_browser/{output.file};
-		wget https://storage.googleapis.com/gnomad-public/legacy/exac_browser/{output.index};
+		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/{output.file};
+		wget ftp://ftp.broadinstitute.org/pub/ExAC_release/release1/{output.index};
 		"""
 
 rule downloadUK10K:
@@ -39,4 +57,18 @@ rule downloadUK10K:
 		"""
 		wget ftp://ngs.sanger.ac.uk/production/uk10k/UK10K_COHORT/REL-2012-06-02/{output.file};
 		wget ftp://ngs.sanger.ac.uk/production/uk10k/UK10K_COHORT/REL-2012-06-02/{output.index};
+		"""
+
+rule get_UK10K_exon:
+	input:
+		file="UK10K_COHORT.20160215.sites.vcf.gz",
+		index="UK10K_COHORT.20160215.sites.vcf.gz.tbi",
+		ref="../referenceGenome/data/ncbi_refseq_exon_extend_100bp.bed"
+	output:
+		file="UK10K_ncbi_exon.vcf.gz",
+		index="UK10K_ncbi_exon.vcf.gz.tbi"
+	shell:
+		"""
+		tabix {input.file} -h -R {input.ref} | awk '$1 ~ /^#/ {{print $0;next}} {{print $0 | "sort -k1,1V -k2,2n"}}' | bgzip > {output.file};
+		tabix {output.file}
 		"""

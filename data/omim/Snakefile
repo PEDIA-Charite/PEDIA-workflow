@@ -16,7 +16,7 @@ rule download_genemap:
 		file="genemap2.txt"
 	shell:
 		"""
-		wget https://uni-bonn.sciebo.de/s/M2YEfEHAGNRSnH5/download -O {output.file};
+		wget https://uni-bonn.sciebo.de/s/m0U6gwoPAysReMO/download -O {output.file};
 		"""
 
 rule download_mim2gene:
@@ -24,7 +24,7 @@ rule download_mim2gene:
 		file="mim2gene.txt"
 	shell:
 		"""
-		wget https://uni-bonn.sciebo.de/s/WlaDSVtVMG7mCCm/download -O {output.file};
+		wget https://uni-bonn.sciebo.de/s/RQ69aRqgpuuhkEn/download -O {output.file};
 		"""
 
 rule download_mim_to_ps:
@@ -40,7 +40,7 @@ rule download_mimTitles:
 		file="mimTitles.txt"
 	shell:
 		"""
-		wget https://uni-bonn.sciebo.de/s/iMzQhFBii7nGz9d/download -O {output.file};
+		wget https://uni-bonn.sciebo.de/s/TC34Ewv4HES40E5/download -O {output.file};
 		"""
 
 rule download_morbidmap:
@@ -48,7 +48,7 @@ rule download_morbidmap:
 		file="morbidmap.txt"
 	shell:
 		"""
-		wget https://uni-bonn.sciebo.de/s/vV2zVJuBvndpl4z/download -O {output.file};
+		wget https://uni-bonn.sciebo.de/s/Rnpo2GOehTnSlQh/download -O {output.file};
 		"""
 
 rule download_mim_deprecated:

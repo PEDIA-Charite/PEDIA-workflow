@@ -40,7 +40,7 @@ rule sort:
     log: "{output}/logs/{sample}/sort.log"
     shell:
         """
-        (cat '{input}' | egrep "^#"; cat '{input}' | egrep -v "^#" | sort -k1,1 -k2,2n) | bgzip -c > '{output}'
+        cat {input} | awk '$1 ~ /^#/ {{print $0;next}} {{print $0 | "sort -k1,1V -k2,2n"}}' | bgzip -c > '{output}'
         """
 
 rule index_sorted:
@@ -78,10 +78,10 @@ rule annotate:
         vcf_index="{output}/vcfs/filtered_vcfs/{sample}.vcf.gz.tbi",
         db="{}/jannovar/data/hg19_refseq.ser".format(data_path),
         exac="{}/populationDBs/ExAC.r1.sites.vep.vcf.gz".format(data_path),
-        kg="{}/populationDBs/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz".format(data_path),
-        uk="{}/populationDBs/UK10K_COHORT.20160215.sites.vcf.gz".format(data_path),
-        caddsnv="{}/pathogenicityScores/cadd_exon_snv.v1.3.tsv.gz".format(data_path),
-        caddindel="{}/pathogenicityScores/cadd_exon_indel.v1.3.tsv.gz".format(data_path),
+        kg="{}/populationDBs/1KG_ncbi_exon.vcf.gz".format(data_path),
+        uk="{}/populationDBs/UK10K_ncbi_exon.vcf.gz".format(data_path),
+        caddsnv="{}/pathogenicityScores/cadd_exon_snv.v1.4.tsv.gz".format(data_path),
+        caddindel="{}/pathogenicityScores/cadd_exon_indel.v1.4.tsv.gz".format(data_path),
         ref="{}/referenceGenome/data/human_g1k_v37.fasta".format(data_path)
     output:
         "{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz"

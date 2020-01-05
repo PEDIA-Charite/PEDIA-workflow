@@ -336,9 +336,8 @@ def run_workflow(case_id, config_data):
                         'param_c': config_data.param_c
                         }
     snakemake.snakemake(snakefile, targets=[target_file],
-            workdir='.', config={'sample_index': vcf_sample_index,
-                'data_path': config_data.data_path,
-                'train_pickle': config_data.train_pickle})
+                        workdir='.', config=snakemake_config,
+                        printshellcmds=True)
     print("== PEDIA workflow is completed == ")
 
 def main():

@@ -26,7 +26,7 @@ dependencies:
  - tabix=0.2.6
  - java-jdk=8.0.112
  - pip:
-   - hgvs==1.2.0
+   - hgvs==1.3.0.post0
    - ratelimit==2.2.0
    - zeep==3.0.0
    - requests_cache==0.4.13
