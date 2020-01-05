@@ -65,6 +65,12 @@ class PEDIAConfig(ConfigParser):
         elif not (args.lab or args.single):
             LAB_INST.configure(**self.pedia_lab_options)
 
+        # check phenomizer
+        if self["phenomizer"]["user"] and self["phenomizer"]["password"]:
+            self.use_phenomizer = True
+        else:
+            self.use_phenomizer = False
+
         # configure api components
         ERRORFIXER_INST.configure(**self.errorfixer_options)
         JANNOVAR_INST.configure(**self.jannovar_options)

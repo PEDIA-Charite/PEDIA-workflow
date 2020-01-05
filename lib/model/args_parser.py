@@ -10,37 +10,33 @@ class PEDIAParser():
             self
     ):
         super().__init__()
-        '''Command line arguments affecting preprocess run behavior.'''
+        '''Command line arguments affecting preprocess run behavior.t '''
         parser = ArgumentParser(description=(
             "Process f2g provided jsons into a format processable by "
-            "classification."))
-        parser.add_argument("--config", default='config.ini', help="config.ini file.")
-        parser.add_argument("-s", "--single", help="Process a single json file.")
-        parser.add_argument("-l", "--lab", help="Name of the lab you which you define in config.ini.")
-        parser.add_argument(
-            "--lab-format",
-            action='store_true',
-            help="Parsing the JSON input with F2G LAB foramt"
-        )
+            "classification. \n"
+            "Example: "
+            "python -s tests/data/cases/124.json -v vcfs/124.vcf.gz -o data/output --phenobot-format"))
+        parser.add_argument("-s", "--single", help="Path of input json file.")
         parser.add_argument("-v", "--vcf", help="Path of the real vcf for the case you want to run PEDIA")
         parser.add_argument("--vcf-sample-index",
                 default=0,
                 type=int,
                 help="The index of sample in multip vcf. Default: 0")
-        parser.add_argument("--lab-case-id", help="Lab case ID, use it with --lab.")
         parser.add_argument(
             "-o", "--output",
             help="Destination of created old json.",
             default=""
         )
-        parser.add_argument(
-            "--aws-format", action='store_true',
-            help="Use the AWS format for parsing JSON file"
-        )
+
         parser.add_argument(
             "--phenobot-format", action='store_true',
             help="Use the phenobot format for parsing JSON file"
         )
+        parser.add_argument(
+            "--aws-format", action='store_true',
+            help="Use the AWS format for parsing JSON file"
+        )
+        parser.add_argument("--config", default='config.ini', help="config.ini file.")
 
         parser.add_argument(
             "--param-c", default=0, type=float,
@@ -51,6 +47,13 @@ class PEDIAParser():
             help="Pickle file of training file. The file is in data/train/train_v*.*.p"
         )
 
+        parser.add_argument("-l", "--lab", help="Name of the lab you which you define in config.ini. (LAB api)")
+        parser.add_argument("--lab-case-id", help="Lab case ID, use it with --lab. (LAB api)")
+        parser.add_argument(
+            "--lab-format",
+            action='store_true',
+            help="Parsing the JSON input with F2G LAB foramt (LAB api)"
+        )
         parser.add_argument(
             "--filter-failed", default=False, action='store_true',
             help="Filter cases that failed the first part of quality control."

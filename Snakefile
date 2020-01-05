@@ -22,6 +22,15 @@ if 'param_c' in config:
 else:
 	param_c = ''
 
+# Check if we use phenomizer
+if 'use_pheno' in config:
+	if config['use_pheno']:
+		exclude_pheno = ''
+	else:
+		exclude_pheno = '--exclude 3_4'
+else:
+	exclude_pheno = '--exclude 3_4'
+
 rule decompress:
     input:
         "{output}/vcfs/original/{sample}.vcf.gz"
@@ -125,7 +134,7 @@ rule test:
     log: "{output}/logs/{sample}/classification.log"
     shell:
         """
-        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' {param_c} --train-pickle {train_pickle} 2>&1 | tee {log}
+        python {classify_file} '{params.train}' '{params.label}' -t {input.json} -o '{params.dir}' {param_c} --train-pickle {train_pickle} {exclude_pheno} 2>&1 | tee {log}
         """
 
 rule map_pedia:
