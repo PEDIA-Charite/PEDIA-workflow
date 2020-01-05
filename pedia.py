@@ -333,7 +333,8 @@ def run_workflow(case_id, config_data):
     snakemake_config = {'sample_index': vcf_sample_index,
                         'data_path': config_data.data_path,
                         'train_pickle': config_data.train_pickle,
-                        'param_c': config_data.param_c
+                        'param_c': config_data.param_c,
+                        'use_pheno': config_data.use_phenomizer
                         }
     snakemake.snakemake(snakefile, targets=[target_file],
                         workdir='.', config=snakemake_config,
