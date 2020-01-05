@@ -7,10 +7,10 @@ rule all:
 		"InDels.tsv.gz.tbi",
 		"whole_genome_SNVs.tsv.gz",
 		"whole_genome_SNVs.tsv.gz.tbi",
-		"cadd_exon_snv.v1.3.tsv.gz",
-		"cadd_exon_snv.v1.3.tsv.gz.tbi",
-		"cadd_exon_indel.v1.3.tsv.gz",
-		"cadd_exon_indel.v1.3.tsv.gz.tbi"
+		"cadd_exon_snv.v1.4.tsv.gz",
+		"cadd_exon_snv.v1.4.tsv.gz.tbi",
+		"cadd_exon_indel.v1.4.tsv.gz",
+		"cadd_exon_indel.v1.4.tsv.gz.tbi"
 
 rule download_CADD_indels:
 	output:
@@ -34,20 +34,20 @@ rule download_CADD_SNVs:
 
 rule download_CADD_exon_SNVs:
 	output:
-		file="cadd_exon_snv.v1.3.tsv.gz",
-		index="cadd_exon_snv.v1.3.tsv.gz.tbi"
+		file="cadd_exon_snv.v1.4.tsv.gz",
+		index="cadd_exon_snv.v1.4.tsv.gz.tbi"
 	shell:
 		"""
-		wget https://uni-bonn.sciebo.de/s/w0Xn5Fp98apnFFP/download -O {output.file};
-		wget https://uni-bonn.sciebo.de/s/f2uEPt4QTg8fqnB/download -O {output.index};
+		wget https://uni-bonn.sciebo.de/s/fQ6osJghtNWE7Xp/download -O {output.file};
+		wget https://uni-bonn.sciebo.de/s/2uIw9akK6yIMtn3/download -O {output.index};
 		"""
 
 rule download_CADD_exon_indel:
 	output:
-		file="cadd_exon_indel.v1.3.tsv.gz",
-		index="cadd_exon_indel.v1.3.tsv.gz.tbi"
+		file="cadd_exon_indel.v1.4.tsv.gz",
+		index="cadd_exon_indel.v1.4.tsv.gz.tbi"
 	shell:
 		"""
-		wget https://uni-bonn.sciebo.de/s/7mIgAIgKdZeoaRy/download -O {output.file};
-		wget https://uni-bonn.sciebo.de/s/ixDVGyqWmvmOxOm/download -O {output.index};
+		wget https://uni-bonn.sciebo.de/s/snErNiHZAzJogUm/download -O {output.file};
+		wget https://uni-bonn.sciebo.de/s/Mwq6rMwqOEGIgYC/download -O {output.index};
 		"""
