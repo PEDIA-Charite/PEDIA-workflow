@@ -112,7 +112,7 @@ rule json:
         vcf_index="{output}/vcfs/annotated_vcfs/{sample}_annotated.vcf.gz.tbi",
         omim="{}/omim/genemap2.txt".format(data_path),
         json="{output}/jsons/phenomized/{sample}.json",
-        simulator="3_simulation/simulator/pedia-simulator-0.0.3-SNAPSHOT-jar-with-dependencies.jar"
+        simulator="3_simulation/simulator/pedia-simulator-0.0.4-SNAPSHOT-jar-with-dependencies.jar"
     output:
         "{output}/jsons/test/{sample}.json"
     log: "{output}/logs/{sample}/extend_json.log"
